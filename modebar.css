@@ -1,0 +1,9 @@
+/* Horní přepínač Zákazník / Dílna (testovací verze) */
+.modebar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 6px 20px; background: #17181A; color: #D9D5CD; font: 13px/1.3 'Segoe UI', system-ui, sans-serif; }
+.modebar .mb-badge { font-size: 11px; font-weight: 700; letter-spacing: .1em; background: #B8440F; color: #fff; padding: 2px 7px; border-radius: 3px; }
+.modebar nav { display: flex; gap: 2px; background: #2A2D31; border-radius: 6px; padding: 2px; }
+.modebar nav a { color: #D9D5CD; text-decoration: none; padding: 5px 14px; border-radius: 4px; font-weight: 600; }
+.modebar nav a:hover { color: #fff; }
+.modebar nav a[aria-current="page"] { background: #FBFAF7; color: #17181A; }
+.modebar .mb-note { color: #9A958C; font-size: 12px; }
+@media (max-width: 600px) { .modebar { padding: 6px 12px; gap: 10px; } .modebar .mb-note { display: none; } }

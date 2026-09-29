@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<link rel="stylesheet" href="modebar.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dílna – podklady k výrobě</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #F2F1EE; --surface: #FFFFFF; --ink: #17181A; --muted: #5B5852; --line: #D6D3CC; --line-soft: #E9E7E2;
+    --accent: #B8440F; --accent-ink: #8E3309; --accent-soft: #FFF1E8; --steel: #2A2D31;
+    --ok-bg: #E7F1EA; --ok-ink: #1D5535; --warn-bg: #FFF1DD; --warn-ink: #7A4100; --bad-bg: #FCE9E7; --bad-ink: #8C1D18;
+    --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); }
+  body { font: 14px/1.45 var(--sans); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; } button:disabled { cursor: not-allowed; opacity: .55; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: var(--accent); }
+  header { background: var(--steel); color: #F2F1EE; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 3px solid var(--accent); }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .02em; }
+  header a { color: #F7B38E; }
+  .tabs { display: flex; gap: 4px; padding: 12px 20px 0; flex-wrap: wrap; }
+  .tabs button { border: 1px solid var(--line); border-bottom: 0; background: var(--line-soft); padding: 10px 16px; border-radius: 6px 6px 0 0; font-weight: 500; }
+  .tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); position: relative; top: 1px; }
+  .tabs .count { font-family: var(--mono); font-size: 12px; background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 7px; margin-left: 6px; }
+  main { padding: 0 20px 28px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 0 6px 6px 6px; padding: 18px; }
+  .notice { padding: 12px 14px; border-radius: 6px; background: var(--warn-bg); color: var(--warn-ink); margin: 12px 20px 0; }
+  h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+  .tbl { width: 100%; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; border-bottom: 1.5px solid var(--ink); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  .st { font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+  .st-nova { background: var(--accent-soft); color: var(--accent-ink); } .st-reseni { background: var(--warn-bg); color: var(--warn-ink); } .st-hotovo { background: var(--ok-bg); color: var(--ok-ink); } .st-zamitnuto { background: var(--line-soft); color: var(--muted); }
+  .btn { height: 38px; padding: 0 14px; border-radius: 5px; border: 1px solid var(--ink); background: var(--surface); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; height: 46px; padding: 0 20px; }
+  .btn.primary:hover { background: var(--accent-ink); }
+  .empty { color: var(--muted); padding: 18px 0; }
+  .ed { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  @media (min-width: 1100px) { .ed { grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); } }
+  .viz { position: relative; height: 420px; background: #ECEAE5; border-radius: 6px; overflow: hidden; }
+  #viz { position: absolute; inset: 0; }
+  .vbar { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .vbar button { height: 32px; padding: 0 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; font-size: 13px; }
+  .vbar label { display: flex; gap: 6px; align-items: center; background: rgba(255,255,255,.8); padding: 0 8px; border-radius: 16px; font-size: 13px; }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+  @media (max-width: 700px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .fact { background: var(--line-soft); border-radius: 5px; padding: 8px 10px; }
+  .fact b { display: block; font-family: var(--mono); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .fact span { font-size: 12px; color: var(--muted); }
+  .warns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .warns div { padding: 8px 10px; border-radius: 5px; font-size: 13px; background: var(--warn-bg); color: var(--warn-ink); }
+  form.cfg { display: flex; flex-direction: column; gap: 14px; }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  fieldset.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  legend { font-weight: 600; padding: 0 6px; }
+  label.f { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+  label.f input, label.f select, textarea { height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 14px; width: 100%; }
+  textarea { height: auto; padding: 8px; font-family: var(--mono); font-size: 12px; }
+  .full { grid-column: 1 / -1; }
+  .files { font-family: var(--mono); font-size: 12px; background: var(--line-soft); border-radius: 5px; padding: 10px 12px; white-space: pre; overflow-x: auto; }
+  .msg { padding: 10px 12px; border-radius: 5px; font-size: 13px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .rates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 800px) { .rates { grid-template-columns: repeat(2, minmax(0, 1fr)); } fieldset.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="index.html">Zákazník</a><a href="interni.html" aria-current="page">Dílna</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
+<header>
+  <h1>Dílna · podklady k výrobě</h1>
+</header>
+<div class="notice" id="access" hidden></div>
+<div class="tabs" role="tablist">
+  <button role="tab" id="t-pop" aria-selected="true" aria-controls="p-pop">Poptávky<span class="count" id="popCount" hidden></span></button>
+  <button role="tab" id="t-obj" aria-selected="false" aria-controls="p-obj">Objednávka a podklady</button>
+  <button role="tab" id="t-aud" aria-selected="false" aria-controls="p-aud">Audit konstrukce</button>
+  <button role="tab" id="t-cen" aria-selected="false" aria-controls="p-cen">Ceník a nastavení</button>
+</div>
+<main>
+  <section class="card" id="p-pop" role="tabpanel" aria-labelledby="t-pop">
+    <h2>Poptávky ze stránky pro zákazníky</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Číslo</th><th>Přijato</th><th>Zákazník</th><th>Konfigurace</th><th class="num">Cena s DPH</th><th>Stav</th><th></th></tr></thead>
+      <tbody id="popRows"><tr><td colspan="7" class="empty">Načítám poptávky…</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" id="p-obj" role="tabpanel" aria-labelledby="t-obj" hidden>
+    <div class="ed">
+      <div>
+        <div class="viz"><div id="viz"></div>
+          <div class="vbar">
+            <button type="button" data-view="iso">3D</button><button type="button" data-view="front">Zepředu</button><button type="button" data-view="side">Zboku</button><button type="button" data-view="top">Shora</button><button type="button" data-view="bottom">Zespodu</button>
+            <label for="see"><input type="checkbox" id="see"> průhledná deska</label>
+          </div>
+        </div>
+        <div class="facts" id="facts"></div>
+        <div class="warns" id="warns"></div>
+        <h2>Kusovník</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Poz</th><th>Díl</th><th>Profil</th><th class="num">L [mm]</th><th class="num">Řez 1 / 2</th><th class="num">Ks</th><th class="num">Celkem</th><th>Stroj</th><th>Soubor</th></tr></thead>
+          <tbody id="bom"></tbody>
+        </table></div>
+      </div>
+      <form class="cfg" id="cfgForm" novalidate>
+        <fieldset>
+          <legend>Objednávka</legend>
+          <label class="f">Číslo objednávky<input id="oNum"></label>
+          <label class="f">Datum<input id="oDate"></label>
+          <label class="f full">Zákazník (jméno a příjmení)<input id="cName"></label>
+          <label class="f">E-mail<input id="cEmail"></label>
+          <label class="f">Telefon<input id="cPhone"></label>
+          <label class="f full">Adresa<input id="cAddr"></label>
+          <label class="f full">Poznámka<input id="oNote"></label>
+        </fieldset>
+        <fieldset class="three">
+          <legend>Konfigurace</legend>
+          <label class="f">Model<select id="model"></select></label>
+          <label class="f">Tvar desky<select id="shape"></select></label>
+          <label class="f">Provedení<select id="join"><option value="weld">svařované</option><option value="bolt">šroubované</option></select></label>
+          <label class="f">Délka / Ø [mm]<input id="L" type="number"></label>
+          <label class="f">Hloubka [mm]<input id="W" type="number"></label>
+          <label class="f">Výška [mm]<input id="H" type="number"></label>
+          <label class="f">Jekl<select id="size"></select></label>
+          <label class="f">Stěna [mm]<select id="t"></select></label>
+          <label class="f">Deska tl. [mm]<input id="td" type="number"></label>
+          <label class="f">Povrch<select id="fin"></select></label>
+          <label class="f">Počet sad<input id="qty" type="number" min="1"></label>
+          <label class="f">Deska<select id="dmode"><option value="table">podle stolu</option><option value="own">vlastní rozměr</option></select></label>
+          <label class="f">Deska délka / Ø<input id="dL" type="number"></label>
+          <label class="f">Deska šířka<input id="dW" type="number"></label>
+        </fieldset>
+        <div class="msg" id="joinNote" hidden></div>
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--muted)">Cena (podle ceníku)</div><div class="mono" style="font-size:18px" id="price"></div></div>
+            <button class="btn primary" type="button" id="dl">Stáhnout podklady (.zip)</button>
+          </div>
+          <div class="msg" id="dlMsg" hidden style="margin-top:10px"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Obsah zipu</div>
+          <div class="files" id="files"></div>
+        </div>
+        <details>
+          <summary>Vložit kód konfigurace (poslaný e-mailem)</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <label class="f" for="codeIn">Kód začínající PODNOZ:<textarea id="codeIn" rows="3"></textarea></label>
+            <div class="row"><button class="btn" type="button" id="codeLoad">Načíst</button><span id="codeMsg" style="font-size:13px"></span></div>
+          </div>
+        </details>
+      </form>
+    </div>
+  </section>
+
+  <section class="card" id="p-aud" role="tabpanel" aria-labelledby="t-aud" hidden>
+    <h2>Audit všech tvarů</h2>
+    <p style="margin:0 0 12px;color:var(--muted)">Prutový model celé podnože (svary tuhé, nohy kloubově na zemi, deska se nepočítá). Zkoušky podle EN 12521: bodová síla 1000 N na horní rám, boční síla 400 N se zátěží 500 N, převržení svislou silou 50 mm od hrany desky. Ocel S235, dovolené napětí 157 MPa, svary 180 MPa. Výrobní kontroly pro Bodor K2 (jekl 8–230 mm, tyč 6,5 m) a C2.</p>
+    <div class="row" style="margin-bottom:12px">
+      <label class="f" for="aL" style="width:110px">Délka [mm]<input id="aL" type="number" value="1600"></label>
+      <label class="f" for="aW" style="width:110px">Hloubka [mm]<input id="aW" type="number" value="800"></label>
+      <label class="f" for="aH" style="width:110px">Výška [mm]<input id="aH" type="number" value="750"></label>
+      <label class="f" for="aP" style="width:130px">Jekl<select id="aP"><option value="20,2">20×20×2</option><option value="30,2">30×30×2</option><option value="30,3">30×30×3</option><option value="40,2" selected>40×40×2</option><option value="40,3">40×40×3</option><option value="50,3">50×50×3</option></select></label>
+      <label class="f" for="aJ" style="width:130px">Provedení<select id="aJ"><option value="weld">svařované</option><option value="bolt">šroubované</option></select></label>
+      <button class="btn primary" type="button" id="runAudit" style="align-self:flex-end">Spustit audit</button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Tvar</th><th>Výsledek</th><th class="num">Nosnost</th><th class="num">1000 N</th><th class="num">Svary</th><th class="num">Průhyb</th><th class="num">Vyklonění</th><th class="num">Stabilita</th><th>Výroba a poznámky</th></tr></thead>
+      <tbody id="audRows"><tr><td colspan="9" class="empty">Zadej rozměry a spusť audit.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" id="p-cen" role="tabpanel" aria-labelledby="t-cen" hidden>
+    <h2>Ceník</h2>
+    <p style="margin:0 0 12px;color:var(--muted)">Platí hned pro obě stránky. Cena = (kg × materiál + díly × řez + svary + šroubové spoje + m² × barva + příprava) × (1 + marže). Ocel + lak se počítá za 70 % ceny barvy.</p>
+    <div class="rates" id="rateFields"></div>
+    <h2 style="margin-top:20px">Úchytky desky, zámky a šroubované provedení</h2>
+    <p style="margin:0 0 12px;color:var(--muted)">Počet úchytek se počítá sám podle délky a šířky podnože – po délce i po šířce nejvýš po zadané rozteči. Šroubované provedení jde jen od jeklu 30×30.</p>
+    <div class="rates" id="plateFields"></div>
+    <div class="row" style="margin-top:12px" id="boltModels"></div>
+    <div class="row" style="margin-top:18px"><button class="btn primary" type="button" id="saveRates">Uložit ceník</button><button class="btn" type="button" id="resetRates">Vrátit výchozí hodnoty</button><span id="rateMsg" style="font-size:13px"></span></div>
+  </section>
+</main>
+
+<script src="lokal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="core.js"></script>
+<script src="viewer.js"></script>
+<script src="gen.js"></script>
+<script>
+(function () {
+  const K = Podnoze, G = Generator, $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let rates = JSON.parse(JSON.stringify(K.DEFAULT_RATES));
+  let cfg = K.normalize({}), A = null, db = null, dls = null, canEdit = false, current = null, docs = [];
+  const ui = { see: false };
+  const viewer = Viewer3D.create($('viz'));
+  const today = () => { const d = new Date(); return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); };
+
+  /* ---------- záložky ---------- */
+  const tabs = ['pop', 'obj', 'aud', 'cen'];
+  function tab(name) {
+    tabs.forEach((t) => { $('t-' + t).setAttribute('aria-selected', String(t === name)); $('p-' + t).hidden = t !== name; });
+    if (name === 'obj') render();
+  }
+  tabs.forEach((t) => $('t-' + t).addEventListener('click', () => tab(t)));
+
+  /* ---------- formulář konfigurace ---------- */
+  const opt = (sel, items) => { $(sel).innerHTML = items.map((i) => '<option value="' + i[0] + '">' + esc(i[1]) + '</option>').join(''); };
+  opt('model', K.MODELS.map((m) => [m.id, m.lab]));
+  opt('shape', K.SHAPES.map((s) => [s.id, s.lab]));
+  opt('size', K.SIZES.map((z) => [z, z + '×' + z]));
+  opt('fin', K.FIN.map((f) => [f.id, f.lab + ' (' + f.ral + ')']));
+  const keys = ['model', 'shape', 'join', 'L', 'W', 'H', 'size', 't', 'td', 'fin', 'qty', 'dmode', 'dL', 'dW'];
+  function fillForm() {
+    opt('t', K.THK[cfg.size].map((t) => [t, t + ' mm']));
+    keys.forEach((k) => { if (document.activeElement !== $(k)) $(k).value = cfg[k]; });
+    $('W').disabled = cfg.shape === 'circle'; $('dW').disabled = cfg.shape === 'circle' || cfg.dmode !== 'own'; $('dL').disabled = cfg.dmode !== 'own';
+  }
+  keys.forEach((k) => $(k).addEventListener('change', () => {
+    const p = {}; keys.forEach((kk) => { p[kk] = $(kk).value; });
+    if (k === 'dmode' && p.dmode === 'own' && cfg.dmode !== 'own') { p.dL = cfg.L; p.dW = cfg.W; }
+    cfg = K.normalize(p); render();
+  }));
+  ['cName', 'oNum'].forEach((k) => $(k).addEventListener('input', renderFiles));
+
+  function order() {
+    return { number: $('oNum').value.trim() || 'OBJ-BEZ-CISLA', date: $('oDate').value.trim() || today(), note: $('oNote').value.trim(), payment: current && current.paid ? current.paid : '',
+      customer: { name: $('cName').value.trim() || 'Zakaznik', email: $('cEmail').value.trim(), phone: $('cPhone').value.trim(), address: $('cAddr').value.trim() }, config: cfg };
+  }
+  function renderFiles() {
+    if (!A) return;
+    const o = order(), dir = G.asciiName(o.customer.name) + '_' + G.asciiName(o.number) + '/', num = G.asciiName(o.number);
+    const tubes = A.rows.filter((r) => r.kind === 'tube'), plates = A.rows.filter((r) => r.kind === 'plate');
+    $('files').textContent = dir + '\n  ' + num + '_sestava.step\n  ' + num + '_kusovnik.pdf\n  ' + num + '_doklad_o_zaplaceni.pdf\n  dily/C2/\n' + plates.map((r) => '    ' + r.file).join('\n') + '\n  dily/K2/\n' + tubes.map((r) => '    ' + r.file).join('\n');
+  }
+
+  function render() {
+    A = K.analyze(cfg, rates);
+    fillForm();
+    const d = A.build.dims;
+    const facts = [['Podnož', d.Lf + ' × ' + d.Wf + ' × ' + d.Hf], ['Hmotnost / sada', K.nf(A.kg, 1) + ' kg'], ['Jekl / sada', K.nf(A.tubeM, 2) + ' m'], ['Nosnost', A.load >= 500 ? '500+ kg' : '≈ ' + A.load + ' kg'],
+      ['Svary', A.welds], ['Šroubové spoje', A.bolts], ['Přesah čela', A.ohEnd + ' mm'], ['Přesah boky', A.ohSide + ' mm']];
+    if (A.audit) { const ov = A.audit.overall; facts.push(['Audit konstrukce', ov === 'ok' ? 'v pořádku' : ov === 'warn' ? 'pozor' : 'NEVYHOVUJE']); }
+    $('facts').innerHTML = facts.map((f) => '<div class="fact"><b>' + esc(f[1]) + '</b><span>' + f[0] + '</span></div>').join('');
+    const w = A.warns.slice(); if (A.ohWarn) w.push(A.ohWarn.t);
+    if (A.audit) A.audit.fab.forEach((f) => w.push('Výroba: ' + f.t));
+    $('warns').innerHTML = w.map((t) => '<div>' + esc(t) + '</div>').join('');
+    $('bom').innerHTML = A.rows.map((r) => '<tr><td class="mono">' + r.poz + '</td><td>' + esc(r.name) + (r.feat ? ' <span style="color:var(--muted);font-size:12px">(' + esc(r.feat) + ')</span>' : '') + '</td><td>' + esc(r.prof) + '</td><td class="num mono">' + r.len + '</td><td class="num mono">' + r.cut + '</td><td class="num">' + r.q + '</td><td class="num">' + r.q * cfg.qty + '</td><td>' + r.stroj + '</td><td class="mono">' + esc(r.file) + '</td></tr>').join('');
+    $('price').textContent = K.nf(A.price * cfg.qty) + ' Kč bez DPH · ' + K.nf(A.total) + ' Kč s DPH';
+    const jn = $('joinNote');
+    jn.hidden = !(cfg.join === 'bolt' && !A.bolted);
+    if (!jn.hidden) { jn.textContent = 'Šroubované provedení není pro tuto konfiguraci povolené (model nebo délka) – podklady budou pro svařovanou podnož.'; jn.style.background = 'var(--warn-bg)'; jn.style.color = 'var(--warn-ink)'; }
+    renderFiles();
+    if (!$('p-obj').hidden) viewer.update(A, { showDesk: true, see: ui.see });
+  }
+  document.querySelectorAll('.vbar button').forEach((b) => b.addEventListener('click', () => { if (b.dataset.view === 'top' || b.dataset.view === 'bottom') { ui.see = true; $('see').checked = true; render(); } viewer.view(b.dataset.view); }));
+  $('see').addEventListener('change', (e) => { ui.see = e.target.checked; render(); });
+
+  /* ---------- audit všech tvarů ---------- */
+  const pill = (l) => '<span class="st ' + (l === 'ok' ? 'st-hotovo' : l === 'warn' ? 'st-reseni' : 'st-nova') + '">' + (l === 'ok' ? 'v pořádku' : l === 'warn' ? 'pozor' : 'nevyhovuje') + '</span>';
+  $('runAudit').addEventListener('click', () => {
+    $('audRows').innerHTML = '<tr><td colspan="9" class="empty">Počítám…</td></tr>';
+    setTimeout(() => {
+      const [z, t] = $('aP').value.split(',').map(Number);
+      const base = { L: $('aL').value, W: $('aW').value, H: $('aH').value, td: 40, size: z, t, join: $('aJ').value };
+      $('audRows').innerHTML = K.MODELS.map((m) => {
+        const a = K.audit(Object.assign({ model: m.id }, base), rates), c = (id) => a.checks.find((x) => x.id === id);
+        const cell = (id, d, u) => '<td class="num" style="color:' + (c(id).lvl === 'bad' ? 'var(--bad-ink)' : c(id).lvl === 'warn' ? 'var(--warn-ink)' : 'inherit') + '">' + (c(id).val >= 99 && u === '×' ? '99+' : c(id).val.toFixed(d)) + ' ' + u + '</td>';
+        const notes = a.fab.map((f) => f.t).concat(a.checks.filter((x) => x.lvl !== 'ok').map((x) => x.lab + ': ' + x.hint));
+        return '<tr><td><strong>' + esc(m.lab) + '</strong>' + (m.art ? ' <span style="color:var(--muted);font-size:12px">umělecký</span>' : '') + '</td><td>' + pill(a.overall) + '</td>' +
+          '<td class="num">' + (a.capKg >= 500 ? '500+' : Math.floor(a.capKg / 10) * 10) + ' kg</td>' + cell('pt', 0, 'MPa') + cell('weld', 0, 'MPa') + cell('defl', 1, 'mm') + cell('sway', 1, 'mm') + cell('stab', 1, '×') +
+          '<td style="font-size:12px;max-width:380px">' + (notes.length ? notes.map(esc).join('<br>') : '–') + '</td></tr>';
+      }).join('');
+    }, 30);
+  });
+
+  /* ---------- stažení podkladů ---------- */
+  function dlMsg(t, kind) { const m = $('dlMsg'); m.hidden = false; m.innerHTML = t; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
+  $('dl').addEventListener('click', async () => {
+    let g;
+    try { g = G.generateOrder(order(), rates); } catch (e) { dlMsg('Generování selhalo: ' + esc(e.message), 'bad'); return; }
+    if (g.problems.length) { dlMsg('Kontrola těles našla chyby: ' + esc(g.problems.join(', ')) + '. Zip nestahuj, pošli konfiguraci k opravě.', 'bad'); return; }
+    if (!dls) { dlMsg('Stahování souborů není na tomto zobrazení dostupné. Otevři stránku v prohlížeči na claude.ai.', 'bad'); return; }
+    try {
+      await dls.save({ filename: g.filename, data: new Blob([g.bytes]) });
+      dlMsg('Staženo: <span class="mono">' + esc(g.filename) + '</span> – ' + g.files.length + ' souborů, kontrola těles bez chyb.', 'ok');
+    } catch (e) {
+      dlMsg(e && e.code === 'declined' ? 'Stažení jsi zrušil.' : 'Stažení se nepovedlo (' + esc(e && e.code || 'chyba') + ').', e && e.code === 'declined' ? '' : 'bad');
+    }
+  });
+
+  /* ---------- kód konfigurace ---------- */
+  $('codeLoad').addEventListener('click', () => {
+    try {
+      const s = $('codeIn').value.trim().replace(/^PODNOZ:/, '');
+      cfg = K.normalize(JSON.parse(decodeURIComponent(escape(atob(s))))); current = null; render();
+      $('codeMsg').textContent = 'Načteno: ' + K.describe(cfg);
+    } catch (e) { $('codeMsg').textContent = 'Kód nejde přečíst – zkontroluj, že je zkopírovaný celý.'; }
+  });
+
+  /* ---------- poptávky ---------- */
+  const ST = { nova: 'nová', reseni: 'v řešení', hotovo: 'vyrobeno', zamitnuto: 'zamítnuto' };
+  function renderPop() {
+    const all = [];
+    docs.forEach((d) => (d.items || []).forEach((it, i) => all.push({ doc: d, i, it })));
+    all.sort((a, b) => String(b.it.created).localeCompare(String(a.it.created)));
+    const nNew = all.filter((x) => x.it.status === 'nova').length;
+    $('popCount').hidden = !nNew; $('popCount').textContent = nNew;
+    if (!all.length) { $('popRows').innerHTML = '<tr><td colspan="7" class="empty">' + (db ? 'Zatím žádná poptávka. Odešli ji v záložce Zákazník (tlačítko Nezávazně poptat) – objeví se tady.' : 'Poptávky se nedají načíst – databáze není na tomto zobrazení dostupná.') + '</td></tr>'; return; }
+    $('popRows').innerHTML = all.map((x, n) => {
+      const it = x.it, c = it.customer || {}, dt = new Date(it.created);
+      return '<tr><td class="mono">' + esc(it.id) + '</td><td>' + (isNaN(dt) ? '' : dt.toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })) + '</td>' +
+        '<td>' + esc(c.name) + '<br><span style="color:var(--muted);font-size:12px">' + esc(c.email) + (c.phone ? ' · ' + esc(c.phone) : '') + '</span></td>' +
+        '<td>' + esc(K.describe(K.normalize(it.config))) + ' · ' + (it.config && it.config.qty || 1) + ' ks' + (it.note ? '<br><span style="color:var(--muted);font-size:12px">„' + esc(it.note) + '“</span>' : '') + '</td>' +
+        '<td class="num">' + K.nf(it.total || it.vat || 0) + ' Kč</td>' +
+        '<td><select data-n="' + n + '" aria-label="Stav poptávky ' + esc(it.id) + '">' + Object.keys(ST).map((k) => '<option value="' + k + '"' + (k === it.status ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select></td>' +
+        '<td><button class="btn" type="button" data-open="' + n + '">Otevřít</button></td></tr>';
+    }).join('');
+    $('popRows').querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => openPop(all[Number(b.dataset.open)])));
+    $('popRows').querySelectorAll('select[data-n]').forEach((s) => s.addEventListener('change', () => setStatus(all[Number(s.dataset.n)], s.value)));
+  }
+  function openPop(x) {
+    const it = x.it, c = it.customer || {};
+    current = it; cfg = K.normalize(it.config);
+    $('oNum').value = 'OBJ-' + String(it.id).replace(/^P/, ''); $('oDate').value = today();
+    $('cName').value = c.name || ''; $('cEmail').value = c.email || ''; $('cPhone').value = c.phone || ''; $('cAddr').value = c.address || ''; $('oNote').value = it.note || '';
+    $('dlMsg').hidden = true; tab('obj');
+  }
+  async function setStatus(x, st) {
+    if (!db) return;
+    const items = (x.doc.items || []).map((it) => Object.assign({}, it));
+    items[x.i].status = st;
+    try { await db.doc('poptavky/' + x.doc.id).update({ items }); } catch (e) { alertRow('Stav se nepodařilo uložit (' + (e && e.code) + ').'); }
+  }
+  function alertRow(t) { $('popRows').insertAdjacentHTML('afterbegin', '<tr><td colspan="7" class="msg" style="background:var(--bad-bg);color:var(--bad-ink)">' + esc(t) + '</td></tr>'); }
+
+  /* ---------- ceník ---------- */
+  const RF = [['kg', 'Materiál – jekl', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['sroub', 'Šroubový spoj', 'Kč'], ['barva', 'Prášková barva', 'Kč/m²'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže', '%'], ['boltMax4N', 'Šroubované 4 nohy max. délka', 'mm']];
+  const PF = [['w', 'Úchytka šířka', 'mm'], ['l', 'Úchytka délka', 'mm'], ['t', 'Úchytka tloušťka', 'mm']];
+  const XF = [['plateSpacing', 'Max. rozteč úchytek', 'mm'], ['tabClear', 'Vůle drážky pro zámek (na stranu)', 'mm']];
+  function fillRates() {
+    $('rateFields').innerHTML = RF.map((f) => '<label class="f" for="r-' + f[0] + '">' + f[1] + ' [' + f[2] + ']<input id="r-' + f[0] + '" type="number" value="' + rates[f[0]] + '"></label>').join('');
+    $('plateFields').innerHTML = PF.map((f) => '<label class="f" for="p-' + f[0] + '">' + f[1] + ' [' + f[2] + ']<input id="p-' + f[0] + '" type="number" value="' + rates.plate[f[0]] + '"></label>').join('') +
+      XF.map((f) => '<label class="f" for="x-' + f[0] + '">' + f[1] + ' [' + f[2] + ']<input id="x-' + f[0] + '" type="number" step="any" value="' + rates[f[0]] + '"></label>').join('');
+    $('boltModels').innerHTML = '<span style="font-size:13px;color:var(--muted)">Šroubované provedení povolit u:</span>' + K.MODELS.filter((m) => m.bolt).map((m) => '<label style="display:flex;gap:6px;align-items:center" for="b-' + m.id + '"><input type="checkbox" id="b-' + m.id + '"' + ((rates.boltModels || []).indexOf(m.id) >= 0 ? ' checked' : '') + '>' + m.lab + '</label>').join('');
+  }
+  function readRates() {
+    const r = { plate: {} };
+    RF.forEach((f) => { r[f[0]] = Number($('r-' + f[0]).value) || 0; });
+    PF.forEach((f) => { r.plate[f[0]] = Math.max(1, Number($('p-' + f[0]).value) || 1); });
+    r.plateSpacing = Math.max(200, Number($('x-plateSpacing').value) || 450);
+    r.tabClear = Math.min(1, Math.max(0, Number($('x-tabClear').value) || 0));
+    r.boltModels = K.MODELS.filter((m) => m.bolt && $('b-' + m.id).checked).map((m) => m.id);
+    return r;
+  }
+  $('saveRates').addEventListener('click', async () => {
+    const r = readRates();
+    if (!db || !canEdit) { $('rateMsg').textContent = 'Uložit může jen editor artefaktu.'; return; }
+    try { await db.doc('nastaveni/cenik').set(r); $('rateMsg').textContent = 'Uloženo – platí na obou stránkách.'; } catch (e) { $('rateMsg').textContent = 'Uložení se nepovedlo (' + (e && e.code) + ').'; }
+  });
+  $('resetRates').addEventListener('click', () => { rates = JSON.parse(JSON.stringify(K.DEFAULT_RATES)); fillRates(); $('rateMsg').textContent = 'Výchozí hodnoty – ulož, aby platily.'; });
+
+  fillRates();
+  $('oNum').value = 'OBJ-TEST-01'; $('oDate').value = today(); $('cName').value = 'Jan Novák';
+  render();
+
+  (async function connect() {
+    if (!window.claude || !claude.use) { renderPop(); return; }
+    const [d, u, dl] = await Promise.all([claude.use('db'), claude.use('user'), claude.use('downloads')]);
+    db = d; dls = dl; canEdit = !!(u && u.canEdit());
+    if (!canEdit) { const n = $('access'); n.hidden = false; n.textContent = 'Tuhle stránku může plně používat jen editor artefaktu. Poptávky a ceník se ti nezobrazí ani neuloží.'; }
+    if (!db) { renderPop(); return; }
+    db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = K.rates0(s.data()); fillRates(); render(); } }, () => {});
+    db.collection('poptavky').onSnapshot((snap) => { docs = snap.docs.filter((x) => x.exists).map((x) => Object.assign({ id: x.id }, x.data())); renderPop(); }, () => { docs = []; renderPop(); });
+  })();
+})();
+</script>
+</body>
+</html>
