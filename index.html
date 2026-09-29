@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konfigurátor podnoží</title>
+  <meta name="description" content="Konfigurátor ocelových podnoží stolů – testovací verze">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='7' width='26' height='4' rx='1' fill='%232a3440'/%3E%3Crect x='6' y='11' width='4' height='17' fill='%232a3440'/%3E%3Crect x='22' y='11' width='4' height='17' fill='%232a3440'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect x="3" y="7" width="26" height="4" rx="1"/><rect x="6" y="11" width="4" height="17"/><rect x="22" y="11" width="4" height="17"/></svg>
+      <span>Konfigurátor podnoží</span>
+      <span class="badge">TEST</span>
+    </div>
+    <nav class="top-actions">
+      <button class="ghost" id="btnShare" title="Zkopírovat odkaz na tuto konfiguraci">Sdílet<span class="lg"> konfiguraci</span></button>
+      <a class="ghost" id="lnkIssue" target="_blank" rel="noopener">Nahlásit<span class="lg"> chybu</span></a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="stage">
+      <div class="viewer-wrap">
+        <canvas id="view"></canvas>
+        <div id="labels" class="labels"></div>
+        <div class="view-tools">
+          <label class="chip"><input type="checkbox" id="tDeska" checked> Deska</label>
+          <label class="chip"><input type="checkbox" id="tDims" checked> Kóty</label>
+          <label class="chip"><input type="checkbox" id="tColors"> Barvy pozic</label>
+          <button class="chip" id="tFit" title="Dvojklik do náhledu dělá totéž">Výchozí pohled</button>
+        </div>
+        <div class="view-hint">Tažením otáčíte · kolečkem / prsty zoom · pravým tlačítkem posun</div>
+        <div id="viewErr" class="view-err" hidden></div>
+      </div>
+      <div class="parts">
+        <div class="parts-head">
+          <h2>Díly</h2>
+          <span id="partsMeta" class="muted"></span>
+        </div>
+        <table class="parts-table">
+          <thead><tr><th>Poz.</th><th>Název</th><th>Profil</th><th class="r">Délka</th><th class="r">Ks</th><th class="r">kg/ks</th><th>Stroj</th></tr></thead>
+          <tbody id="partsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <form id="cfg" autocomplete="off" novalidate>
+        <fieldset>
+          <legend>Deska stolu</legend>
+          <div class="field">
+            <label for="deskaDelka">Délka desky</label>
+            <div class="slide"><input type="range" data-for="deskaDelka"><div class="num"><input type="number" id="deskaDelka" name="deskaDelka" step="10"><span>mm</span></div></div>
+          </div>
+          <div class="field">
+            <label for="deskaSirka">Šířka desky</label>
+            <div class="slide"><input type="range" data-for="deskaSirka"><div class="num"><input type="number" id="deskaSirka" name="deskaSirka" step="10"><span>mm</span></div></div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="tloustkaDesky">Tloušťka desky</label>
+              <div class="num"><input type="number" id="tloustkaDesky" name="tloustkaDesky" step="1"><span>mm</span></div>
+            </div>
+            <div class="field">
+              <label for="presah">Přesah desky</label>
+              <div class="num"><input type="number" id="presah" name="presah" step="5"><span>mm</span></div>
+            </div>
+          </div>
+          <p class="hint">Desku dodává zákazník – v náhledu je jen pro představu.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Výška</legend>
+          <div class="field">
+            <label for="vyskaStolu">Celková výška stolu (s deskou)</label>
+            <div class="slide"><input type="range" data-for="vyskaStolu"><div class="num"><input type="number" id="vyskaStolu" name="vyskaStolu" step="5"><span>mm</span></div></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Nohy</legend>
+          <div class="field">
+            <label for="profilNohy">Profil nohy (jekl)</label>
+            <select id="profilNohy" name="profilNohy"></select>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="Zakončení nohou">
+            <label><input type="radio" name="patky" value="1"> Patka + matice M8<small>pro rektifikační nožku</small></label>
+            <label><input type="radio" name="patky" value="0"> Plastová zátka<small>bez patky</small></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Rám pod deskou</legend>
+          <div class="field">
+            <label for="profilRamu">Profil rámu (jekl)</label>
+            <select id="profilRamu" name="profilRamu"></select>
+          </div>
+          <label class="check"><input type="checkbox" id="otvoryDeska" name="otvoryDeska"> Otvory pro přišroubování desky</label>
+          <label class="check"><input type="checkbox" id="spodniPricky" name="spodniPricky"> Spodní příčky na kratších stranách</label>
+          <div class="field sub" id="prickyBox">
+            <label for="vyskaPricky">Výška příčky nad podlahou</label>
+            <div class="num"><input type="number" id="vyskaPricky" name="vyskaPricky" step="10"><span>mm</span></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Povrch</legend>
+          <div class="swatches" id="povrchy"></div>
+          <div id="povrchNazev" class="muted small"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Počet kusů</legend>
+          <div class="qty">
+            <button type="button" data-q="-1" aria-label="Méně">−</button>
+            <input type="number" id="pocet" name="pocet" min="1" step="1">
+            <button type="button" data-q="1" aria-label="Více">+</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <div class="summary">
+        <div id="msgs"></div>
+        <dl>
+          <div><dt>Podnož</dt><dd id="sDims">–</dd></div>
+          <div><dt>Hmotnost</dt><dd id="sMass">–</dd></div>
+          <div><dt>Cena</dt><dd class="muted">doplní se z ceníku</dd></div>
+        </dl>
+        <button id="btnOrder" class="primary">Objednat <span class="muted-inv">(test)</span></button>
+        <p class="hint center">Testovací režim – objednávka se nikam neodešle, jen uvidíte, co by přišlo do firmy.</p>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Objednávka -->
+  <dialog id="dlgOrder">
+    <form method="dialog" id="orderForm" class="dlg">
+      <header><h2>Objednávka</h2><button value="cancel" class="x" aria-label="Zavřít" formnovalidate>×</button></header>
+      <div class="dlg-body">
+        <div class="order-sum" id="orderSum"></div>
+        <div class="field"><label for="oJmeno">Jméno / firma *</label><input id="oJmeno" name="jmeno" required></div>
+        <div class="row2">
+          <div class="field"><label for="oEmail">E-mail *</label><input id="oEmail" name="email" type="email" required></div>
+          <div class="field"><label for="oTel">Telefon</label><input id="oTel" name="telefon" type="tel"></div>
+        </div>
+        <div class="field"><label for="oAdresa">Doručovací adresa</label><input id="oAdresa" name="adresa"></div>
+        <div class="field"><label for="oPozn">Poznámka</label><textarea id="oPozn" name="poznamka" rows="2"></textarea></div>
+        <p class="hint">Platba zatím není zapojená. V testu se nic neodesílá.</p>
+      </div>
+      <footer><button value="cancel" class="ghost" formnovalidate>Zpět</button><button id="btnSend" value="send" class="primary">Odeslat objednávku (test)</button></footer>
+    </form>
+  </dialog>
+
+  <!-- Výsledek -->
+  <dialog id="dlgResult" class="wide">
+    <div class="dlg">
+      <header><h2>Takhle by to přišlo do firmy</h2><button class="x" data-close aria-label="Zavřít">×</button></header>
+      <div class="dlg-body result">
+        <div class="banner">✔ Objednávka <b id="rCislo"></b> vytvořena v testovacím režimu. Nic nebylo odesláno.</div>
+        <div class="result-grid">
+          <div>
+            <h3>E-mail pro firmu</h3>
+            <div class="mail">
+              <div class="mail-subj" id="rSubj"></div>
+              <pre id="rBody"></pre>
+            </div>
+          </div>
+          <div>
+            <h3>Přílohy – složka zakázky</h3>
+            <p class="muted small" id="rFolder"></p>
+            <ul class="files" id="rFiles"></ul>
+            <button class="primary" id="btnZip">Stáhnout vše (ZIP)</button>
+            <p class="hint">STEP otevřete v SolidWorksu / FreeCADu, DXF v CypCutu. Kusovník PDF a CSV (Excel).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="data/katalog.js"></script>
+  <script src="js/brep.js"></script>
+  <script src="js/geometry.js"></script>
+  <script src="js/vendor/pdf-font.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/viewer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
