@@ -14,6 +14,9 @@ Otevřete odkaz výše. Nic se neinstaluje a funguje to i na mobilu.
 3. **Objednat (test)**: vyplňte jméno a e-mail a pak **Odeslat objednávku (test)**.
 4. Uvidíte e-mail pro firmu a seznam příloh. **Stáhnout vše (ZIP)** stáhne celou složku zakázky.
 
+### Dílenský režim
+Na konec adresy přidejte `?dilna` (např. `…/arkeas93/?dilna`). Zobrazí se barvy pozic v 3D a sloupec stroj (K2/C2). Zákazník tohle nevidí a obrázek v objednávce je vždy v barvě povrchu.
+
 ### Lokálně (bez internetu)
 1. Na GitHubu **Code → Download ZIP** a rozbalit.
 2. Dvakrát kliknout na `index.html`. Nepotřebujete server ani instalaci.

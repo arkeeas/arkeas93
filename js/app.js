@@ -9,6 +9,10 @@
   const REPO = "arkeeas/arkeas93";
   const POS_COLORS = ["#3b7dd8", "#e8671c", "#2aa876", "#b54fc9", "#d4a017", "#d9434f", "#16a3b8", "#7a8b99"];
 
+  // Dílenský režim: index.html?dilna → barvy pozic, sloupec stroj. Zákazník to nevidí.
+  const DILNA = new URLSearchParams(location.search).has("dilna");
+  document.body.classList.toggle("dilna", DILNA);
+
   let viewer = null, model = null, lastGood = null;
   const ui = { deska: true, dims: true, colors: false };
 
@@ -104,26 +108,27 @@
   function renderParts(par) {
     $("#partsBody").innerHTML = model.parts.map((p, i) => `
       <tr data-id="${p.pos}">
-        <td><span class="sw" style="background:${POS_COLORS[i % POS_COLORS.length]}"></span><b>${p.pos}</b></td>
+        <td>${DILNA ? `<span class="sw" style="background:${POS_COLORS[i % POS_COLORS.length]}"></span>` : ""}<b>${p.pos}</b></td>
         <td>${p.name}${p.note ? `<div class="note">${p.note}</div>` : ""}</td>
         <td>${p.kind === "C2" ? "plech " + p.profile.id : "jekl " + p.profile.id}</td>
         <td class="r">${p.kind === "C2" ? p.plate.b + "×" + p.plate.h : fmt(p.length)}</td>
         <td class="r">${p.qty * par.pocet}</td>
         <td class="r">${X.kg(p.mass1)}</td>
-        <td>${p.kind === "K2" ? "K2 – trubky" : "C2 – plech"}</td>
+        <td class="dilna-only">${p.kind === "K2" ? "K2 – trubky" : "C2 – plech"}</td>
       </tr>`).join("");
     $("#partsMeta").textContent = `${model.pieces} dílů na podnož` + (par.pocet > 1 ? ` · ${model.pieces * par.pocet} celkem` : "");
   }
   $("#partsBody").addEventListener("mouseover", (e) => { const tr = e.target.closest("tr"); if (viewer && tr) viewer.setHighlight(tr.dataset.id); });
   $("#partsBody").addEventListener("mouseleave", () => viewer && viewer.setHighlight(null));
 
-  function renderScene(par) {
+  function renderScene(par, forCustomer) {
     if (!viewer) return;
+    const colorByPos = DILNA && ui.colors && !forCustomer;
     const pov = K.povrchy.find((p) => p.id === par.povrch) || K.povrchy[0];
     const parts = model.parts.map((p, i) => {
       const mesh = { pos: [], nor: [] }, marks = { pos: [], nor: [] };
       for (const xf of p.instances) { B.toMesh(p.solid, xf, mesh); B.holeMarks(p.solid, xf, marks); }
-      return { id: p.pos, mesh, marks, color: ui.colors ? POS_COLORS[i % POS_COLORS.length] : pov.barva, metal: par.povrch === "surovy" ? 0.55 : 0.25 };
+      return { id: p.pos, mesh, marks, color: colorByPos ? POS_COLORS[i % POS_COLORS.length] : pov.barva, metal: par.povrch === "surovy" ? 0.55 : 0.25 };
     });
     const d = model.dims;
     const bbMin = [0, 0, 0], bbMax = [d.L, d.W, d.H];
@@ -189,7 +194,10 @@
       try {
         pkg = X.buildPackage(G.build(par), order);
         if (viewer) {
-          const png = viewer.snapshot("image/png");
+          // obrázek vždy v barvě povrchu (bez dílenských barev), celý stůl, výchozí pohled
+          renderScene(par, true);
+          const png = viewer.renderImage();
+          renderScene(par);
           const bin = Uint8Array.from(atob(png.split(",")[1]), (c) => c.charCodeAt(0));
           pkg.files.splice(3, 0, { path: pkg.folder + "/nahled.png", data: bin, mime: "image/png" });
         }

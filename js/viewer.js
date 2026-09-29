@@ -161,14 +161,68 @@
     _clampDist() { const r = this._radius(); this.dist = Math.max(r * 0.6, Math.min(r * 12, this.dist)); }
     _radius() { const [a, b] = this.bbox, m = 2 * 170; return Math.hypot(b[0] - a[0] + m, b[1] - a[1] + m, b[2] - a[2]) / 2 || 1000; } // + okraj pro kóty
 
+    _camera(W, H) {
+      const t = [this.target[0] + this.panOff[0], this.target[1] + this.panOff[1], this.target[2] + this.panOff[2]];
+      const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+      const eye = [t[0] - this.dist * cp * Math.sin(this.yaw), t[1] - this.dist * cp * Math.cos(this.yaw), t[2] + this.dist * sp];
+      const r = this._radius();
+      const P = M4.persp((32 * Math.PI) / 180, W / H, Math.max(10, this.dist - r * 6), this.dist + r * 8);
+      return { eye, VP: M4.mul(P, M4.lookAt(eye, t, [0, 0, 1])) };
+    }
+
+    /* Nastaví výchozí pohled tak, aby se celý stůl i s kótami vešel do okna. */
     fit(keepAngles) {
-      const [a, b] = this.bbox;
+      const [a, b] = this.bbox, m = 190; // okraj pro kóty
       this.target = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
       this.panOff = [0, 0, 0];
       if (!keepAngles) { this.yaw = -0.62; this.pitch = 0.42; }
-      const asp = this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight);
-      this.dist = this._radius() * (asp < 1 ? 3.6 / Math.max(asp, 0.55) : 3.0);
+      const W = Math.max(1, this.canvas.clientWidth), H = Math.max(1, this.canvas.clientHeight);
+      const lo = [a[0] - m, a[1] - m, 0], hi = [b[0] + m, b[1] + m, b[2]];
+      const corners = [];
+      for (const x of [lo[0], hi[0]]) for (const y of [lo[1], hi[1]]) for (const z of [lo[2], hi[2]]) corners.push([x, y, z]);
+      this.dist = this._radius() * 3;
+      for (let it = 0; it < 8; it++) {
+        const { VP } = this._camera(W, H);
+        const ps = corners.map((c) => M4.xform(VP, c));
+        const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+        const cx = (Math.max(...xs) + Math.min(...xs)) / 2; const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+        const mx = (Math.max(...xs) - Math.min(...xs)) / 2; const my = (Math.max(...ys) - Math.min(...ys)) / 2;
+        // posunout střed obrazu na střed obrysu (posun v rovině pohledu)
+        const s = this.dist * Math.tan((16 * Math.PI) / 180);
+        const right = [Math.cos(this.yaw), -Math.sin(this.yaw), 0];
+        const up = [Math.sin(this.pitch) * Math.sin(this.yaw), Math.sin(this.pitch) * Math.cos(this.yaw), Math.cos(this.pitch)];
+        for (let i = 0; i < 3; i++) this.panOff[i] += right[i] * cx * s * (W / H) + up[i] * cy * s;
+        this.dist *= Math.max(mx, my) / 0.86;
+      }
       this.draw();
+    }
+
+    /* Obrázek pro objednávku: výchozí pohled, celý stůl, kóty vepsané do obrázku. */
+    renderImage() {
+      const st = { yaw: this.yaw, pitch: this.pitch, dist: this.dist, panOff: this.panOff.slice(), target: this.target.slice(), hi: this.highlight, dims: this.showDims };
+      this.highlight = null; this.showDims = true;
+      this.fit();
+      this._draw();
+      const W = this.canvas.width, H = this.canvas.height, k = W / Math.max(1, this.canvas.clientWidth);
+      const c = document.createElement("canvas"); c.width = W; c.height = H;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, Math.max(W, H) * 0.75);
+      grd.addColorStop(0, "#ffffff"); grd.addColorStop(0.6, "#eef0f3"); grd.addColorStop(1, "#e3e6ea");
+      g.fillStyle = grd; g.fillRect(0, 0, W, H);
+      g.drawImage(this.canvas, 0, 0);
+      g.font = "600 " + Math.round(13 * k) + "px system-ui, Segoe UI, Arial, sans-serif";
+      g.textAlign = "center"; g.textBaseline = "middle";
+      for (const L of this.labels) {
+        const p = M4.xform(this._vp, L.p); if (p[3] <= 0) continue;
+        const x = (p[0] * 0.5 + 0.5) * W, y = (-p[1] * 0.5 + 0.5) * H;
+        const tw = g.measureText(L.t).width + 12 * k, th = 20 * k;
+        g.fillStyle = "rgba(255,255,255,0.92)"; g.fillRect(x - tw / 2, y - th / 2, tw, th);
+        g.fillStyle = "#24466f"; g.fillText(L.t, x, y + 0.5);
+      }
+      const url = c.toDataURL("image/png");
+      Object.assign(this, { yaw: st.yaw, pitch: st.pitch, dist: st.dist, panOff: st.panOff, target: st.target, highlight: st.hi, showDims: st.dims });
+      this.draw();
+      return url;
     }
 
     /* parts: [{id, color:'#hex', alpha, mesh:{pos,nor}, marks:{pos,nor}}], dims: {L,W,H,...} */
@@ -225,12 +279,8 @@
       if (!W || !H) return;
       gl.viewport(0, 0, W, H);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      const t = [this.target[0] + this.panOff[0], this.target[1] + this.panOff[1], this.target[2] + this.panOff[2]];
-      const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
-      const eye = [t[0] + this.dist * cp * Math.sin(this.yaw) * -1, t[1] - this.dist * cp * Math.cos(this.yaw), t[2] + this.dist * sp];
+      const { eye, VP } = this._camera(W, H);
       const r = this._radius();
-      const P = M4.persp((32 * Math.PI) / 180, W / H, Math.max(10, this.dist - r * 6), this.dist + r * 8);
-      const VP = M4.mul(P, M4.lookAt(eye, t, [0, 0, 1]));
       this._vp = VP;
 
       gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
