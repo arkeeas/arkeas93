@@ -1,5 +1,5 @@
 <!doctype html><html lang="cs"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Podnože na míru</title>
+<title>In progress – podnože</title>
 <link rel="stylesheet" href="modebar.css">
 <div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="index.html" aria-current="page">Zákazník</a><a href="interni.html">Dílna</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,6 +27,7 @@
   .top nav a { color: var(--ink); text-decoration: none; }
   .top nav a[aria-current] { border-bottom: 2px solid var(--ink); padding-bottom: 2px; }
   .soon { color: var(--muted); }
+  .wipbar { padding: 10px 24px; background: var(--warn-bg); color: var(--warn-ink); border-bottom: 1px solid var(--line); font-size: 14px; }
   .layout { display: grid; grid-template-columns: minmax(0, 1fr); }
   .stagewrap { background: var(--stage); position: relative; min-height: 420px; height: 58vh; }
   @media (min-width: 1000px) { .layout { grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); } .stagewrap { position: sticky; top: env(safe-area-inset-top, 0px); height: calc(100vh - 60px); } }
@@ -132,18 +133,19 @@
 <header class="top">
   <div class="brand">[NÁZEV FIRMY]</div>
   <nav aria-label="Hlavní menu">
-    <a href="#konfigurator" aria-current="page">Podnože</a>
-    <a href="vyvoj.html">In progress</a>
+    <a href="index.html">Podnože</a>
+    <a href="#konfigurator" aria-current="page">In progress</a>
     <span class="soon">Stoly – připravujeme</span>
   </nav>
 </header>
+<div class="wipbar" role="note"><strong>In progress</strong> – rozpracované modely k testování. Geometrie, cena i výrobní podklady se ještě ověřují.</div>
 
 <main class="layout" id="konfigurator">
   <section class="stagewrap" aria-label="Náhled podnože">
     <div id="viz"></div>
     <div class="stage-head">
       <div>
-        <div class="model-name" id="mName">Rám U</div>
+        <div class="model-name" id="mName">Pohozenec</div>
         <div class="model-sub" id="mSub"></div>
       </div>
       <div class="stage-side">
@@ -267,13 +269,14 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js"></script>
+<script src="vyvoj.js"></script>
 <script src="figure.js"></script>
 <script src="viewer.js"></script>
 <script>
 (function () {
-  const K = Podnoze, $ = (id) => document.getElementById(id);
+  const K = Vyvoj, $ = (id) => document.getElementById(id);
   let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null };
-  try { cfg = K.normalize(JSON.parse(localStorage.getItem('podnoz-cfg') || '{}')); } catch (e) { cfg = K.normalize({}); }
+  try { cfg = K.normalize(JSON.parse(localStorage.getItem('podnoz-cfg-wip') || '{}')); } catch (e) { cfg = K.normalize({}); }
   const viewer = Viewer3D.create($('viz'));
   if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
   let db = null, uid = null;
@@ -282,7 +285,8 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const tip = (id, text, label) => '<span class="tip"><button type="button" class="i" aria-label="' + esc(label) + '" aria-describedby="' + id + '">i</button><span class="tipbox" role="tooltip" id="' + id + '">' + esc(text) + '</span></span>';
 
-  function set(p) { cfg = K.normalize(Object.assign({}, cfg, p)); render(); try { localStorage.setItem('podnoz-cfg', JSON.stringify(cfg)); } catch (e) {} }
+  let raf = 0;
+  function set(p) { cfg = K.normalize(Object.assign({}, cfg, p)); cancelAnimationFrame(raf); raf = requestAnimationFrame(render); try { localStorage.setItem('podnoz-cfg-wip', JSON.stringify(cfg)); } catch (e) {} }
 
   function group(el, items, html, onPick) {
     el.innerHTML = items.map(html).join('');
@@ -295,12 +299,12 @@
   function suggest() {
     clearTimeout(suggTimer);
     suggTimer = setTimeout(() => {
-      const opts = [[20, 2], [30, 2], [30, 3], [40, 2], [40, 3], [40, 4], [50, 3], [50, 4]];
+      const opts = [[30, 2], [30, 3], [40, 2], [40, 3], [40, 4], [50, 3], [50, 4]];
       let best = null;
       for (const [z, t] of opts) {
         if (z < cfg.size || (z === cfg.size && t <= cfg.t)) continue;
         const a = K.audit(Object.assign({}, cfg, { size: z, t }), rates);
-        if (a.checks.every((c) => c.lvl !== 'bad')) { best = [z, t]; break; }
+        if (a.checks.every((c) => c.lvl !== 'bad' || c.id === 'stab')) { best = [z, t]; break; }
       }
       const el = document.getElementById('sugg'); if (!el) return;
       if (best) { el.innerHTML = 'Podnož by nevydržela. Pomůže jekl <strong>' + best[0] + '×' + best[0] + '×' + best[1] + '</strong>. <button type="button" class="btn" style="height:36px;margin-left:6px" id="useSugg">Použít</button>'; document.getElementById('useSugg').addEventListener('click', () => set({ size: best[0], t: best[1] })); }
@@ -323,21 +327,23 @@
     ['L', 'W', 'H'].forEach((k) => { syncInput(k, cfg[k]); syncInput(k + 'n', cfg[k]); });
     $('frameNote').textContent = 'Rozměr podnože ' + K.nf(d.Lf) + ' × ' + K.nf(d.Wf) + ' × ' + K.nf(d.Hf) + ' mm – délky všech jeklů se dopočítají automaticky.';
 
-    group($('sizes'), K.SIZES, (z) => '<button type="button" class="opt" data-id="' + z + '" aria-pressed="' + (z === cfg.size) + '"><span class="l" style="font-weight:600;font-size:15px">' + z + '×' + z + '</span><span class="s">' + (z === 20 ? 'malé stolky' : 'od ' + K.THK[z][0] + ' mm') + '</span></button>', (id) => set({ size: Number(id) }));
+    group($('sizes'), K.SIZES, (z) => '<button type="button" class="opt" data-id="' + z + '" aria-pressed="' + (z === cfg.size) + '"><span class="l" style="font-weight:600;font-size:15px">' + z + '×' + z + '</span><span class="s">' + ('od ' + K.THK[z][0] + ' mm') + '</span></button>', (id) => set({ size: Number(id) }));
     $('thkLab').textContent = 'Tloušťka stěny jeklu ' + cfg.size + '×' + cfg.size;
     group($('thks'), K.THK[cfg.size], (t) => '<button type="button" class="pill" data-id="' + t + '" aria-pressed="' + (t === cfg.t) + '">' + t + ' mm</button>', (id) => set({ t: Number(id) }));
 
     const cl = A.audit ? A.audit.checks.map((c) => c.lvl) : [A.lvl];
     const custLvl = cl.indexOf('bad') >= 0 ? 'bad' : (cl.indexOf('warn') >= 0 || A.lvl === 'warn') ? 'warn' : A.lvl;
-    const lv = { ok: 'Vhodné pro běžné použití', warn: 'Na hraně – zvažte silnější profil', bad: 'Tuto kombinaci nevyrábíme' }[custLvl];
+    const badChecks = A.audit ? A.audit.checks.filter((c) => c.lvl === 'bad') : [];
+    const lv = { ok: 'Vhodné pro běžné použití', warn: 'Na hraně – zvažte silnější profil', bad: 'Nevyhovuje: ' + badChecks.map((c) => c.lab.toLowerCase()).join(', ') }[custLvl];
     $('load').className = 'load lvl-' + custLvl;
     $('load').innerHTML = '<div class="head"><span>Orientační nosnost ' + (A.load >= 500 ? '500+ kg' : '≈ ' + A.load + ' kg') + '</span><span style="font-weight:400;font-size:13px">' + lv + '</span></div>' +
       '<div class="bar"><i style="width:' + Math.min(100, A.load / 4) + '%"></i></div>' + A.warns.map((w) => '<p>' + esc(w) + '</p>').join('') +
-      (custLvl === 'bad' ? '<p id="sugg">Hledám jekl, se kterým to půjde…</p>' : '') +
+      (badChecks.some((c) => c.id !== 'stab') ? '<p id="sugg">Hledám jekl, se kterým to půjde…</p>' : '') +
+      (badChecks.some((c) => c.id === 'stab') ? '<p>Stabilita: patky tvoří v půdorysu kosočtverec, při opření o roh desky se stůl může převrhnout (' + badChecks.find((c) => c.id === 'stab').val.toFixed(2) + '× rezerva, potřeba 1,0×). Pomůže kulatá nebo oválná deska, menší přesah nebo širší rozteč patek.</p>' : '') +
       '<p class="fine">Spočítáno pro celou podnož: rovnoměrná zátěž, síla 1000 N na okraj, boční síla 400 N a převržení podle normy EN 12521, ocel S235. Deska se do pevnosti nepočítá.</p>';
-    $('ask').disabled = custLvl === 'bad';
-    $('ask').title = custLvl === 'bad' ? 'Tahle kombinace by nevydržela – upravte jekl nebo rozměr' : '';
-    if (custLvl === 'bad') suggest();
+    $('ask').disabled = false;
+    $('ask').title = custLvl === 'bad' ? 'Rozpracovaný model – poptávka je jen testovací' : '';
+    if (badChecks.some((c) => c.id !== 'stab')) suggest();
 
     if (A.boltOK) {
       const opts = [

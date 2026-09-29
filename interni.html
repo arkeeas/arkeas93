@@ -197,6 +197,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js"></script>
+<script src="vyvoj.js"></script>
 <script src="viewer.js"></script>
 <script src="gen.js"></script>
 <script>
@@ -219,7 +220,7 @@
 
   /* ---------- formulář konfigurace ---------- */
   const opt = (sel, items) => { $(sel).innerHTML = items.map((i) => '<option value="' + i[0] + '">' + esc(i[1]) + '</option>').join(''); };
-  opt('model', K.MODELS.map((m) => [m.id, m.lab]));
+  opt('model', K.allModels().map((m) => [m.id, m.lab + (m.wip ? ' (in progress)' : '')]));
   opt('shape', K.SHAPES.map((s) => [s.id, s.lab]));
   opt('size', K.SIZES.map((z) => [z, z + '×' + z]));
   opt('fin', K.FIN.map((f) => [f.id, f.lab + ' (' + f.ral + ')']));
@@ -276,11 +277,11 @@
     setTimeout(() => {
       const [z, t] = $('aP').value.split(',').map(Number);
       const base = { L: $('aL').value, W: $('aW').value, H: $('aH').value, td: 40, size: z, t, join: $('aJ').value };
-      $('audRows').innerHTML = K.MODELS.map((m) => {
+      $('audRows').innerHTML = K.allModels().map((m) => {
         const a = K.audit(Object.assign({ model: m.id }, base), rates), c = (id) => a.checks.find((x) => x.id === id);
         const cell = (id, d, u) => '<td class="num" style="color:' + (c(id).lvl === 'bad' ? 'var(--bad-ink)' : c(id).lvl === 'warn' ? 'var(--warn-ink)' : 'inherit') + '">' + (c(id).val >= 99 && u === '×' ? '99+' : c(id).val.toFixed(d)) + ' ' + u + '</td>';
         const notes = a.fab.map((f) => f.t).concat(a.checks.filter((x) => x.lvl !== 'ok').map((x) => x.lab + ': ' + x.hint));
-        return '<tr><td><strong>' + esc(m.lab) + '</strong>' + (m.art ? ' <span style="color:var(--muted);font-size:12px">umělecký</span>' : '') + '</td><td>' + pill(a.overall) + '</td>' +
+        return '<tr><td><strong>' + esc(m.lab) + '</strong>' + (m.art ? ' <span style="color:var(--muted);font-size:12px">umělecký</span>' : '') + (m.wip ? ' <span style="color:var(--accent);font-size:12px">in progress</span>' : '') + '</td><td>' + pill(a.overall) + '</td>' +
           '<td class="num">' + (a.capKg >= 500 ? '500+' : Math.floor(a.capKg / 10) * 10) + ' kg</td>' + cell('pt', 0, 'MPa') + cell('weld', 0, 'MPa') + cell('defl', 1, 'mm') + cell('sway', 1, 'mm') + cell('stab', 1, '×') +
           '<td style="font-size:12px;max-width:380px">' + (notes.length ? notes.map(esc).join('<br>') : '–') + '</td></tr>';
       }).join('');

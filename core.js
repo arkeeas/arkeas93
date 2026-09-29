@@ -70,10 +70,18 @@
   };
   const DEFAULT_CFG = { model: 'U', L: 1600, W: 800, H: 750, td: 40, size: 40, t: 2, join: 'weld', shape: 'rect', fin: 'black', qty: 1, dmode: 'table', dL: 1600, dW: 800 };
 
+  /* Rozšíření (rozpracované modely ve vyvoj.js): vlastní normalize/analyze/audit/describe pro svoje id modelů */
+  const EXT = [];
+  const extFor = (id) => EXT.find((e) => e.owns(id));
+  function register(ext) { if (EXT.indexOf(ext) < 0) EXT.push(ext); }
+  function modelInfo(id) { const m = MODELS.find((x) => x.id === id); if (m) return m; const e = extFor(id); return e ? e.MODELS.find((x) => x.id === id) : undefined; }
+  const allModels = () => EXT.reduce((a, e) => a.concat(e.MODELS), MODELS.slice());
+
   const clamp = (v, a, b) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.min(b, Math.max(a, n)) : a; };
   const rates0 = (r) => { const R = Object.assign({}, DEFAULT_RATES, r || {}); R.plate = Object.assign({}, DEFAULT_RATES.plate, (r && r.plate) || {}); return R; };
 
   function normalize(c) {
+    const ex = c && extFor(c.model); if (ex) return ex.normalize(c);
     c = Object.assign({}, DEFAULT_CFG, c || {});
     const o = {};
     o.model = MODELS.some((m) => m.id === c.model) ? c.model : 'U';
@@ -727,6 +735,7 @@
 
   /* Kusovník, hmotnost, cena, nosnost, upozornění */
   function analyze(cfgIn, ratesIn) {
+    const ex = cfgIn && extFor(cfgIn.model); if (ex) return ex.analyze(cfgIn, ratesIn);
     const X = analyzeCore(cfgIn, ratesIn), cfg = X.cfg, B = X.B, R = X.R, s = cfg.size;
     let lvl = X.load >= 150 ? 'ok' : X.load >= 80 ? 'warn' : 'bad';
     const warns = [];
@@ -766,6 +775,7 @@
   }
 
   function describe(cfg) {
+    const ex = cfg && extFor(cfg.model); if (ex) return ex.describe(cfg);
     const M = MODELS.find((m) => m.id === cfg.model), F = FIN.find((f) => f.id === cfg.fin), S = SHAPES.find((x) => x.id === cfg.shape);
     const desk = cfg.shape === 'circle' ? 'Ø ' + nf(cfg.L) : nf(cfg.L) + ' × ' + nf(cfg.W);
     return M.lab + ', ' + desk + ' × ' + nf(cfg.H) + ' mm, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', ' + (cfg.join === 'bolt' ? 'šroubovaná' : 'svařovaná') + ', ' + F.lab + ', deska ' + S.lab.toLowerCase();
@@ -987,6 +997,7 @@
   }
 
   function audit(cfgIn, ratesIn) {
+    const ex = cfgIn && extFor(cfgIn.model); if (ex) return ex.audit(cfgIn, ratesIn);
     const cfg = normalize(cfgIn), R = rates0(ratesIn);
     const g = frameGraph(cfg, R), n = g.nodes.length, N = 6 * n, s = cfg.size, sec = sectionOf(s, cfg.t);
     const A = analyzeCore(cfg, R);
@@ -1095,5 +1106,5 @@
     return Math.min(dd(a, c, d), dd(b, c, d), dd(c, a, b), dd(d, a, b));
   }
 
-  root.Podnoze = { audit, frameGraph, THK, SIZES, MODELS, FIN, SHAPES, DEFAULT_RATES, DEFAULT_CFG, normalize, frameDims, build, analyze, toLocal, partLength, volume, orientFace, deskOutline, describe, paint, previewBodies, boltAllowed, rates0, nf, V };
+  root.Podnoze = { register, modelInfo, allModels, solveFrame, sectionOf, convexHull, audit, frameGraph, THK, SIZES, MODELS, FIN, SHAPES, DEFAULT_RATES, DEFAULT_CFG, normalize, frameDims, build, analyze, toLocal, partLength, volume, orientFace, deskOutline, describe, paint, previewBodies, boltAllowed, rates0, nf, V };
 })(typeof window !== 'undefined' ? window : globalThis);

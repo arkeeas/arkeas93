@@ -3,6 +3,7 @@
 Konfigurátor ocelových podnoží stolů. Má dvě části, mezi kterými se přepíná záložkou nahoře:
 
 - **Zákazník** (`index.html`): výběr tvaru podnože, rozměry, profil jeklu, spoje, povrch a deska. Obsahuje 3D náhled, orientační nosnost, cenu a nezávaznou poptávku.
+- **In progress** (`vyvoj.html`, záložka vedle *Podnože*): rozpracované modely se stejným postupem jako podnože (tvar, rozměry, jekl, povrch, deska, 3D náhled, nosnost, cena, poptávka). Poptávky z ní se v dílně otevřou a stáhnou stejně.
 - **Dílna** (`interni.html`): přijaté poptávky, objednávka a stažení podkladů (.zip), audit konstrukce všech tvarů a ceník.
 
 **Online:** https://arkeeas.github.io/arkeas93/ (po zapnutí GitHub Pages, viz níže)
@@ -27,6 +28,8 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `core.js` | tvary podnoží, geometrie, výpočet nosnosti (EN 12521), cena, kusovník |
 | `gen.js` | výrobní podklady: STEP, DXF, PDF, ZIP |
 | `viewer.js`, `figure.js` | 3D náhled a postava pro měřítko |
+| `vyvoj.js` | rozpracované modely (In progress): vlastní booleovské jádro pro rovinná tělesa, Pohozenec – zámky a Pohozenec – spojovák |
+| `vyvoj.html` | stránka In progress |
 | `lokal.js` | náhrada databáze a stahování mimo Claude (localStorage) |
 | `modebar.css` | horní přepínač Zákazník / Dílna |
 | `tests/` | kontrola STEP bez CAD |
@@ -39,3 +42,12 @@ Vygeneruje STEP všech tvarů a zkontroluje uzavřenost těles, orientaci ploch 
 
 ## Zapnutí odkazu (jednorázově)
 GitHub → **Settings → Pages** → *Deploy from a branch* → `main` / `(root)` → **Save**.
+
+## In progress – rozpracované modely
+
+| Model | Popis |
+|---|---|
+| **Pohozenec – zámky** (PZ2) | 4 nohy do „#“ kolem středu (A/B tvoří X zepředu, C/D X zboku). C a D mají v rozích výřezy na profil A a B (vůle 0,2 mm), A a B mají ve špičce zápich pro krajní pásovinu. Střední pásovina leží mezi špičkami C a D. |
+| **Pohozenec – spojovák** (PZ3) | Stejné nohy bez zámků, v půlce výšky vodorovný plech 3 mm se 4 zuby do děr ve vnitřních stěnách jeklů. Nahoře 2 pásoviny D–A a C–B na špičkách. |
+
+Rozteč patek a odsazení noh se dopočítá z rozměru stolu a profilu jeklu. Audit zatím u obou ukazuje nízkou stabilitu proti převržení na rozích obdélníkové desky (patky tvoří v půdorysu kosočtverec) – proto poptávku na stránce In progress neblokuje.

@@ -5,12 +5,12 @@
 "use strict";
 const path = require("path");
 const ROOT = path.join(__dirname, "..");
-require(path.join(ROOT, "core.js")); require(path.join(ROOT, "gen.js"));
+require(path.join(ROOT, "core.js")); require(path.join(ROOT, "vyvoj.js")); require(path.join(ROOT, "gen.js"));
 const { validate } = require("./validate-step.js");
 const K = globalThis.Podnoze, G = globalThis.Generator;
 const [L, W, H] = [process.argv[2] || 1600, process.argv[3] || 800, process.argv[4] || 750];
 let bad = 0;
-for (const m of K.MODELS) for (const join of ["weld", "bolt"]) {
+for (const m of K.allModels()) for (const join of ["weld", "bolt"]) {
   const A = K.analyze(K.normalize({ model: m.id, L, W, H, join }), K.DEFAULT_RATES);
   if (join === "bolt" && !A.bolted) continue;
   const errs = [];
@@ -18,9 +18,11 @@ for (const m of K.MODELS) for (const join of ["weld", "bolt"]) {
     const res = validate(G.stepFile(r.poz, [K.toLocal(r.part)]), r.poz);
     res.errs.forEach((e) => errs.push(r.poz + " " + r.name + ": " + e));
   });
+  if (A.problems.length) A.problems.forEach((e) => errs.push(e));
   const bodies = A.build.parts.map((p) => p.solid).concat(A.build.plateBoxes);
+  bodies.forEach((b, i) => { if (!G.checkClosed(b.verts, b.faces)) errs.push("těleso " + (i + 1) + " není uzavřené"); });
   validate(G.stepFile("sestava", bodies), "sestava").errs.forEach((e) => errs.push("sestava: " + e));
-  console.log((errs.length ? "CHYBA " : "OK    ") + m.lab + (join === "bolt" ? " (šroubovaná)" : ""));
+  console.log((errs.length ? "CHYBA " : "OK    ") + m.lab + (m.wip ? " [in progress]" : "") + (join === "bolt" ? " (šroubovaná)" : ""));
   errs.slice(0, 4).forEach((e) => console.log("   - " + e));
   if (errs.length) bad++;
 }

@@ -92,9 +92,17 @@
   /* ---------- DXF R12: vrstva REZ (obrys, otvory) + ZNACENI (číslo dílu) ---------- */
   function dxf(p) {
     const e = [];
-    const pts = [[0, 0], [p.w, 0], [p.w, p.l], [0, p.l]];
-    for (let i = 0; i < 4; i++) { const a = pts[i], b = pts[(i + 1) % 4]; e.push('0', 'LINE', '8', 'REZ', '10', a[0], '20', a[1], '30', 0, '11', b[0], '21', b[1], '31', 0); }
-    p.holes.forEach((hh) => e.push('0', 'CIRCLE', '8', 'REZ', '10', hh[0], '20', hh[1], '30', 0, '40', hh[2]));
+    const line = (a, b) => e.push('0', 'LINE', '8', 'REZ', '10', a[0], '20', a[1], '30', 0, '11', b[0], '21', b[1], '31', 0);
+    const pts = p.poly || [[0, 0], [p.w, 0], [p.w, p.l], [0, p.l]];   // obrys (obecný polygon nebo obdélník w × l)
+    for (let i = 0; i < pts.length; i++) line(pts[i], pts[(i + 1) % pts.length]);
+    (p.holes || []).forEach((hh) => e.push('0', 'CIRCLE', '8', 'REZ', '10', hh[0], '20', hh[1], '30', 0, '40', hh[2]));
+    // podélné otvory (ovály) [cx, cy, délka, šířka] podél osy X
+    (p.ovals || []).forEach(([cx, cy, L, w]) => {
+      const r = w / 2, hl = (L - w) / 2;
+      line([cx - hl, cy - r], [cx + hl, cy - r]); line([cx + hl, cy + r], [cx - hl, cy + r]);
+      e.push('0', 'ARC', '8', 'REZ', '10', cx + hl, '20', cy, '30', 0, '40', r, '50', 270, '51', 90);
+      e.push('0', 'ARC', '8', 'REZ', '10', cx - hl, '20', cy, '30', 0, '40', r, '50', 90, '51', 270);
+    });
     e.push('0', 'TEXT', '8', 'ZNACENI', '10', 3, '20', 3, '30', 0, '40', 4, '1', p.poz);
     const lay = [];
     [['REZ', 7], ['ZNACENI', 1]].forEach(([nm, c]) => lay.push('0', 'LAYER', '2', nm, '70', 0, '62', c, '6', 'CONTINUOUS'));
@@ -168,7 +176,7 @@
 
   function kusovnikPage(order, A) {
     const [c, x] = page(), cfg = A.cfg, d = A.build.dims, M = 90;
-    const F = K.FIN.find((f) => f.id === cfg.fin), S = K.SHAPES.find((s) => s.id === cfg.shape), Mo = K.MODELS.find((m) => m.id === cfg.model);
+    const F = K.FIN.find((f) => f.id === cfg.fin), S = K.SHAPES.find((s) => s.id === cfg.shape), Mo = K.modelInfo(cfg.model);
     txt(x, 'Kusovník – ' + order.number, M, 130, 44, true);
     const desk = cfg.shape === 'circle' ? 'Ø ' + cfg.L : cfg.L + ' × ' + cfg.W;
     const info = [['Zákazník', order.customer.name], ['Objednávka', order.number], ['Model', Mo.lab], ['Datum', order.date || ''],
