@@ -265,7 +265,8 @@
     });
     const solid = solidFromFaces(F);
     solid.tabFoot = {};
-    [1, 2].forEach((e) => { if (tabPts[e]) { const T = tabPts[e]; solid.tabFoot[e] = [[T.A1o, T.A2o, T.A1i, T.A2i], [T.B1o, T.B2o, T.B1i, T.B2i]]; } });
+    solid.tabDir = {};          // směr a délka zámků (pro stránku Testing – rozložení a postup)
+    [1, 2].forEach((e) => { if (tabPts[e]) { const T = tabPts[e]; solid.tabFoot[e] = [[T.A1o, T.A2o, T.A1i, T.A2i], [T.B1o, T.B2o, T.B1i, T.B2i]]; solid.tabDir[e] = { d: tabs[e].d, len: tabs[e].len }; } });
     return solid;
   }
   function boxSolid(o, ex, ey, ez) {
