@@ -38,13 +38,21 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `montaz-core.js` | jádro Testing bez 3D: díly, zámky, dosedací plochy a směry nasazení, kontrola cesty na místo, hledání svarů, přístup hořáku (běží i v Node) |
 | `lokal.js` | náhrada databáze a stahování mimo Claude (localStorage) |
 | `modebar.css` | horní přepínač Zákazník / Dílna |
-| `tests/` | kontrola STEP bez CAD |
+| `tests/` | kontrola STEP bez CAD, zámků a drážek, stránky Testing |
 
 ### Kontrola STEP (Node.js 18+)
 ```bash
 node tests/kontrola-step.js 1600 800 750
 ```
 Vygeneruje STEP všech tvarů a zkontroluje uzavřenost těles, orientaci ploch a geometrii.
+
+### Kontrola zámků a drážek (Node.js 18+)
+```bash
+node tests/kontrola-zamky.js -v
+```
+Všechny tvary × profily × tloušťky × 4 rozměry: každý zámek má drážku a projde jí, vede po ose dílu (je to kus stěny – jde vypálit), drážka leží celá v rovné části stěny rámu (ne v rohu, rádius ~2,4 t), zhruba uprostřed šířky, nepřetéká přes okraj ani pokos, má můstek k jiným drážkám a zámek nevyčnívá z rámu.
+
+Pravidla v `core.js` (build): zámek se dává jen na stěny dílu, ze kterých padne doprostřed rovné spodní stěny rámu – u nohy v rohu jedna vnitřní stěna do podélného a druhá do příčného jekla, u dílu pod příčným jeklem dvě stěny napříč. Šikmý díl má zámek po své ose a drážka je na šikmý průchod. Velmi plochý díl (sklon pod 30°) zámek nemá. Když by se dva díly se zámky v boku navzájem blokovaly při nasazení (šikmé větve ze společného uzlu), jeden z nich zámky nemá a v kusovníku je zvlášť („– bez zámku“).
 
 ### Kontrola stránky Testing (Node.js 18+)
 ```bash

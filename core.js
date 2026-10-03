@@ -177,7 +177,8 @@
   }
 
   /* ---------- jekl ----------
-     m: {p1, p2, w} osa a orientace; cut1/cut2: {p, n}; opt.tab1/tab2: {d, len, a} zámky na stěnách ±v;
+     m: {p1, p2, w} osa a orientace; cut1/cut2: {p, n}; opt.tab1/tab2: {d, len, a, walls} zámky uprostřed stěn
+     (walls = seznam stěn '+v' | '-v' | '+w' | '-w', výchozí ['+v', '-v']);
      opt.holes: [{wall:'+v'|'-v'|'+w'|'-w', pts:[[x, c], ...]}] x = poloha podél osy od p1, c = příčně ve stěně */
   const OFFS = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   const WALLS = [{ id: '-w', a: 0, b: 1 }, { id: '+v', a: 1, b: 2 }, { id: '+w', a: 2, b: 3 }, { id: '-v', a: 3, b: 0 }];
@@ -198,20 +199,23 @@
       });
     }));
     const tabs = { 1: opt.tab1, 2: opt.tab2 };
-    // body zámku na hraně stěny (r, stěna k->k2, konec e) pro w = ±a
-    const tp = (r, ka, kb, e, target) => {
-      const wa = OFFS[ka][1] * H[r], wb = OFFS[kb][1] * H[r];
-      return lerp(E[r + ka + e], E[r + kb + e], (target - wa) / (wb - wa));
+    // body zámku na hraně stěny W (r, konec e): souřadnice napříč stěnou = ±a od středu stěny
+    const tp = (r, W, e, target) => {
+      const ci = W.id.indexOf('v') >= 0 ? 1 : 0, wa = OFFS[W.a][ci] * H[r], wb = OFFS[W.b][ci] * H[r];
+      return lerp(E[r + W.a + e], E[r + W.b + e], (target - wa) / (wb - wa));
     };
+    // tabPts[e][stěna] = {po, qo, pi, qi}: p blíž rohu W.a, q blíž rohu W.b
     const tabPts = {};
     [1, 2].forEach((e) => {
       const T = tabs[e]; if (!T) return;
-      const up = (p) => add(p, mul(T.d, T.len));
-      // +v stěna: k1 (w=-) -> k2 (w=+); -v stěna: k3 (w=+) -> k0 (w=-)
-      tabPts[e] = {
-        A1o: tp('o', 1, 2, e, -T.a), A2o: tp('o', 1, 2, e, T.a), A1i: tp('i', 1, 2, e, -T.a), A2i: tp('i', 1, 2, e, T.a),
-        B1o: tp('o', 3, 0, e, T.a), B2o: tp('o', 3, 0, e, -T.a), B1i: tp('i', 3, 0, e, T.a), B2i: tp('i', 3, 0, e, -T.a), up
-      };
+      const walls = T.walls || ['+v', '-v'];
+      if (!walls.length) return;
+      tabPts[e] = { up: (p) => add(p, mul(T.d, T.len)), W: {} };
+      WALLS.forEach((W) => {
+        if (walls.indexOf(W.id) < 0) return;
+        const ci = W.id.indexOf('v') >= 0 ? 1 : 0, sA = OFFS[W.a][ci];
+        tabPts[e].W[W.id] = { po: tp('o', W, e, sA * T.a), qo: tp('o', W, e, -sA * T.a), pi: tp('i', W, e, sA * T.a), qi: tp('i', W, e, -sA * T.a) };
+      });
     });
     const holesOn = (wid) => (opt.holes || []).filter((h) => h.wall === wid);
     WALLS.forEach((W) => {
@@ -220,8 +224,8 @@
       ['o', 'i'].forEach((r) => {
         const loop = [E[r + W.a + 1]];
         const tabSeg = (e, fromA) => {
-          const tpE = tabPts[e]; if (!tpE || (W.id !== '+v' && W.id !== '-v')) return [];
-          const P = W.id === '+v' ? [tpE['A1' + r], tpE['A2' + r]] : [tpE['B1' + r], tpE['B2' + r]];
+          const tpE = tabPts[e]; if (!tpE || !tpE.W[W.id]) return [];
+          const P = [tpE.W[W.id]['p' + r], tpE.W[W.id]['q' + r]];
           const [p, q] = fromA ? P : [P[1], P[0]];
           return [p, tpE.up(p), tpE.up(q), q];
         };
@@ -247,11 +251,17 @@
       let n = unit(cut.n); if (dot(n, m.u) * sg < 0) n = mul(n, -1);
       const O = (k) => E['o' + k + e], I = (k) => E['i' + k + e], T = tabPts[e];
       if (!T) { F.push({ loops: [[O(0), O(1), O(2), O(3)], [I(0), I(1), I(2), I(3)]], n }); return; }
-      F.push({ loops: [[O(0), O(1), T.A1o, T.A1i, I(1), I(0), T.B2i, T.B2o]], n });
-      F.push({ loops: [[O(2), O(3), T.B1o, T.B1i, I(3), I(2), T.A2i, T.A2o]], n });
+      // čelo = mezikruží rozdělené zámky na kusy: od zámku k dalšímu zámku po vnějším obrysu, zpět po vnitřním
+      const ti = [0, 1, 2, 3].filter((j) => T.W[WALLS[j].id]);
+      ti.forEach((j1, k) => {
+        const j2 = ti[(k + 1) % ti.length], A1 = T.W[WALLS[j1].id], A2 = T.W[WALLS[j2].id];
+        const corners = [];
+        for (let j = j1; ; ) { j = (j + 1) % 4; corners.push(WALLS[j].a); if (j === j2) break; }
+        F.push({ loops: [[A1.qo].concat(corners.map(O), [A2.po, A2.pi], corners.slice().reverse().map(I), [A1.qi])], n });
+      });
       const d = tabs[e].d;
-      [['A1o', 'A2o', 'A2i', 'A1i'], ['B1o', 'B2o', 'B2i', 'B1i']].forEach((q) => {
-        const fp = q.map((k) => T[k]), top = fp.map(T.up);
+      ti.forEach((j) => {
+        const Q = T.W[WALLS[j].id], fp = [Q.po, Q.qo, Q.qi, Q.pi], top = fp.map(T.up);
         const cen = mul(fp.reduce((a, b) => add(a, b), [0, 0, 0]), 0.25);
         let nt = unit(cut.n); if (dot(nt, d) < 0) nt = mul(nt, -1);
         F.push({ loops: [top], n: nt });
@@ -266,7 +276,14 @@
     const solid = solidFromFaces(F);
     solid.tabFoot = {};
     solid.tabDir = {};          // směr a délka zámků (pro stránku Testing – rozložení a postup)
-    [1, 2].forEach((e) => { if (tabPts[e]) { const T = tabPts[e]; solid.tabFoot[e] = [[T.A1o, T.A2o, T.A1i, T.A2i], [T.B1o, T.B2o, T.B1i, T.B2i]]; solid.tabDir[e] = { d: tabs[e].d, len: tabs[e].len }; } });
+    solid.tabWalls = {};
+    [1, 2].forEach((e) => {
+      if (!tabPts[e]) return;
+      const ids = WALLS.map((W) => W.id).filter((id) => tabPts[e].W[id]);
+      solid.tabFoot[e] = ids.map((id) => { const Q = tabPts[e].W[id]; return [Q.po, Q.qo, Q.pi, Q.qi]; });
+      solid.tabWalls[e] = ids;
+      solid.tabDir[e] = { d: tabs[e].d, len: tabs[e].len };
+    });
     return solid;
   }
   function boxSolid(o, ex, ey, ez) {
@@ -468,7 +485,6 @@
     const slotsFor = [];      // drážky pro zámky nohou: {x, y} středy nohou a stopy zámků
     const push = (poz, name, m, c1, c2, opt) => { const sol = tube(m, s, t, c1, c2, opt); parts.push({ poz, name, m, solid: sol, cut1: c1, cut2: c2 }); return sol; };
     const zTop = Hf - s;                      // spodní líc horního rámu
-    const legTab = { d: ez, len: t, a };      // zámek nohy do spodní stěny rámu
     const boltPts = [], hw = [];
     let railY = Yo, Ls, weldJoints = 0, caps = 0;
 
@@ -479,6 +495,83 @@
       const tops = [];                      // stopy zámků: {x, y, foot}
       let free = 0, joints = 0;
       const needCross = false;              // nohy končí vždy pod obvodovým rámem
+      /* Zámky do horního rámu: drážka musí ležet celá v rovné části spodní stěny jeklu rámu (ne v rohu –
+         rádius ~2,4 t), zhruba uprostřed její šířky a nesmí přetékat přes pokos. Ze 4 stěn dílu se proto
+         vyberou jen ty, jejichž zámek takhle padne – u nohy v rohu rámu to jsou dvě vnitřní stěny
+         (jedna do podélného, druhá do příčného jekla), u dílu pod příčným jeklem dvě stěny napříč jeklem. */
+      const ownerAt = (x, y) => {
+        const inR = Math.abs(Math.abs(y) - Yo) <= h && Math.abs(x) <= Lf / 2, inS = Math.abs(Math.abs(x) - X) <= h && Math.abs(y) <= Wf / 2;
+        if (inR && inS) return Lf / 2 - Math.abs(x) > Wf / 2 - Math.abs(y) ? 'R' + Math.sign(y) : 'S' + Math.sign(x);
+        return inR ? 'R' + Math.sign(y) : inS ? 'S' + Math.sign(x) : null;
+      };
+      const flat = h - 2.4 * t;
+      const tabSpot = (fp) => {                // fp = obrys zámku dole i nahoře (celý průchod stěnou rámu)
+        const xs = fp.map((p) => p[0]), ys = fp.map((p) => p[1]);
+        const x0 = Math.min(...xs) - cl, x1 = Math.max(...xs) + cl, y0 = Math.min(...ys) - cl, y1 = Math.max(...ys) + cl;
+        const C = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], own = C.map(([x, y]) => ownerAt(x, y));
+        if (!own[0] || own.some((o) => o !== own[0])) return null;
+        // můstek k pokosu aspoň tloušťka stěny
+        if (C.some(([x, y]) => Math.abs(Math.abs(y) - Yo) <= h && Math.abs(Math.abs(x) - X) <= h && Math.abs((Lf / 2 - Math.abs(x)) - (Wf / 2 - Math.abs(y))) / Math.SQRT2 < t)) return null;
+        const o = own[0], rail = o[0] === 'R', c = rail ? Number(o.slice(1)) * Yo : Number(o.slice(1)) * X;
+        const lo = (rail ? y0 : x0) - c, hi = (rail ? y1 : x1) - c;
+        if (lo < -flat - 1e-6 || hi > flat + 1e-6 || Math.abs((lo + hi) / 2) > Math.max(2, 0.1 * s)) return null;
+        // můstek k už použitým drážkám ve stejném jeklu aspoň 2× tloušťka stěny
+        if (taken.some((q) => q.o === o && x0 < q.x1 + 2 * t && q.x0 < x1 + 2 * t && y0 < q.y1 + 2 * t && q.y0 < y1 + 2 * t)) return null;
+        return { o, x0, x1, y0, y1 };
+      };
+      const taken = [];
+      const ALLW = ['+v', '-v', '+w', '-w'];
+      /* Díl se zámky jde nasadit jen ve směru zámků. Když se dva (nebo víc) takových dílů v boku navzájem
+         blokují (šikmé větve ze společného uzlu – každá by cestou po své ose projela tou druhou), nedá se
+         sestavit v žádném pořadí: jednomu z nich se zámky zruší (jen svar, nasadí se bokem). Boky jsou
+         rovinné, takže stačí 2D test v rovině boku (y, z): obálka dílu posunutá proti směru zámku. */
+      const hull2 = (pts) => convexHull(pts.map((p) => [p[1], p[2]]));
+      const overlap2 = (A2, B2, tol) => {          // konvexní mnohoúhelníky se překrývají víc než tol (SAT)
+        for (const P of [A2, B2]) for (let k = 0; k < P.length; k++) {
+          const a0 = P[k], a1 = P[(k + 1) % P.length], nx = a0[1] - a1[1], ny = a1[0] - a0[0], l = Math.hypot(nx, ny);
+          if (l < 1e-9) continue;
+          const pr = (Q) => Q.map((q) => (q[0] * nx + q[1] * ny) / l), pa = pr(A2), pb = pr(B2);
+          if (Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)) <= tol) return false;
+        }
+        return true;
+      };
+      const dropBlockedTabs = (plan) => {
+        const D = 3 * Math.max(Wf, Hf);
+        for (let guard = 0; guard < plan.length; guard++) {
+          const tabbed = plan.map((P, i) => i).filter((i) => plan[i].opt.tab1 || plan[i].opt.tab2);
+          if (tabbed.length < 2) return;
+          const geo = plan.map((P) => hull2(tube(P.mT, s, t, P.c1, P.c2, P.opt).verts));
+          const sweep = (i) => { const T = plan[i].opt.tab2 || plan[i].opt.tab1; return convexHull(geo[i].concat(geo[i].map((q) => [q[0] - T.d[1] * D, q[1] - T.d[2] * D]))); };
+          const blk = {};
+          tabbed.forEach((i) => { const S = sweep(i); blk[i] = tabbed.filter((j) => j !== i && overlap2(S, geo[j], 0.5)); });
+          // cyklus v grafu „i blokuje j“ (j musí jít dřív než i … a naopak)
+          let cyc = null;
+          const st = {}, path = [];
+          const dfs = (i) => { st[i] = 1; path.push(i); for (const j of blk[i]) { if (cyc) return; if (st[j] === 1) { cyc = path.slice(path.indexOf(j)); return; } if (!st[j]) dfs(j); } path.pop(); st[i] = 2; };
+          tabbed.forEach((i) => { if (!st[i] && !cyc) dfs(i); });
+          if (!cyc) return;
+          const nt = (i) => ((plan[i].opt.tab1 || {}).walls || []).length + ((plan[i].opt.tab2 || {}).walls || []).length;
+          const victim = cyc.slice().sort((x, y) => nt(x) - nt(y) || y - x)[0];
+          delete plan[victim].opt.tab1; delete plan[victim].opt.tab2;
+        }
+      };
+      // stěny, ze kterých zámek padne doprostřed rovné stěny rámu; když je u pokosu těsno, zámek se trochu zkrátí
+      // Zámek je kus stěny jeklu – vede v její rovině, tedy po ose dílu (u šikmého dílu šikmo) a projde
+      // spodní stěnou rámu (svisle o t); drážka v rámu je obdélník, kterým projde celý zámek.
+      const tabFor = (m, c1, c2, e) => {
+        const d = e === 2 ? m.u : mul(m.u, -1);
+        if (d[2] < 0.5) return null;            // moc plochý díl – zámek by byl dlouhý, jen svar
+        const len = t / d[2];
+        let best = null;
+        [a, a * 0.9, a * 0.8].forEach((aa) => {
+          const T = { d, len, a: aa, walls: ALLW }, sol = tube(m, s, t, c1, c2, e === 1 ? { tab1: T } : { tab2: T });
+          const ok = sol.tabWalls[e].map((id, k) => { const q = sol.tabFoot[e][k]; return [id, tabSpot(q.concat(q.map((p) => add(p, mul(d, len)))))]; }).filter((x) => x[1]);
+          if (!best || ok.length > best.ok.length) best = { aa, ok };
+        });
+        if (!best.ok.length) return null;
+        best.ok.forEach((x) => taken.push(x[1]));
+        return { d, len, a: best.aa, walls: best.ok.map((x) => x[0]) };
+      };
       // spodní spojky u Kostky: drážky ve vnitřní stěně spodní příčky
       const kostka = cfg.model === 'K', yb = Wf / 2 - 1.5 * s - 5;
       for (const sx of [-1, 1]) {
@@ -511,11 +604,15 @@
           const oc = lineX(oA, [oA[0] + dA[0], oA[1] + dA[1]], oB, [oB[0] + dB[0], oB[1] + dB[1]]);
           return cornerPlane(P3(oc), P3(ic), ex);
         };
-        defs.forEach((d, i) => {
+        const plan = defs.map((d, i) => {
           const dd = dir2(d), c1 = cutAt(i, 1), c2 = cutAt(i, 2);
-          const opt = {};
-          if (d.ea.t === 'top') opt.tab1 = legTab;
-          if (d.eb.t === 'top') opt.tab2 = legTab;
+          const opt = {}, mT = frame(P3(d.a), P3(d.b), [0, -dd[1], dd[0]]);
+          if (d.ea.t === 'top') opt.tab1 = tabFor(mT, c1, c2, 1) || undefined;
+          if (d.eb.t === 'top') opt.tab2 = tabFor(mT, c1, c2, 2) || undefined;
+          return { d, dd, c1, c2, opt, mT };
+        });
+        dropBlockedTabs(plan);
+        plan.forEach(({ d, dd, c1, c2, opt }) => {
           if (kostka && d.g === 'B') {
             const inner = sx > 0 ? '+v' : '-v', m0 = frame(P3(d.a), P3(d.b), [0, -dd[1], dd[0]]);
             opt.holes = [];
@@ -530,8 +627,10 @@
             }
           }
           const sol = push(d.g, d.n, frame(P3(d.a), P3(d.b), [0, -dd[1], dd[0]]), c1, c2, opt);
-          if (d.ea.t === 'top') tops.push({ x, y: d.a[0], foot: sol.tabFoot[1] });
-          if (d.eb.t === 'top') tops.push({ x, y: d.b[0], foot: sol.tabFoot[2] });
+          // stopa zámku v rámu = dolní i horní obrys (u šikmého zámku se posune)
+          const pass = (e) => sol.tabFoot[e].map((q) => q.concat(q.map((p) => add(p, mul(sol.tabDir[e].d, sol.tabDir[e].len)))));
+          if (d.ea.t === 'top' && sol.tabFoot[1]) tops.push({ x, y: d.a[0], foot: pass(1) });
+          if (d.eb.t === 'top' && sol.tabFoot[2]) tops.push({ x, y: d.b[0], foot: pass(2) });
           [d.ea, d.eb].forEach((e) => { if (e.t === 'free') free++; else if (e.t === 'butt' || e.t === 'top') joints++; else if (e.t === 'miter') joints += 0.5; });
         });
       }
@@ -543,6 +642,7 @@
       // do kterého jeklu rámu zámek padne: u rohu rozhoduje pokosová čára (dál od čela než od boku = podélný jekl)
       const footOwner = (fp) => {
         const cx = fp.reduce((q, p) => q + p[0], 0) / fp.length, cy = fp.reduce((q, p) => q + p[1], 0) / fp.length;
+        const own = ownerAt(cx, cy); if (own) return own;
         const dEnd = Lf / 2 - Math.abs(cx), dSide = Wf / 2 - Math.abs(cy);
         if (dSide <= s && (dEnd > dSide || dEnd > s)) return 'R' + Math.sign(cy);
         return 'S' + Math.sign(cx);
@@ -701,17 +801,26 @@
     B.parts.forEach((p) => { (groups[p.poz] = groups[p.poz] || []).push(p); });
     const rows = [], problems = [];
     let tubeM = 0, kg = 0, n = 0;
+    // stejná pozice, ale jiný počet zámků (díl, kterému se zámky zrušily kvůli sestavitelnosti) = samostatná položka
+    const nTabs = (p) => ((p.solid.tabFoot || {})[1] || []).length + ((p.solid.tabFoot || {})[2] || []).length;
+    const subGroups = [];
     POZ_ORDER.filter((k) => groups[k]).forEach((k) => {
-      const g = groups[k], p = g[0], L = partLength(p), vol = volume(p.solid), an = cutAngles(p);
+      const by = {};
+      groups[k].forEach((p) => { (by[nTabs(p)] = by[nTabs(p)] || []).push(p); });
+      const keys = Object.keys(by).sort((a, b) => b - a);
+      keys.forEach((nk) => subGroups.push([k, by[nk], keys.length > 1 && Number(nk) === 0]));
+    });
+    subGroups.forEach(([k, g, noTab]) => {
+      const p = g[0], L = partLength(p), vol = volume(p.solid), an = cutAngles(p);
       g.forEach((q) => { if (Math.abs(partLength(q) - L) > 0.3 || Math.abs(volume(q.solid) - vol) > 5) problems.push(k + ': kusy nejsou shodné'); });
       n++;
       const poz = 'P' + String(n).padStart(2, '0');
       const feat = [];
       if (p.solid.tabFoot[1] || p.solid.tabFoot[2]) feat.push('zámky');
       const nh = p.solid.faces.reduce((acc, f) => acc + f.inner.length, 0) - (p.solid.tabFoot[1] ? 0 : 1) - (p.solid.tabFoot[2] ? 0 : 1);
-      if (nh > 0) feat.push(k === 'R' && !B.bolted ? 'drážky' : 'otvory');
+      if (nh > 0) feat.push(['R', 'R2', 'S'].indexOf(k) >= 0 && !B.bolted ? 'drážky' : 'otvory');
       tubeM += L * g.length / 1000; kg += vol * 7.85e-6 * g.length;
-      rows.push({ poz, name: p.name, kind: 'tube', prof: 'jekl ' + s + '×' + s + '×' + t, L, len: L.toFixed(1), cut: an[0] + '° / ' + an[1] + '°', feat: feat.join(', '), q: g.length, stroj: 'K2', file: poz + '_L' + Math.round(L) + '_' + g.length + 'ks.step', part: p });
+      rows.push({ poz, name: p.name + (noTab ? ' – bez zámku' : ''), kind: 'tube', prof: 'jekl ' + s + '×' + s + '×' + t, L, len: L.toFixed(1), cut: an[0] + '° / ' + an[1] + '°', feat: feat.join(', '), q: g.length, stroj: 'K2', file: poz + '_L' + Math.round(L) + '_' + g.length + 'ks.step', part: p });
     });
     B.plates.forEach((p) => {
       n++;
@@ -1107,5 +1216,5 @@
     return Math.min(dd(a, c, d), dd(b, c, d), dd(c, a, b), dd(d, a, b));
   }
 
-  root.Podnoze = { register, modelInfo, allModels, solveFrame, sectionOf, convexHull, audit, frameGraph, THK, SIZES, MODELS, FIN, SHAPES, DEFAULT_RATES, DEFAULT_CFG, normalize, frameDims, build, analyze, toLocal, partLength, volume, orientFace, deskOutline, describe, paint, previewBodies, boltAllowed, rates0, nf, V };
+  root.Podnoze = { tube, frame, register, modelInfo, allModels, solveFrame, sectionOf, convexHull, audit, frameGraph, THK, SIZES, MODELS, FIN, SHAPES, DEFAULT_RATES, DEFAULT_CFG, normalize, frameDims, build, analyze, toLocal, partLength, volume, orientFace, deskOutline, describe, paint, previewBodies, boltAllowed, rates0, nf, V };
 })(typeof window !== 'undefined' ? window : globalThis);
