@@ -1,0 +1,444 @@
+<!doctype html><html lang="cs"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Zábradlí na míru</title>
+<link rel="stylesheet" href="modebar.css">
+<div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="zabradli.html" aria-current="page">Zákazník</a><a href="interni.html">Dílna</a><a href="montaz.html">Testing</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap">
+<style>
+  :root {
+    --ground: #FBFAF7; --surface: #FFFFFF; --stage: #F1EFEA; --ink: #17181A; --muted: #5E5A54; --line: #D9D5CD; --line-soft: #ECE9E3;
+    --accent: #B8440F; --accent-ink: #8E3309; --accent-soft: #FFF4EC;
+    --ok-bg: #E7F1EA; --ok: #2E7D4F; --ok-ink: #1D5535; --warn-bg: #FFF1DD; --warn: #B86200; --warn-ink: #7A4100; --bad-bg: #FCE9E7; --bad: #B3261E; --bad-ink: #8C1D18;
+    --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif; --sans: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { background: var(--ground); color: var(--ink); }
+  body { font: 15px/1.5 var(--sans); }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: var(--accent); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .brand { font-family: var(--serif); font-size: 26px; line-height: 1; }
+  .top nav { display: flex; gap: 22px; flex-wrap: wrap; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .top nav a { color: var(--ink); text-decoration: none; }
+  .top nav a[aria-current] { border-bottom: 2px solid var(--ink); padding-bottom: 2px; }
+  .soon { color: var(--muted); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .stagewrap { background: var(--stage); position: relative; min-height: 420px; height: 58vh; }
+  @media (min-width: 1000px) { .layout { grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); } .stagewrap { position: sticky; top: env(safe-area-inset-top, 0px); height: calc(100vh - 60px); } }
+  #viz { position: absolute; inset: 0; }
+  .stage-head { position: absolute; left: 24px; top: 20px; right: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; pointer-events: none; }
+  .stage-head > * { pointer-events: auto; }
+  .model-name { font-family: var(--serif); font-size: clamp(30px, 4vw, 44px); line-height: 1; text-wrap: balance; }
+  .model-sub { color: var(--muted); font-size: 14px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stage-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .chip { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); background: rgba(255,255,255,.7); padding: 2px 8px; border-radius: 4px; }
+  .check select, .check input[type=number] { height: 30px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+  .check input[type=number] { width: 64px; text-align: right; padding: 0 6px; }
+  #personChip { max-width: 280px; text-align: right; }
+  .views { position: absolute; left: 24px; bottom: 20px; right: 24px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .views button { height: 40px; padding: 0 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 20px; font-size: 14px; }
+  .views button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+  .hint { position: absolute; right: 24px; bottom: 26px; font-size: 12px; color: var(--muted); }
+  @media (max-width: 700px) {
+    .hint { display: none; }
+    .stagewrap { height: 76vh; min-height: 560px; }
+    .stage-head { left: 16px; right: 16px; top: 14px; }
+    .stage-side { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; }
+    .stage-side .check, .stage-side .chip { font-size: 12px; }
+    .check select, .check input[type=number] { height: 28px; font-size: 13px; }
+    #personChip { max-width: none; text-align: left; }
+    .views { left: 16px; right: 16px; bottom: 14px; }
+    .views button { height: 36px; padding: 0 11px; font-size: 13px; }
+  }
+
+  .panel { display: flex; flex-direction: column; min-width: 0; }
+  .steps { padding: 28px 24px 32px; display: flex; flex-direction: column; gap: 34px; }
+  @media (min-width: 1000px) { .steps { padding: 32px 40px 36px; } }
+  .step h2 { margin: 0 0 14px; font-weight: 500; font-size: 20px; line-height: 1.25; }
+  .step h2 small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-bottom: 2px; }
+  .grid { display: grid; gap: 10px; }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 520px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .opt { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt svg { width: 60px; height: 44px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; }
+  .opt[aria-pressed="true"] svg { stroke: var(--accent); }
+  .opt .l { font-size: 13px; } .opt .s { font-size: 12px; color: var(--muted); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .num { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .num input { width: 86px; height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; text-align: right; background: var(--surface); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+  .note { font-size: 14px; color: var(--muted); }
+  .thk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; background: var(--line-soft); border-radius: 4px; margin-top: 10px; }
+  .pills { display: flex; gap: 6px; }
+  .pill { height: 44px; min-width: 64px; padding: 0 12px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 22px; font-weight: 600; font-size: 14px; }
+  .pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .load { margin-top: 12px; padding: 14px 16px; border: 1px solid; border-radius: 4px; display: flex; flex-direction: column; gap: 8px; }
+  .load .head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+  .bar { height: 6px; background: rgba(0,0,0,.08); border-radius: 3px; } .bar i { display: block; height: 6px; border-radius: 3px; }
+  .load p { margin: 0; font-size: 13px; } .load .fine { color: var(--muted); font-size: 12px; }
+  .lvl-ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok-ink); } .lvl-ok .bar i { background: var(--ok); }
+  .lvl-warn { background: var(--warn-bg); border-color: var(--warn); color: var(--warn-ink); } .lvl-warn .bar i { background: var(--warn); }
+  .lvl-bad { background: var(--bad-bg); border-color: var(--bad); color: var(--bad-ink); } .lvl-bad .bar i { background: var(--bad); }
+  .join { text-align: left; align-items: flex-start; justify-content: flex-start; padding: 14px; gap: 8px; }
+  .join .t { font-size: 16px; font-weight: 600; } .join .p { font-size: 13px; color: var(--ok-ink); } .join .c { font-size: 13px; color: var(--bad-ink); }
+  .infoline { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; flex-wrap: wrap; }
+  .box { padding: 12px 14px; background: var(--line-soft); border-radius: 4px; font-size: 14px; display: flex; gap: 8px; align-items: flex-start; }
+  .tip { position: relative; display: inline-flex; }
+  .i { width: 22px; height: 22px; padding: 0; border: 1.5px solid var(--muted); background: var(--surface); color: var(--muted); border-radius: 11px; font-family: var(--serif); font-style: italic; font-size: 15px; line-height: 1; flex-shrink: 0; }
+  .tipbox { display: none; position: absolute; z-index: 20; left: 50%; top: 30px; transform: translateX(-60%); width: min(360px, 80vw); padding: 12px 14px; background: var(--ink); color: #F4F2EE; border-radius: 6px; font-size: 13px; line-height: 1.5; font-weight: 400; }
+  .tip:hover .tipbox, .tip:focus-within .tipbox, .tip.open .tipbox { display: block; }
+  .swatch { padding: 0; border: 0; background: transparent; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+  .swatch span.sq { display: block; width: 100%; aspect-ratio: 1.2; max-width: 100%; border: 1px solid var(--line); }
+  .swatch[aria-pressed="true"] span.sq { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .swatch .l { font-size: 13px; } .swatch .s { font-size: 12px; color: var(--muted); }
+  .own { display: flex; flex-direction: column; gap: 12px; padding: 14px; background: var(--line-soft); border-radius: 4px; margin-top: 10px; }
+  .own label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .own input { height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .msg { padding: 10px 12px; border-radius: 4px; font-size: 13px; }
+  .btn { height: 48px; padding: 0 20px; border-radius: 4px; border: 1px solid var(--ink); background: var(--surface); font-size: 15px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--accent-ink); }
+  .btn.primary:disabled { opacity: .45; background: var(--accent); }
+  .btn.ghost:disabled { opacity: .5; }
+  .buy { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  @media (min-width: 1000px) { .buy { padding-left: 40px; padding-right: 40px; } }
+  .price { font-family: var(--serif); font-size: 36px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .price-sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .qty { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 4px; }
+  .qty button { width: 40px; height: 46px; border: 0; background: transparent; font-size: 18px; }
+  .qty span { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .foot { padding: 20px 24px 28px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .modal { position: fixed; inset: 0; background: rgba(23,24,26,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
+  .sheet { background: var(--surface); border-radius: 8px; width: min(560px, 100%); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+  .sheet h3 { font-family: var(--serif); font-weight: 400; font-size: 32px; margin: 0; line-height: 1.1; }
+  .sheet label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .sheet input, .sheet textarea { padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .sheet .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 520px) { .sheet .two { grid-template-columns: minmax(0, 1fr); } }
+  .summary { background: var(--line-soft); border-radius: 4px; padding: 12px 14px; font-size: 14px; }
+  .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; background: var(--line-soft); padding: 10px; border-radius: 4px; user-select: all; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>
+  .segs { display: flex; flex-direction: column; gap: 8px; }
+  .seg { display: grid; grid-template-columns: 26px repeat(3, minmax(0, 1fr)) 36px; gap: 8px; align-items: end; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+  .seg .no { font-family: var(--serif); font-size: 22px; line-height: 38px; color: var(--muted); }
+  .seg label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+  .seg input, .seg select { height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); font-variant-numeric: tabular-nums; width: 100%; min-width: 0; }
+  .seg input { text-align: right; }
+  .seg .del { height: 38px; width: 36px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; font-size: 18px; color: var(--muted); }
+  .seg .del:disabled { opacity: .35; }
+  @media (max-width: 520px) { .seg { grid-template-columns: 22px repeat(2, minmax(0, 1fr)) 36px; } .seg .turn { grid-column: 2 / 4; } .seg .del { grid-row: 1; grid-column: 4; } }
+  .rowbtns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .seg-add { height: 40px; padding: 0 14px; border: 1.5px dashed var(--line); background: transparent; border-radius: 4px; font-size: 14px; }
+  .toggle2 { display: inline-flex; border: 1px solid var(--line); border-radius: 22px; padding: 2px; background: var(--surface); }
+  .toggle2 button { height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: transparent; font-size: 14px; }
+  .toggle2 button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .opt:disabled { opacity: .45; }
+  .svc { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; text-align: left; padding: 12px 14px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; width: 100%; }
+  .svc[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .svc .cb { width: 20px; height: 20px; border: 1.5px solid var(--muted); border-radius: 3px; margin-top: 2px; display: grid; place-items: center; font-size: 14px; line-height: 1; color: #fff; }
+  .svc[aria-pressed="true"] .cb { background: var(--accent); border-color: var(--accent); }
+  .svc .t { font-weight: 600; font-size: 15px; } .svc .s { font-size: 13px; color: var(--muted); } .svc .p { font-variant-numeric: tabular-nums; font-size: 14px; white-space: nowrap; }
+  .wlist { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .wlist div { padding: 9px 12px; border-radius: 4px; font-size: 13px; }
+  .w-warn { background: var(--warn-bg); color: var(--warn-ink); } .w-bad { background: var(--bad-bg); color: var(--bad-ink); } .w-info { background: var(--line-soft); color: var(--ink); }
+  .lock { margin-top: 10px; }
+  .lock.on { background: var(--ok-bg); color: var(--ok-ink); }
+  .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .split label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .split input { height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); text-align: right; font-variant-numeric: tabular-nums; }
+  .breakdown { font-size: 13px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+  .breakdown b { color: var(--ink); font-weight: 600; }
+  .sub-h { font-size: 13px; color: var(--muted); margin: 16px 0 8px; }
+</style>
+
+<header class="top">
+  <div class="brand">[NÁZEV FIRMY]</div>
+  <nav aria-label="Hlavní menu">
+    <a href="index.html">Podnože</a>
+    <a href="vyvoj.html">In progress</a>
+    <a href="#konfigurator" aria-current="page">Zábradlí</a>
+    <span class="soon">Stoly – připravujeme</span>
+  </nav>
+</header>
+
+<main class="layout" id="konfigurator">
+  <section class="stagewrap" aria-label="Náhled zábradlí">
+    <div id="viz"></div>
+    <div class="stage-head">
+      <div>
+        <div class="model-name" id="mName">Zábradlí</div>
+        <div class="model-sub" id="mSub"></div>
+      </div>
+      <div class="stage-side">
+        <div class="chip" id="factChip"></div>
+        <label class="check" for="ctx"><input id="ctx" type="checkbox" checked> Zobrazit stavbu</label>
+      </div>
+    </div>
+    <div class="views" role="group" aria-label="Pohled">
+      <button data-view="iso" aria-pressed="true">3D</button>
+      <button data-view="front" aria-pressed="false">Zepředu</button>
+      <button data-view="side" aria-pressed="false">Zboku</button>
+      <button data-view="top" aria-pressed="false">Shora</button>
+    </div>
+    <div class="hint" id="hint">Tažením myši otáčíte, kolečkem přibližujete</div>
+  </section>
+
+  <section class="panel" aria-label="Nastavení">
+    <div class="steps">
+      <div class="step">
+        <h2><small>Krok 1</small>Typ zábradlí</h2>
+        <div class="grid g2" id="types"></div>
+        <p class="note" id="typeNote" style="margin:10px 0 0"></p>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 2</small>Tvar a rozměry</h2>
+        <div class="grid g5" id="presets"></div>
+        <p class="sub-h">Úseky zábradlí za sebou. Délka je vodorovná (v půdorysu), u schodiště zadejte i převýšení.</p>
+        <div class="segs" id="segs"></div>
+        <div class="rowbtns">
+          <button type="button" class="seg-add" id="segAdd">+ Přidat úsek</button>
+          <div class="toggle2" role="group" aria-label="Na které straně je stavba" id="sideT">
+            <button type="button" data-side="L">Stavba vlevo</button><button type="button" data-side="R">Stavba vpravo</button>
+          </div>
+        </div>
+        <div class="field" style="margin-top:16px"><div class="row"><label for="vy">Výška zábradlí nad podlahou</label><span class="num"><input id="vyn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="vy" type="range" min="900" max="1200" step="10"></div>
+        <p class="note" id="dimNote" style="margin:8px 0 0"></p>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 3</small>Profil a výplň</h2>
+        <div id="profBox"></div>
+        <div class="box lock" id="lockBox"></div>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 4</small>Kotvení</h2>
+        <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="anchors"></div>
+        <p class="sub-h" id="baseLab">Do čeho se kotví</p>
+        <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="bases"></div>
+        <div class="split" id="armBox">
+          <label for="fac">Tloušťka fasády (zateplení + obklad) [mm]<input id="fac" type="number" inputmode="numeric"></label>
+          <label for="arm">Délka kotevního ramene [mm]<input id="arm" type="number" inputmode="numeric"></label>
+        </div>
+        <p class="note" id="anchorNote" style="margin:10px 0 0"></p>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 5</small>Povrchová úprava</h2>
+        <div class="grid g4" id="fins"></div>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 6</small>Zaměření, kotvení a montáž</h2>
+        <div class="grid" style="gap:8px" id="svcs"></div>
+        <p class="note" style="margin:10px 0 0">Bez služeb vyrobíme zábradlí přesně podle zadaných rozměrů a pošleme ho i s kotvami, montáž si zajistíte sami. Se zaměřením rozměry před výrobou ověříme na místě.</p>
+        <div class="wlist" id="warns"></div>
+        <div class="breakdown" id="breakdown"></div>
+      </div>
+    </div>
+
+    <div class="buy">
+      <div>
+        <div class="price" id="price"></div>
+        <div class="price-sub" id="priceSub"></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="ask" type="button">Nezávazně poptat</button>
+        <button class="btn ghost" type="button" disabled title="Platba online – připravujeme">Koupit</button>
+      </div>
+    </div>
+    <div class="foot"><span>Ceny jsou orientační, finální potvrdíme v odpovědi na poptávku. Doprava podle vzdálenosti.</span><a href="interni.html" target="_self" id="staffLink" hidden>Pro dílnu</a></div>
+  </section>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <form class="sheet" id="form" novalidate>
+    <h3 id="formTitle">Poptávka zábradlí</h3>
+    <div class="summary" id="formSummary"></div>
+    <div class="two">
+      <label for="fName">Jméno a příjmení<input id="fName" required autocomplete="name"></label>
+      <label for="fEmail">E-mail<input id="fEmail" type="email" required autocomplete="email"></label>
+      <label for="fPhone">Telefon<input id="fPhone" type="tel" autocomplete="tel"></label>
+      <label for="fAddr">Adresa stavby<input id="fAddr" autocomplete="street-address"></label>
+    </div>
+    <label for="fNote">Poznámka<textarea id="fNote" rows="3"></textarea></label>
+    <div class="msg" id="formMsg" hidden></div>
+    <div class="actions" style="justify-content:flex-end">
+      <button class="btn" type="button" id="cancel">Zpět</button>
+      <button class="btn primary" type="submit" id="send">Odeslat poptávku</button>
+    </div>
+  </form>
+</div>
+
+<script src="lokal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="core.js"></script>
+<script src="zabradli-core.js"></script>
+<script src="zabradli-viewer.js"></script>
+<script>
+(function () {
+  const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
+  let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true };
+  try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
+  const viewer = ZabViewer.create($('viz'));
+  if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
+  let db = null, uid = null;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const svg = (d) => '<svg viewBox="0 0 64 48" aria-hidden="true"><path d="' + d + '"></path></svg>';
+
+  function set(p) { cfg = Zb.normalize(Object.assign({}, cfg, p)); render(); try { localStorage.setItem('zabradli-cfg', JSON.stringify(cfg)); } catch (e) {} }
+  function group(el, items, html, onPick) {
+    el.innerHTML = items.map(html).join('');
+    el.querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => { if (!b.disabled) onPick(b.dataset.id); }));
+  }
+  const optBtn = (id, on, l, s, ic, dis, title) => '<button type="button" class="opt" data-id="' + id + '" aria-pressed="' + on + '"' + (dis ? ' disabled' : '') + (title ? ' title="' + esc(title) + '"' : '') + '>' + (ic ? svg(ic) : '') + '<span class="l" style="font-weight:600">' + l + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</button>';
+
+  /* ---------- úseky ---------- */
+  function renderSegs() {
+    const el = $('segs'), focusId = document.activeElement && document.activeElement.id;
+    el.innerHTML = cfg.segs.map((s, i) => '<div class="seg">' +
+      '<span class="no">' + (i + 1) + '</span>' +
+      '<label for="sL' + i + '">Délka [mm]<input id="sL' + i + '" data-i="' + i + '" data-k="L" type="number" inputmode="numeric" value="' + s.L + '"></label>' +
+      '<label for="sR' + i + '">Převýšení [mm]<input id="sR' + i + '" data-i="' + i + '" data-k="rise" type="number" inputmode="numeric" value="' + s.rise + '"></label>' +
+      '<label class="turn" for="sT' + i + '">Na konci<select id="sT' + i + '" data-i="' + i + '" data-k="turn"' + (i === cfg.segs.length - 1 ? ' disabled' : '') + '>' + Zb.TURNS.map((t) => '<option value="' + t.v + '"' + (t.v === s.turn ? ' selected' : '') + '>' + (i === cfg.segs.length - 1 ? 'konec' : t.lab) + '</option>').join('') + '</select></label>' +
+      '<button type="button" class="del" data-del="' + i + '" aria-label="Odebrat úsek ' + (i + 1) + '"' + (cfg.segs.length < 2 ? ' disabled' : '') + '>×</button></div>').join('');
+    el.querySelectorAll('input,select').forEach((x) => x.addEventListener('change', () => {
+      const segs = cfg.segs.map((s) => Object.assign({}, s)), i = Number(x.dataset.i);
+      segs[i][x.dataset.k] = Number(x.value); set({ segs });
+    }));
+    el.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { const segs = cfg.segs.slice(); segs.splice(Number(b.dataset.del), 1); set({ segs }); }));
+    if (focusId && $(focusId)) $(focusId).focus();
+  }
+
+  function render() {
+    A = Zb.analyze(cfg, rates);
+    const T = Zb.TYPES.find((t) => t.id === cfg.typ);
+    $('mName').textContent = 'Zábradlí ' + T.lab.toLowerCase();
+    $('mSub').textContent = nf(A.lenM, 1) + ' m · výška ' + cfg.vyska + ' mm · ' + Zb.FIN.find((f) => f.id === cfg.fin).lab;
+    $('factChip').textContent = A.anchorsN + ' kotev · ' + nf(A.kg) + ' kg oceli';
+
+    group($('types'), Zb.TYPES, (t) => optBtn(t.id, t.id === cfg.typ, t.lab, t.sub, t.icon), (id) => set({ typ: id, vyska: id === 'A' ? 1050 : 1000, fin: id === 'A' ? 'zn' : 'znpu' }));
+    $('typeNote').textContent = cfg.typ === 'A'
+      ? 'Rám z jeklu se sloupky po max. 1 m, výplň ze svislé pásoviny. Madla probíhají v celé délce, rohy a konce jsou na pokos.'
+      : 'Bez sloupků: pole do 1,5 m se sesadí na tupo přes vložky, styky zakryje dřevěné madlo. Kotví se z boku, kotvy schová zateplení.';
+
+    const curPreset = Zb.PRESETS.find((p) => JSON.stringify(p.segs.map((s) => [s.L, s.rise, s.turn || 0])) === JSON.stringify(cfg.segs.map((s) => [s.L, s.rise, s.turn])));
+    group($('presets'), Zb.PRESETS, (p) => optBtn(p.id, !!curPreset && curPreset.id === p.id, p.lab, '', p.icon), (id) => set({ segs: Zb.PRESETS.find((p) => p.id === id).segs.map((s) => Object.assign({ turn: 0 }, s)) }));
+    renderSegs();
+    document.querySelectorAll('#sideT button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.side === cfg.side)));
+    if (document.activeElement !== $('vy')) $('vy').value = cfg.vyska;
+    if (document.activeElement !== $('vyn')) $('vyn').value = cfg.vyska;
+    const sl = cfg.segs.filter((s) => s.rise).map((s) => Math.round(Math.atan2(Math.abs(s.rise), s.L) * 180 / Math.PI) + '°');
+    $('dimNote').textContent = 'Celková délka podél zábradlí ' + nf(A.lenM, 2) + ' m' + (sl.length ? ', sklon schodiště ' + sl.join(', ') : '') + '. ' + (cfg.typ === 'B' ? 'Výška se měří k horní hraně madla' : 'Výška se měří k horní hraně horního madla') + ', na schodišti svisle od hrany stupňů.';
+
+    if (cfg.typ === 'A') {
+      $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">Rám (madla a sloupky)</p><div class="grid g2" id="profs"></div><p class="sub-h">Výplň – svislá pásovina</p><div class="grid g2" id="barsA"></div>';
+      group($('profs'), Zb.PROF_A, (p) => optBtn(p.id, p.id === cfg.profA, 'Jekl ' + p.lab, p.sub), (id) => set({ profA: id }));
+      group($('barsA'), Zb.BAR_A, (b) => optBtn(b.id, b.id === cfg.barA, b.lab, b.sub), (id) => set({ barA: id }));
+    } else {
+      $('profBox').innerHTML = '<div class="box" style="flex-direction:column;gap:4px"><strong>Rám jekl 40×20×3 naplocho · špruše PL 40×10</strong><span>Přesah špruší 150 mm pod spodní rám. Kotevní ramena z jeklu 40×20×3.</span></div>' +
+        '<p class="sub-h">Madlo</p><div class="grid g2" id="madla"></div>';
+      group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40, zakryje horní styky' }, { id: 'n', l: 'Bez madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
+    }
+    $('lockBox').className = 'box lock' + (A.locks.ok ? ' on' : '');
+    $('lockBox').innerHTML = '<span><strong>' + (A.locks.ok ? 'Se zámky.' : 'Bez zámků.') + '</strong> ' + esc(A.locks.why) + '</span>';
+
+    const pOK = Zb.patkaAllowed(cfg);
+    group($('anchors'), Zb.ANCHOR, (a) => optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', a.id === 'patka' && !pOK, a.id === 'patka' && !pOK ? (cfg.typ === 'B' ? 'Typ bez sloupků má špruše přes spodní rám – kotví se jen z boku.' : 'Patky jen na rovné podlaze – na schodišti kotvíme z boku.') : ''), (id) => set({ anchor: id }));
+    const bez = cfg.anchor === 'bez';
+    $('baseLab').hidden = bez; $('bases').hidden = bez;
+    group($('bases'), Zb.BASE, (b) => optBtn(b.id, b.id === cfg.base, b.lab, b.sub), (id) => set({ base: id }));
+    $('armBox').hidden = cfg.anchor !== 'bocni';
+    if (document.activeElement !== $('fac')) $('fac').value = cfg.facade;
+    if (document.activeElement !== $('arm')) $('arm').value = cfg.arm;
+    $('anchorNote').textContent = cfg.anchor === 'bocni' ? 'Rameno vede od rámu skrz zateplení k čelu nosné desky, tam se plotna 120×120 přikotví dvěma závitovými tyčemi M12. Rameno = fasáda + mezera k rámu (obvykle +50 mm).'
+      : cfg.anchor === 'patka' ? 'Pod každým sloupkem patka 100×120×8 mm se dvěma kotvami M12.' : 'Dodáme jen zábradlí, kotvení si navrhnete a provedete sami.';
+
+    group($('fins'), Zb.FIN, (f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.sub + '</span></button>', (id) => set({ fin: id }));
+
+    const R = A.R, svcPrice = { zamereni: R.zamereni, kotveni: R.kotveni, montaz: Math.round((A.lenM * R.montazM + A.anchorsN * R.montazKotva) / 10) * 10 };
+    $('svcs').innerHTML = Zb.SERVICES.map((s) => '<button type="button" class="svc" data-svc="' + s.id + '" aria-pressed="' + !!cfg.services[s.id] + '"><span class="cb">' + (cfg.services[s.id] ? '✓' : '') + '</span><span><span class="t">' + s.lab + '</span><br><span class="s">' + s.sub + '</span></span><span class="p">+ ' + nf(A.vatOf(svcPrice[s.id])) + ' Kč</span></button>').join('');
+    $('svcs').querySelectorAll('[data-svc]').forEach((b) => b.addEventListener('click', () => set({ services: Object.assign({}, cfg.services, { [b.dataset.svc]: !cfg.services[b.dataset.svc] }) })));
+
+    $('warns').innerHTML = A.warns.map((w) => '<div class="w-' + w.lvl + '">' + esc(w.t) + '</div>').join('');
+    const badW = A.warns.some((w) => w.lvl === 'bad');
+    $('ask').disabled = badW; $('ask').title = badW ? 'Opravte zadání označené červeně' : '';
+    $('breakdown').innerHTML = '<span>Výroba zábradlí' + (cfg.anchor !== 'bez' ? ' vč. kotev' : '') + ' (' + nf(A.lenM, 1) + ' m)</span><b>' + nf(A.vatOf(A.price)) + ' Kč</b>' +
+      A.svc.map((s) => '<span>' + esc(s.lab) + '</span><b>' + nf(A.vatOf(s.price)) + ' Kč</b>').join('');
+
+    $('price').textContent = nf(A.total) + ' Kč';
+    $('priceSub').textContent = 's DPH · ' + nf(Math.round(A.total / A.lenM / 10) * 10) + ' Kč / m · ' + nf(A.price + A.svcPrice) + ' Kč bez DPH';
+    document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
+    viewer.update(A, { ctx: ui.ctx });
+  }
+
+  $('segAdd').addEventListener('click', () => { const segs = cfg.segs.map((s) => Object.assign({}, s)); if (segs.length >= 8) return; segs[segs.length - 1].turn = 90; segs.push({ L: 2000, rise: 0, turn: 0 }); set({ segs }); });
+  document.querySelectorAll('#sideT button').forEach((b) => b.addEventListener('click', () => set({ side: b.dataset.side })));
+  $('vy').addEventListener('input', (e) => set({ vyska: e.target.value }));
+  $('vyn').addEventListener('change', (e) => set({ vyska: e.target.value }));
+  $('fac').addEventListener('change', (e) => { const f = Number(e.target.value) || 0; set({ facade: f, arm: Math.max(cfg.arm, f + 50) }); });
+  $('arm').addEventListener('change', (e) => set({ arm: e.target.value }));
+  $('ctx').addEventListener('change', (e) => { ui.ctx = e.target.checked; render(); });
+  document.querySelectorAll('.views button').forEach((b) => b.addEventListener('click', () => { ui.view = b.dataset.view; render(); viewer.view(ui.view); }));
+
+  /* ---------- poptávka ---------- */
+  const code = () => 'ZABRADLI:' + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  function msg(html, kind) { const m = $('formMsg'); m.hidden = false; m.innerHTML = html; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
+  $('ask').addEventListener('click', () => {
+    $('formTitle').textContent = 'Poptávka zábradlí';
+    $('formSummary').innerHTML = '<strong>' + esc(Zb.describe(cfg)) + '</strong>' + (A.svc.length ? '<br>' + A.svc.map((s) => esc(s.lab)).join(' · ') : '') + '<br>' + nf(A.total) + ' Kč s DPH (orientačně)';
+    $('formMsg').hidden = true; $('form').querySelectorAll('input,textarea,#send').forEach((x) => { x.disabled = false; });
+    $('modal').hidden = false; $('fName').focus();
+  });
+  $('cancel').addEventListener('click', () => { $('modal').hidden = true; $('ask').focus(); });
+  $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal').hidden) $('modal').hidden = true; });
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('fName').value.trim(), email = $('fEmail').value.trim();
+    if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg('Vyplňte jméno a platný e-mail, ať vám můžeme poslat nabídku.', 'bad'); return; }
+    const now = new Date(), p2 = (n) => String(n).padStart(2, '0');
+    const id = 'Z' + String(now.getFullYear()).slice(2) + p2(now.getMonth() + 1) + p2(now.getDate()) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    const item = { id, product: 'zabradli', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim(), address: $('fAddr').value.trim() }, note: $('fNote').value.trim(),
+      config: cfg, price: A.price, services: A.svc, svcPrice: A.svcPrice, total: A.total };
+    if (!db || !uid) { msg('Poptávku se teď nepodařilo odeslat. Zkopírujte prosím tento kód a pošlete ho e-mailem na [E-MAIL FIRMY]:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad'); return; }
+    $('send').disabled = true; msg('Odesílám…');
+    try {
+      const ref = db.doc('poptavky/' + uid), snap = await ref.get();
+      const items = snap.exists ? (snap.data().items || []).slice() : [];
+      items.push(item);
+      await ref.set({ uid, updated: now.toISOString(), items });
+      $('form').querySelectorAll('input,textarea').forEach((x) => { x.disabled = true; });
+      $('formTitle').textContent = 'Děkujeme, poptávka je odeslaná';
+      msg('Číslo poptávky <strong>' + id + '</strong>. Ozveme se vám na ' + esc(email) + (cfg.services.zamereni ? ' a domluvíme termín zaměření.' : ' s finální cenou a termínem.') + (window.claude && claude.lokalni ? '<br><br><strong>Test:</strong> poptávku teď uvidíš v záložce <a href="interni.html">Dílna → Poptávky</a>, tam se z ní stáhnou podklady (.zip).' : ''), 'ok');
+    } catch (err) {
+      $('send').disabled = false;
+      msg('Odeslání se nepovedlo (' + esc(err && err.code || 'chyba') + '). Zkuste to prosím znovu, nebo pošlete kód e-mailem:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad');
+    }
+  });
+
+  render();
+  (async function connect() {
+    if (!window.claude || !claude.use) return;
+    const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]);
+    db = d;
+    if (u) { try { uid = await u.id(); } catch (e) { uid = null; } $('staffLink').hidden = !u.canEdit(); }
+    if (db) db.doc('nastaveni/cenik-zabradli').onSnapshot((s) => { if (s.exists) { rates = Zb.rates0(s.data()); render(); } }, () => {});
+  })();
+})();
+</script>
+</body>
+</html>

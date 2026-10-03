@@ -4,6 +4,7 @@ Konfigurátor ocelových podnoží stolů. Má dvě části, mezi kterými se p�
 
 - **Zákazník** (`index.html`): výběr tvaru podnože, rozměry, profil jeklu, spoje, povrch a deska. Obsahuje 3D náhled, orientační nosnost, cenu a nezávaznou poptávku.
 - **In progress** (`vyvoj.html`, záložka vedle *Podnože*): rozpracované modely se stejným postupem jako podnože (tvar, rozměry, jekl, povrch, deska, 3D náhled, nosnost, cena, poptávka). Poptávky z ní se v dílně otevřou a stáhnou stejně.
+- **Zábradlí** (`zabradli.html`, záložka v hlavním menu vedle *Podnože*): zákazník si nastaví typ (se sloupky – vzor 01, bez sloupků s dřevěným madlem – vzor 02), trasu po úsecích (délka, převýšení u schodiště, zatočení), výšku, profil a výplň, kotvení (z boku přes fasádu / shora patkami / bez kotev) a podklad (beton, zdivo, ocel), povrch a služby (zaměření, pomoc s kotvením, montáž). Vidí 3D náhled i se stavbou a cenu s rozpisem. Poptávka jde do stejné dílny jako podnože.
 - **Dílna** (`interni.html`): přijaté poptávky, objednávka a stažení podkladů (.zip), audit konstrukce všech tvarů a ceník.
 - **Testing** (`montaz.html`): stejná podnož jako u zákazníka (sdílí nastavení se záložkou Zákazník / In progress), ale pro dílnu:
   - *Rozložit* – posuvník rozloží podnož (každý díl odjede cestou, kterou se nasazuje), kliknutím vybereš díl, vysuneš ho zvlášť, ukážeš jen jeho navazující díly, nebo necháš podnož rozebrat po jednom. Zámky (oranžově) a drážky/otvory (žlutě) jsou zvýrazněné.
@@ -36,6 +37,10 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `vyvoj.html` | stránka In progress |
 | `montaz.html`, `montaz.js` | stránka Testing – rozložení, postup skládání, sonda svářečky |
 | `montaz-core.js` | jádro Testing bez 3D: díly, zámky, dosedací plochy a směry nasazení, kontrola cesty na místo, hledání svarů, přístup hořáku (běží i v Node) |
+| `zabradli.html` | stránka Zábradlí pro zákazníky |
+| `zabradli-core.js` | zábradlí bez 3D: trasa, díly typu 01 a 02 (port generátorů ze skillu sldprt-zabradli), zámky, kotvy, tělesa, kusovník, cena (běží i v Node) |
+| `zabradli-viewer.js` | 3D náhled zábradlí se stavbou (deska, fasáda) |
+| `zabradli-dilna.js` | dílna – záložka *Zábradlí – podklady*: kusovník, 3D, ZIP (sestava STEP, `dily/K2` jekly, `dily/pasovina`, `dily/C2` plotny a patky, kusovník PDF, doklad), ceník zábradlí |
 | `lokal.js` | náhrada databáze a stahování mimo Claude (localStorage) |
 | `modebar.css` | horní přepínač Zákazník / Dílna |
 | `tests/` | kontrola STEP bez CAD, zámků a drážek, stránky Testing |
@@ -71,3 +76,11 @@ GitHub → **Settings → Pages** → *Deploy from a branch* → `main` / `(root
 | **Pohozenec – spojovák** (PZ3) | Stejné nohy bez zámků, v půlce výšky vodorovný plech 3 mm se 4 zuby do děr ve vnitřních stěnách jeklů. Nahoře 2 pásoviny D–A a C–B na špičkách. |
 
 Rozteč patek a odsazení noh se dopočítá z rozměru stolu a profilu jeklu. Audit zatím u obou ukazuje nízkou stabilitu proti převržení na rozích obdélníkové desky (patky tvoří v půdorysu kosočtverec) – proto poptávku na stránce In progress neblokuje.
+
+### Kontrola zábradlí (Node.js 18+)
+```bash
+node tests/kontrola-zabradli.js -v
+```
+Vzor akce 01 (rám proti kusovníku vzoru) a akce 02 (pole, kotvy, vložky, madla proti `railing_b.py`), pak všechny typy × tvary × kotvení × strany × profily: uzavřená tělesa, platný STEP dílů i sestavy, zámky jen v rovné části stěny rámu.
+
+Pravidla v `zabradli-core.js`: **zámky jen tehdy, když drážka (pásovina + 2× vůle 0,5) padne celá do rovné části stěny rámu** (šířka − 2 × 2,4 t), tedy když je rám širší než pásovina – jinak se pásovina svaří na tupo. Typ 02 (rám 40 × pásovina 40) je proto bez zámků; typ 01 má zámky jen s jeklem 50×50×2 (s 40×40×2 má rovná část stěny 30,4 mm a drážka by šla do rádiusu). Zinkovací otvory se nepřidávají. Patky shora jen u typu 01 na rovině. Ceník zábradlí (Dílna → Ceník) je zatím orientační.

@@ -49,7 +49,7 @@
   .ed { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
   @media (min-width: 1100px) { .ed { grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); } }
   .viz { position: relative; height: 420px; background: #ECEAE5; border-radius: 6px; overflow: hidden; }
-  #viz { position: absolute; inset: 0; }
+  #viz, #zviz { position: absolute; inset: 0; }
   .vbar { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 4px; flex-wrap: wrap; }
   .vbar button { height: 32px; padding: 0 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; font-size: 13px; }
   .vbar label { display: flex; gap: 6px; align-items: center; background: rgba(255,255,255,.8); padding: 0 8px; border-radius: 16px; font-size: 13px; }
@@ -84,6 +84,7 @@
 <div class="tabs" role="tablist">
   <button role="tab" id="t-pop" aria-selected="true" aria-controls="p-pop">Poptávky<span class="count" id="popCount" hidden></span></button>
   <button role="tab" id="t-obj" aria-selected="false" aria-controls="p-obj">Objednávka a podklady</button>
+  <button role="tab" id="t-zab" aria-selected="false" aria-controls="p-zab">Zábradlí – podklady</button>
   <button role="tab" id="t-aud" aria-selected="false" aria-controls="p-aud">Audit konstrukce</button>
   <button role="tab" id="t-cen" aria-selected="false" aria-controls="p-cen">Ceník a nastavení</button>
 </div>
@@ -164,6 +165,61 @@
     </div>
   </section>
 
+  <section class="card" id="p-zab" role="tabpanel" aria-labelledby="t-zab" hidden>
+    <div class="ed">
+      <div>
+        <div class="viz"><div id="zviz"></div>
+          <div class="vbar">
+            <button type="button" data-view="iso">3D</button><button type="button" data-view="front">Zepředu</button><button type="button" data-view="side">Zboku</button><button type="button" data-view="top">Shora</button>
+            <label for="zctx"><input type="checkbox" id="zctx" checked> stavba</label>
+          </div>
+        </div>
+        <div class="facts" id="zFacts"></div>
+        <div class="warns" id="zWarns"></div>
+        <h2>Kusovník zábradlí</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Poz</th><th>Díl</th><th>Profil</th><th class="num">L [mm]</th><th class="num">Řez 1 / 2</th><th class="num">Ks</th><th>Stroj</th><th>Soubor</th></tr></thead>
+          <tbody id="zBom"></tbody>
+        </table></div>
+      </div>
+      <form class="cfg" id="zForm" novalidate onsubmit="return false">
+        <fieldset>
+          <legend>Objednávka</legend>
+          <label class="f">Číslo objednávky<input id="zNum"></label>
+          <label class="f">Datum<input id="zDate"></label>
+          <label class="f full">Zákazník (jméno a příjmení)<input id="zName"></label>
+          <label class="f">E-mail<input id="zEmail"></label>
+          <label class="f">Telefon<input id="zPhone"></label>
+          <label class="f full">Adresa stavby<input id="zAddr"></label>
+          <label class="f full">Poznámka<input id="zNote"></label>
+        </fieldset>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Konfigurace</div>
+          <div style="font-size:14px" id="zCfg"></div>
+          <button class="btn" type="button" id="zEdit" style="margin-top:8px">Upravit v konfigurátoru zábradlí</button>
+        </div>
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--muted)">Cena (podle ceníku zábradlí)</div><div class="mono" style="font-size:18px" id="zPrice"></div></div>
+            <button class="btn primary" type="button" id="zDl">Stáhnout podklady (.zip)</button>
+          </div>
+          <div class="msg" id="zMsg" hidden style="margin-top:10px"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Obsah zipu</div>
+          <div class="files" id="zFiles"></div>
+        </div>
+        <details>
+          <summary>Vložit kód konfigurace (poslaný e-mailem)</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <label class="f" for="zCodeIn">Kód začínající ZABRADLI:<textarea id="zCodeIn" rows="3"></textarea></label>
+            <div class="row"><button class="btn" type="button" id="zCodeLoad">Načíst</button><span id="zCodeMsg" style="font-size:13px"></span></div>
+          </div>
+        </details>
+      </form>
+    </div>
+  </section>
+
   <section class="card" id="p-aud" role="tabpanel" aria-labelledby="t-aud" hidden>
     <h2>Audit všech tvarů</h2>
     <p style="margin:0 0 12px;color:var(--muted)">Prutový model celé podnože (svary tuhé, nohy kloubově na zemi, deska se nepočítá). Zkoušky podle EN 12521: bodová síla 1000 N na horní rám, boční síla 400 N se zátěží 500 N, převržení svislou silou 50 mm od hrany desky. Ocel S235, dovolené napětí 157 MPa, svary 180 MPa. Výrobní kontroly pro Bodor K2 (jekl 8–230 mm, tyč 6,5 m) a C2.</p>
@@ -190,6 +246,10 @@
     <div class="rates" id="plateFields"></div>
     <div class="row" style="margin-top:12px" id="boltModels"></div>
     <div class="row" style="margin-top:18px"><button class="btn primary" type="button" id="saveRates">Uložit ceník</button><button class="btn" type="button" id="resetRates">Vrátit výchozí hodnoty</button><span id="rateMsg" style="font-size:13px"></span></div>
+    <h2 style="margin-top:28px">Ceník zábradlí</h2>
+    <p style="margin:0 0 12px;color:var(--muted)">Výroba = (kg × materiál + díly × řez + svary + drážky + povrch + dřevěné madlo + kotvy + příprava) × (1 + marže). Zinek se počítá z hmotnosti, lak a barva z plochy. Zaměření, pomoc s kotvením a montáž se přičítají zvlášť (bez marže).</p>
+    <div class="rates" id="zRateFields"></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="zSaveRates">Uložit ceník zábradlí</button><button class="btn" type="button" id="zResetRates">Vrátit výchozí hodnoty</button><span id="zRateMsg" style="font-size:13px"></span></div>
   </section>
 </main>
 
@@ -200,6 +260,9 @@
 <script src="vyvoj.js"></script>
 <script src="viewer.js"></script>
 <script src="gen.js"></script>
+<script src="zabradli-core.js"></script>
+<script src="zabradli-viewer.js"></script>
+<script src="zabradli-dilna.js"></script>
 <script>
 (function () {
   const K = Podnoze, G = Generator, $ = (id) => document.getElementById(id);
@@ -211,10 +274,11 @@
   const today = () => { const d = new Date(); return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); };
 
   /* ---------- záložky ---------- */
-  const tabs = ['pop', 'obj', 'aud', 'cen'];
+  const tabs = ['pop', 'obj', 'zab', 'aud', 'cen'];
   function tab(name) {
     tabs.forEach((t) => { $('t-' + t).setAttribute('aria-selected', String(t === name)); $('p-' + t).hidden = t !== name; });
     if (name === 'obj') render();
+    if (name === 'zab') ZabDilna.render();
   }
   tabs.forEach((t) => $('t-' + t).addEventListener('click', () => tab(t)));
 
@@ -325,7 +389,7 @@
       const it = x.it, c = it.customer || {}, dt = new Date(it.created);
       return '<tr><td class="mono">' + esc(it.id) + '</td><td>' + (isNaN(dt) ? '' : dt.toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })) + '</td>' +
         '<td>' + esc(c.name) + '<br><span style="color:var(--muted);font-size:12px">' + esc(c.email) + (c.phone ? ' · ' + esc(c.phone) : '') + '</span></td>' +
-        '<td>' + esc(K.describe(K.normalize(it.config))) + ' · ' + (it.config && it.config.qty || 1) + ' ks' + (it.note ? '<br><span style="color:var(--muted);font-size:12px">„' + esc(it.note) + '“</span>' : '') + '</td>' +
+        '<td>' + (it.product === 'zabradli' ? esc(ZabDilna.describe(it.config)) + (it.services && it.services.length ? '<br><span style="color:var(--muted);font-size:12px">+ ' + esc(it.services.map((x) => x.lab.split(' (')[0]).join(', ')) + '</span>' : '') : esc(K.describe(K.normalize(it.config))) + ' · ' + (it.config && it.config.qty || 1) + ' ks') + (it.note ? '<br><span style="color:var(--muted);font-size:12px">„' + esc(it.note) + '“</span>' : '') + '</td>' +
         '<td class="num">' + K.nf(it.total || it.vat || 0) + ' Kč</td>' +
         '<td><select data-n="' + n + '" aria-label="Stav poptávky ' + esc(it.id) + '">' + Object.keys(ST).map((k) => '<option value="' + k + '"' + (k === it.status ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select></td>' +
         '<td><button class="btn" type="button" data-open="' + n + '">Otevřít</button></td></tr>';
@@ -335,6 +399,7 @@
   }
   function openPop(x) {
     const it = x.it, c = it.customer || {};
+    if (it.product === 'zabradli') { tab('zab'); ZabDilna.open(it); return; }
     current = it; cfg = K.normalize(it.config);
     $('oNum').value = 'OBJ-' + String(it.id).replace(/^P/, ''); $('oDate').value = today();
     $('cName').value = c.name || ''; $('cEmail').value = c.email || ''; $('cPhone').value = c.phone || ''; $('cAddr').value = c.address || ''; $('oNote').value = it.note || '';
@@ -382,6 +447,7 @@
     if (!window.claude || !claude.use) { renderPop(); return; }
     const [d, u, dl] = await Promise.all([claude.use('db'), claude.use('user'), claude.use('downloads')]);
     db = d; dls = dl; canEdit = !!(u && u.canEdit());
+    ZabDilna.init({ db: d, dls: dl, canEdit });
     if (!canEdit) { const n = $('access'); n.hidden = false; n.textContent = 'Tuhle stránku může plně používat jen editor artefaktu. Poptávky a ceník se ti nezobrazí ani neuloží.'; }
     if (!db) { renderPop(); return; }
     db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = K.rates0(s.data()); fillRates(); render(); } }, () => {});
