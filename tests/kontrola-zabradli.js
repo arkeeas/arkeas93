@@ -90,6 +90,13 @@ function check(cfg) {
     if (Math.abs(depth - jt.rail.t) > 1e-6) errs.push(m.name + ": zámeček " + depth.toFixed(2) + " mm místo stěny " + jt.rail.t);
   }));
   if (!(A.price > 0)) errs.push("cena nevyšla");
+  // kotvy: jen na povolených místech, počet ramen = počet kotev
+  const an = A.lay.anch;
+  if (an && cfg.anchor === "bocni") {
+    if (an.used.some((x) => an.cand.indexOf(x) < 0)) errs.push("kotva mimo povolené místo");
+    const arms = A.parts.filter((m) => m.role === "arm").length;
+    if (arms !== an.used.length) errs.push("ramen " + arms + ", kotev " + an.used.length);
+  }
   return { A, errs };
 }
 let n = 0;
@@ -111,5 +118,10 @@ for (const typ of ["A", "B"]) for (const rail of Z.RAILS[typ]) for (const bar of
     const pr = Z.PRESETS.find((p) => p.id === pid);
     run({ typ, preset: pid, segs: pr.segs, anchor, side: "L", madlo: typ === "B" && !overTop, rail: rail.id, bar: bar.id, join, overTop, overBot, vyska: 1000 }, true);
   }
+// c) sloupky + dřevěné madlo, rozteč sloupků, rozteč kotev a ručně zadané kotvy
+for (const pid of ["L", "schodypod"]) for (const postPitch of [600, 1500]) for (const kotvy of [{}, { kotvyRoztec: 700 }, { kotvyPos: [0, 333, 1500, 2600, 9999] }]) for (const sloupky of [true, false]) {
+  const pr = Z.PRESETS.find((p) => p.id === pid);
+  run(Object.assign({ typ: sloupky ? "A" : "B", sloupky, preset: pid, segs: pr.segs, anchor: "bocni", side: "R", madlo: true, postPitch }, kotvy), true);
+}
 console.log((bad ? "\n" + bad + " chyb" : "\nvše v pořádku") + " (" + n + " konfigurací)");
 process.exit(bad ? 1 : 0);

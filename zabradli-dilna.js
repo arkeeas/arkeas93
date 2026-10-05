@@ -18,9 +18,10 @@
     const pages = [], M = 80, c0 = A.cfg;
     let [c, x] = page(); pages.push(c);
     txt(x, 'Kusovník zábradlí – ' + order.number, M, 120, 42, true);
-    const info = [['Zákazník', order.customer.name], ['Objednávka', order.number], ['Typ', Zb.TYPES.find((t) => t.id === c0.typ).lab + ' (vzor ' + (c0.typ === 'A' ? '01' : '02') + ')'], ['Datum', order.date || ''],
+    const info = [['Zákazník', order.customer.name], ['Objednávka', order.number], ['Konstrukce', (c0.sloupky ? 'sloupky po max. ' + c0.postPitch + ' mm' : 'bez sloupků') + ', ' + (c0.madlo ? 'dřevěné madlo' : 'rám = madlo')], ['Datum', order.date || ''],
       ['Délka', nf(A.lenM, 2) + ' m, ' + c0.segs.length + ' úsek(y)'], ['Výška', c0.vyska + ' mm'], ['Kotvení', Zb.ANCHOR.find((a) => a.id === c0.anchor).lab + (c0.anchor === 'bez' ? '' : ' – ' + Zb.BASE.find((b) => b.id === c0.base).lab.toLowerCase()) + (c0.anchor === 'bocni' ? ', fasáda ' + c0.facade + ', rameno ' + c0.arm : '')],
-      ['Povrch', Zb.FIN.find((f) => f.id === c0.fin).lab], ['Špruše', { drazka: 'v drážkách rámu', tupo: 'na tupo', zamek: 'se zámečky' }[A.locks.mode] + (c0.overTop || c0.overBot ? ', přesah ' + c0.overTop + ' / ' + c0.overBot + ' mm' : '')], ['Služby', A.svc.length ? A.svc.map((s) => s.id).join(', ') : '–']];
+      ['Povrch', Zb.FIN.find((f) => f.id === c0.fin).lab], ['Špruše', { drazka: 'v drážkách rámu', tupo: 'na tupo', zamek: 'se zámečky' }[A.locks.mode] + (c0.overTop || c0.overBot ? ', přesah ' + c0.overTop + ' / ' + c0.overBot + ' mm' : '')], ['Služby', A.svc.length ? A.svc.map((s) => s.id).join(', ') : '–'],
+      ['Rám / špruše', 'jekl ' + c0.rail.replace(/x/g, '×') + ' / PL ' + c0.bar.replace(/x/g, '×')], ['Kotvy', c0.anchor === 'bez' ? '–' : A.lay.anch.used.length + ' ks' + (c0.kotvyPos ? ', rozmístěné ručně' : c0.kotvyRoztec ? ', rozteč ' + c0.kotvyRoztec + ' mm' : ', podle vzoru') + (A.kotvy.gaps.length ? ', max. mezera ' + Math.round(Math.max.apply(null, A.kotvy.gaps)) + ' mm' : '')]];
     info.forEach((r, i) => { const px = M + (i % 2) * 545, py = 175 + Math.floor(i / 2) * 34; txt(x, r[0], px, py, 20, true); txt(x, fit(x, r[1], 370, 20), px + 150, py, 20); });
     txt(x, 'Trasa (osa zábradlí): ' + c0.segs.map((s, i) => (i + 1) + ') ' + s.L + (s.rise ? ' ↑' + s.rise : '') + (s.turn ? ' ' + (s.turn > 0 ? 'vlevo ' : 'vpravo ') + Math.abs(s.turn) + '°' : '')).join('   '), M, 355, 18, false, '#444');
     const pv = document.createElement('canvas'); pv.width = 1080; pv.height = 560;
@@ -122,7 +123,7 @@
   function msg(t, kind) { const m = $('zMsg'); m.hidden = false; m.innerHTML = t; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
 
   /* ---------- ceník zábradlí ---------- */
-  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
+  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['kotvaMax', 'Kotvy – max. mezera (nad = nejde poptat)', 'mm'], ['kotvaDop', 'Kotvy – doporučená mezera (nad = varování)', 'mm'], ['kotvaKonecMax', 'Kotvy – max. přesah konce za kotvu', 'mm'], ['kotvaKonecDop', 'Kotvy – doporučený přesah konce', 'mm'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
     ['madlo', 'Dřevěné madlo', 'Kč/m'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže', '%'], ['zamereni', 'Zaměření', 'Kč'], ['kotveni', 'Pomoc s kotvením', 'Kč'], ['montazM', 'Montáž', 'Kč/m'], ['montazKotva', 'Montáž – kotva', 'Kč/ks']];
   const KF = [['beton', 'Kotva do betonu'], ['zdivo', 'Kotva do zdiva (sítko)'], ['ocel', 'Šroub do oceli']];
   function fillRates() {

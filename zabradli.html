@@ -160,6 +160,20 @@
   .breakdown { font-size: 13px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; margin-top: 12px; font-variant-numeric: tabular-nums; }
   .breakdown b { color: var(--ink); font-weight: 600; }
   .sub-h { font-size: 13px; color: var(--muted); margin: 16px 0 8px; }
+  .kbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
+  .kbar label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); flex: 1 1 160px; }
+  .kbar input { height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); text-align: right; font-variant-numeric: tabular-nums; }
+  .kbtn { height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+  .kbtn:hover { border-color: var(--ink); } .kbtn:disabled { opacity: .45; cursor: default; }
+  .kstrip { margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); touch-action: none; user-select: none; }
+  .kstrip svg { display: block; width: 100%; height: auto; }
+  .kstrip .rail { stroke: var(--ink); stroke-width: 3; } .kstrip .vt { stroke: var(--muted); stroke-dasharray: 3 3; }
+  .kstrip .jt { stroke: var(--muted); stroke-width: 2; } .kstrip .cd { fill: var(--muted); opacity: .45; }
+  .kstrip .an { fill: var(--accent); stroke: var(--surface); stroke-width: 2; cursor: grab; } .kstrip .an.sel { stroke: var(--ink); stroke-width: 3; }
+  .kstrip .an.fix { cursor: default; fill: var(--muted); }
+  .kstrip text { font: 11px/1 system-ui, sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .kstrip text.ok { fill: var(--ok-ink); } .kstrip text.warn { fill: var(--warn-ink); font-weight: 600; } .kstrip text.bad { fill: var(--bad-ink); font-weight: 700; }
+  .kstrip .an-n { fill: #fff; font-size: 10px; font-weight: 700; pointer-events: none; }
 </style>
 
 <header class="top">
@@ -197,8 +211,12 @@
   <section class="panel" aria-label="Nastavení">
     <div class="steps">
       <div class="step">
-        <h2><small>Krok 1</small>Typ zábradlí</h2>
+        <h2><small>Krok 1</small>Konstrukce</h2>
+        <p class="sub-h" style="margin-top:0">Sloupky</p>
         <div class="grid g2" id="types"></div>
+        <div class="field" id="postBox" style="margin-top:14px"><div class="row"><label for="pp">Rozteč sloupků (nejvýš)</label><span class="num"><input id="ppn" type="number" inputmode="numeric" aria-label="Rozteč sloupků v mm"> mm</span></div><input id="pp" type="range" min="600" max="1500" step="50"></div>
+        <p class="sub-h">Madlo</p>
+        <div class="grid g2" id="madla"></div>
         <p class="note" id="typeNote" style="margin:10px 0 0"></p>
       </div>
 
@@ -237,6 +255,18 @@
         <div class="split" id="armBox">
           <label for="fac">Tloušťka fasády (zateplení + obklad) [mm]<input id="fac" type="number" inputmode="numeric"></label>
           <label for="arm">Délka kotevního ramene [mm]<input id="arm" type="number" inputmode="numeric"></label>
+        </div>
+        <div id="kotvyBox">
+          <p class="sub-h">Rozmístění kotev – zábradlí rozvinuté do přímky, kotvy můžete táhnout</p>
+          <div class="kstrip" id="kStrip"></div>
+          <div class="kbar">
+            <label for="kRoz">Rozteč kotev [mm]<input id="kRoz" type="number" inputmode="numeric" step="50" placeholder="podle vzoru"></label>
+            <label for="kSel" id="kSelLab">Vybraná kotva – od začátku [mm]<input id="kSel" type="number" inputmode="numeric" step="10"></label>
+            <button type="button" class="kbtn" id="kAdd">+ Kotva</button>
+            <button type="button" class="kbtn" id="kDel">− Kotva</button>
+            <button type="button" class="kbtn" id="kReset">Rozmístit znovu</button>
+          </div>
+          <p class="note" id="kNote" style="margin:8px 0 0"></p>
         </div>
         <p class="note" id="anchorNote" style="margin:10px 0 0"></p>
       </div>
@@ -297,7 +327,7 @@
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
-  let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true };
+  let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
   if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
@@ -305,7 +335,9 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const svg = (d) => '<svg viewBox="0 0 64 48" aria-hidden="true"><path d="' + d + '"></path></svg>';
 
-  function set(p) { cfg = Zb.normalize(Object.assign({}, cfg, p)); render(); try { localStorage.setItem('zabradli-cfg', JSON.stringify(cfg)); } catch (e) {} }
+  function set(p) {
+    if (('segs' in p || 'sloupky' in p) && !('kotvyPos' in p)) { p = Object.assign({ kotvyPos: null }, p); ui.ksel = null; }
+    cfg = Zb.normalize(Object.assign({}, cfg, p)); render(); try { localStorage.setItem('zabradli-cfg', JSON.stringify(cfg)); } catch (e) {} }
   function group(el, items, html, onPick) {
     el.innerHTML = items.map(html).join('');
     el.querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => { if (!b.disabled) onPick(b.dataset.id); }));
@@ -336,10 +368,16 @@
     $('mSub').textContent = nf(A.lenM, 1) + ' m · výška ' + cfg.vyska + ' mm · ' + Zb.FIN.find((f) => f.id === cfg.fin).lab;
     $('factChip').textContent = A.anchorsN + ' kotev · ' + nf(A.kg) + ' kg oceli';
 
-    group($('types'), Zb.TYPES, (t) => optBtn(t.id, t.id === cfg.typ, t.lab, t.sub, t.icon), (id) => set({ typ: id, vyska: id === 'A' ? 1050 : 1000, fin: id === 'A' ? 'zn' : 'znpu', rail: null, bar: null, join: 'tupo', overTop: null, overBot: null }));
-    $('typeNote').textContent = cfg.typ === 'A'
-      ? 'Rám z jeklu se sloupky po max. 1 m, výplň ze svislé pásoviny. Madla probíhají v celé délce, rohy a konce jsou na pokos.'
-      : 'Bez sloupků: pole do 1,5 m se sesadí na tupo přes vložky, styky zakryje dřevěné madlo. Kotví se z boku, kotvy schová zateplení.';
+    group($('types'), [{ id: 'B', l: 'Bez sloupků', s: 'pole do 1,5 m, styky na vložkách', ic: Zb.TYPES[1].icon }, { id: 'A', l: 'Se sloupky', s: 'rozteč si nastavíte', ic: Zb.TYPES[0].icon }],
+      (t) => optBtn(t.id, t.id === cfg.typ, t.l, t.s, t.ic), (id) => set({ sloupky: id === 'A' }));
+    $('postBox').hidden = !cfg.sloupky;
+    if (document.activeElement !== $('pp')) $('pp').value = cfg.postPitch;
+    if (document.activeElement !== $('ppn')) $('ppn').value = cfg.postPitch;
+    group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40 navrch rámu' }, { id: 'n', l: 'Bez dřevěného madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
+    const nPost = A.parts.filter((m) => m.role === 'post').length;
+    $('typeNote').textContent = cfg.sloupky
+      ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
+      : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');
 
     const curPreset = Zb.PRESETS.find((p) => JSON.stringify(p.segs.map((s) => [s.L, s.rise, s.turn || 0])) === JSON.stringify(cfg.segs.map((s) => [s.L, s.rise, s.turn])));
     group($('presets'), Zb.PRESETS, (p) => optBtn(p.id, !!curPreset && curPreset.id === p.id, p.lab, '', p.icon), (id) => set({ segs: Zb.PRESETS.find((p) => p.id === id).segs.map((s) => Object.assign({ turn: 0 }, s)) }));
@@ -354,11 +392,10 @@
     $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' +
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
-      (cfg.typ === 'B' ? '<p class="sub-h">Madlo</p><div class="grid g2" id="madla"></div>' : '');
+      (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : '');
     group($('profs'), Zb.RAILS[cfg.typ], (p) => optBtn(p.id, p.id === cfg.rail, 'Jekl ' + p.lab, p.sub), (id) => set({ rail: id }));
     group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
     if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
-    if (cfg.typ === 'B') group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40, zakryje horní styky' }, { id: 'n', l: 'Bez madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
     const ov = Zb.overAllowed(cfg);
     $('ovT').disabled = !ov.top; $('ovB').disabled = !ov.bot;
     if (document.activeElement !== $('ovT')) $('ovT').value = cfg.overTop;
@@ -369,7 +406,7 @@
     $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
 
     const pOK = Zb.patkaAllowed(cfg);
-    group($('anchors'), Zb.ANCHOR, (a) => optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', a.id === 'patka' && !pOK, a.id === 'patka' && !pOK ? (cfg.typ === 'B' ? 'Typ bez sloupků má špruše přes spodní rám – kotví se jen z boku.' : 'Patky jen na rovné podlaze – na schodišti kotvíme z boku.') : ''), (id) => set({ anchor: id }));
+    group($('anchors'), Zb.ANCHOR, (a) => optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', a.id === 'patka' && !pOK, a.id === 'patka' && !pOK ? (!cfg.sloupky ? 'Patky se dávají pod sloupky – bez sloupků se kotví z boku.' : 'Patky jen na rovné podlaze – na schodišti kotvíme z boku.') : ''), (id) => set({ anchor: id }));
     const bez = cfg.anchor === 'bez';
     $('baseLab').hidden = bez; $('bases').hidden = bez;
     group($('bases'), Zb.BASE, (b) => optBtn(b.id, b.id === cfg.base, b.lab, b.sub), (id) => set({ base: id }));
@@ -378,6 +415,7 @@
     if (document.activeElement !== $('arm')) $('arm').value = cfg.arm;
     $('anchorNote').textContent = cfg.anchor === 'bocni' ? 'Rameno vede od rámu skrz zateplení k čelu nosné desky, tam se plotna 120×120 přikotví dvěma závitovými tyčemi M12. Rameno = fasáda + mezera k rámu (obvykle +50 mm).'
       : cfg.anchor === 'patka' ? 'Pod každým sloupkem patka 100×120×8 mm se dvěma kotvami M12.' : 'Dodáme jen zábradlí, kotvení si navrhnete a provedete sami.';
+    renderKotvy();
 
     group($('fins'), Zb.FIN, (f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.sub + '</span></button>', (id) => set({ fin: id }));
 
@@ -396,6 +434,77 @@
     document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
     viewer.update(A, { ctx: ui.ctx });
   }
+
+  /* ---------- kotvy: rozvinutý pás ---------- */
+  function renderKotvy() {
+    const an = A.lay.anch, box = $('kotvyBox');
+    box.hidden = cfg.anchor === 'bez' || !an;
+    if (box.hidden) return;
+    const KW = Math.max(320, Math.round($('kStrip').clientWidth || 600)), KX0 = 18, KX1 = KW - 18;   // pás v šířce panelu – písmo se nezmenšuje
+    const k = A.kotvy, T = an.total, X = (sv) => KX0 + (KX1 - KX0) * sv / T, u = an.used, mov = an.movable;
+    if (ui.ksel != null && ui.ksel >= u.length) ui.ksel = null;
+    let g = '<svg viewBox="0 0 ' + KW + ' 96" role="img" aria-label="Rozmístění kotev podél zábradlí">';
+    (an.groups || []).forEach((gr, i) => { g += '<text x="' + X((gr.s0 + gr.s1) / 2) + '" y="14" text-anchor="middle">pole ' + (i + 1) + '</text>'; });
+    (an.verts || []).forEach((v) => { g += '<line class="vt" x1="' + X(v) + '" x2="' + X(v) + '" y1="20" y2="58"></line>'; });
+    g += '<line class="rail" x1="' + KX0 + '" x2="' + KX1 + '" y1="40" y2="40"></line>';
+    (an.posts || []).forEach((ps) => { g += '<rect x="' + (X(ps) - 2) + '" y="22" width="4" height="18" fill="var(--muted)"></rect>'; });
+    (an.joints || []).forEach((j) => { g += '<line class="jt" x1="' + X(j) + '" x2="' + X(j) + '" y1="32" y2="48"></line>'; });
+    if (mov) an.cand.forEach((c) => { g += '<circle class="cd" cx="' + X(c) + '" cy="40" r="1.6"></circle>'; });
+    const lab = (x, y, t, cls) => '<text x="' + x + '" y="' + y + '" text-anchor="middle" class="' + cls + '">' + t + '</text>';
+    if (u.length) {
+      g += lab((KX0 + X(u[0])) / 2, 76, nf(Math.round(k.ends[0])), k.endLvl[0]);
+      g += lab((X(u[u.length - 1]) + KX1) / 2, 76, nf(Math.round(k.ends[1])), k.endLvl[1]);
+      k.gaps.forEach((gp, i) => { if (X(u[i + 1]) - X(u[i]) > 30 || k.lvl[i] !== 'ok') g += lab((X(u[i]) + X(u[i + 1])) / 2, i % 2 && X(u[i + 1]) - X(u[i]) < 44 ? 88 : 76, nf(Math.round(gp)), k.lvl[i]); });
+    }
+    u.forEach((sv, i) => { g += '<circle class="an' + (mov ? '' : ' fix') + (i === ui.ksel ? ' sel' : '') + '" data-i="' + i + '" cx="' + X(sv) + '" cy="40" r="8"></circle>'; });
+    g += '<text x="' + KX0 + '" y="62">0</text><text x="' + KX1 + '" y="62" text-anchor="end">' + nf(Math.round(T)) + ' mm</text></svg>';
+    const el = $('kStrip'); el.innerHTML = g;
+    $('kNote').textContent = mov
+      ? 'Kotvu chyťte a táhněte – přichytí se do nejbližší mezery mezi špruše (tečky), nikdy do rohu, styku pole ani na špruši. Čísla pod pásem jsou mezery v mm: oranžová = nad doporučenou hodnotou, červená = nad maximem (poptávku nepustí).'
+      : 'Patky jsou pod sloupky – posouvají se roztečí sloupků v kroku 1.';
+    ['kRoz', 'kSel', 'kAdd', 'kDel', 'kReset'].forEach((id) => { $(id).disabled = !mov; });
+    if (document.activeElement !== $('kRoz')) $('kRoz').value = cfg.kotvyRoztec == null ? '' : cfg.kotvyRoztec;
+    $('kSel').disabled = !mov || ui.ksel == null; $('kDel').disabled = !mov || ui.ksel == null || u.length < 2;
+    if (document.activeElement !== $('kSel')) $('kSel').value = ui.ksel == null ? '' : Math.round(u[ui.ksel]);
+    $('kSelLab').firstChild.textContent = ui.ksel == null ? 'Vybraná kotva – klikněte na ni' : 'Kotva ' + (ui.ksel + 1) + ' – od začátku [mm]';
+    if (!mov) return;
+    const svgEl = el.querySelector('svg');
+    const toS = (ev) => { const r = svgEl.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * KW; return Math.max(0, Math.min(T, (x - KX0) / (KX1 - KX0) * T)); };
+    const near = (sv, skip) => an.cand.filter((c) => !u.some((x, j) => j !== skip && x === c)).reduce((b, c) => (b == null || Math.abs(c - sv) < Math.abs(b - sv) ? c : b), null);
+    el.querySelectorAll('circle.an').forEach((c) => c.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); const i = Number(c.dataset.i); ui.ksel = i; c.setPointerCapture(ev.pointerId); c.classList.add('sel');
+      let cur = u[i];
+      const mv = (e) => { const sn = near(toS(e), i); if (sn != null) { cur = sn; c.setAttribute('cx', X(sn)); $('kSel').value = Math.round(sn); } };
+      const up = () => { c.removeEventListener('pointermove', mv); c.removeEventListener('pointerup', up); c.removeEventListener('pointercancel', up); const nu = u.slice(); nu[i] = cur; moveTo(nu, cur); };
+      c.addEventListener('pointermove', mv); c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+    }));
+  }
+  function moveTo(list, selS) {
+    const nu = list.slice().sort((a, b) => a - b);
+    ui.ksel = selS == null ? null : nu.indexOf(selS);
+    set({ kotvyPos: nu });
+  }
+  $('kRoz').addEventListener('change', (e) => { const v = e.target.value.trim(); ui.ksel = null; set({ kotvyRoztec: v === '' ? null : Number(v), kotvyPos: null }); });
+  $('kReset').addEventListener('click', () => { ui.ksel = null; set({ kotvyPos: null }); });
+  $('kSel').addEventListener('change', (e) => {
+    const an = A.lay.anch, u = an.used, i = ui.ksel; if (i == null) return;
+    const want = Number(e.target.value); if (!isFinite(want)) return;
+    const sn = an.cand.filter((c) => !u.some((x, j) => j !== i && x === c)).reduce((b, c) => (b == null || Math.abs(c - want) < Math.abs(b - want) ? c : b), null);
+    if (sn == null) return; const nu = u.slice(); nu[i] = sn; moveTo(nu, sn);
+  });
+  $('kAdd').addEventListener('click', () => {
+    // nová kotva doprostřed největší mezery (i u konců)
+    const an = A.lay.anch, u = an.used, T = an.total, pts = [0].concat(u, [T]);
+    let bi = 0; for (let i = 1; i < pts.length - 1; i++) if (pts[i + 1] - pts[i] > pts[bi + 1] - pts[bi]) bi = i;
+    const mid = (pts[bi] + pts[bi + 1]) / 2, free = an.cand.filter((c) => u.indexOf(c) < 0);
+    if (!free.length) return;
+    const sn = free.reduce((b, c) => (Math.abs(c - mid) < Math.abs(b - mid) ? c : b));
+    moveTo(u.concat([sn]), sn);
+  });
+  $('kDel').addEventListener('click', () => { const u = A.lay.anch.used; if (ui.ksel == null || u.length < 2) return; const nu = u.slice(); nu.splice(ui.ksel, 1); ui.ksel = null; set({ kotvyPos: nu }); });
+  window.addEventListener('resize', () => { clearTimeout(ui.rt); ui.rt = setTimeout(renderKotvy, 150); });
+  $('pp').addEventListener('input', (e) => set({ postPitch: Number(e.target.value), kotvyPos: null }));
+  $('ppn').addEventListener('change', (e) => set({ postPitch: Number(e.target.value), kotvyPos: null }));
 
   $('segAdd').addEventListener('click', () => { const segs = cfg.segs.map((s) => Object.assign({}, s)); if (segs.length >= 8) return; segs[segs.length - 1].turn = 90; segs.push({ L: 2000, rise: 0, turn: 0 }); set({ segs }); });
   document.querySelectorAll('#sideT button').forEach((b) => b.addEventListener('click', () => set({ side: b.dataset.side })));
