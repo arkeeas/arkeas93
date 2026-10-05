@@ -204,7 +204,9 @@
     kotva: { beton: 190, zdivo: 260, ocel: 90 }, zamereni: 1500, kotveni: 1200, montazM: 950, montazKotva: 150, slotClear: 0.5,
     zamekSpruse: 45,                             // vyřezání zámečku na konci špruše (pila to neumí) – Kč/ks, orientačně
     // kotvy – meze nastavuje dílna (zatím výchozí odhad, NE statický výpočet): mezera mezi kotvami a přesah konce za poslední kotvu [mm]
-    kotvaMax: 1500, kotvaDop: 1200, kotvaKonecMax: 600, kotvaKonecDop: 400
+    kotvaMax: 1500, kotvaDop: 1200, kotvaKonecMax: 600, kotvaKonecDop: 400,
+    // řezný plán – nastavuje dílna (výchozí odhad): délka tyče, prořez pily, řez a nevyužitelný konec tyče na K2 (upínač) [mm]
+    tycDelka: 6000, prorezPila: 3, prorezK2: 1, zbytekK2: 120
   };
   const OVER_MAX = 400, POST_MIN = 600, POST_MAX = 1500;
   const rates0 = (r) => { const R = Object.assign({}, DEFAULT_RATES, r || {}); R.kotva = Object.assign({}, DEFAULT_RATES.kotva, (r && r.kotva) || {}); return R; };
@@ -466,7 +468,7 @@
 
     // madla
     const rails = {};
-    segs.forEach((s, k) => [[0, 'horní madlo'], [1, 'spodní madlo']].forEach(([level, nm]) => {
+    segs.forEach((s, k) => [[0, P.handrail ? 'horní rám' : 'horní madlo'], [1, P.handrail ? 'spodní rám' : 'spodní madlo']].forEach(([level, nm]) => {
       const off = offZ(level), c0 = endPlane(k, true, level), c1 = endPlane(k, false, level);
       const m = { kind: 'tube', role: 'rail', name: nm + (s.sloped ? ' šikmé' : ''), prof, p0: add(s.p0, off), d: s.d, e1: s.w, e2: s.up, h1: a, h2: a, t: T,
         cut0: { p: c0.p, n: c0.n }, cut1: { p: c1.p, n: c1.n }, holes: [], seg: k, level };
@@ -973,7 +975,7 @@
         return;
       }
       const vol = volume(m.solid), L = m.L, nh = (m.holes || []).length;
-      if (m.kind === 'wood') { woodM += L * q / 1000; rows.push({ poz, kind: 'wood', role: m.role, name, prof: m.prof, L, len: nf(L, 1), cut: m.a1 + '° / ' + m.a2 + '°', feat: '', q, stroj: 'truhlář', file: '', part: m }); return; }
+      if (m.kind === 'wood') { woodM += L * q / 1000; rows.push({ poz, kind: 'wood', role: m.role, name, prof: m.prof, L, len: nf(L, 1), cut: nf(m.a1, m.a1 % 1 ? 1 : 0) + '° / ' + nf(m.a2, m.a2 % 1 ? 1 : 0) + '°', feat: '', q, stroj: 'truhlář', file: '', part: m }); return; }
       kg += vol * 7.85e-6 * q;
       area += (4 * m.h1 + 4 * m.h2) * L * 1e-6 * q;     // vnější povrch (obvod × délka)
       if (m.kind === 'tube') tubeM += L * q / 1000; else barM += L * q / 1000;
@@ -981,7 +983,7 @@
       const nt = m.tabs || 0; tabs += nt * q;
       const tube = m.kind === 'tube';
       const pr = m.prof.replace('jekl ', '').replace('PL ', 'PL').replace(/×/g, 'x');
-      rows.push({ poz, kind: tube ? 'tube' : 'bar', role: m.role, name, prof: m.prof, L, len: nf(L, 1), cut: m.a1 + '° / ' + m.a2 + '°', feat: nh ? nh + '× drážka pro zámek' : nt ? nt + '× zámeček ' + m.tw + ' mm' : '', q,
+      rows.push({ poz, kind: tube ? 'tube' : 'bar', role: m.role, name, prof: m.prof, L, len: nf(L, 1), cut: nf(m.a1, m.a1 % 1 ? 1 : 0) + '° / ' + nf(m.a2, m.a2 % 1 ? 1 : 0) + '°', feat: nh ? nh + '× drážka pro zámek' : nt ? nt + '× zámeček ' + m.tw + ' mm' : '', q,
         stroj: tube ? 'K2' : 'pila', file: poz + '_' + pr + '_L' + Math.round(L) + '_' + q + 'ks.step', part: m });
       if (tube && L > 6000) problems.push(poz + ' ' + name + ': délka ' + nf(L) + ' mm je přes tyč 6 m – potřeba styk.');
     });
@@ -1029,6 +1031,36 @@
     return { cfg, R, build: B, lay, rows, parts, kg, area, tubeM, barM, woodM, slots, tabs, kotvy, meas, welds, rods, anchorsN, lenM, price, svc, svcPrice, total, vatOf: vat, warns, problems, locks: B.locks };
   }
 
+  /* ---------- řezný plán: kusy na tyče (první vhodná, od nejdelšího) ----------
+     Délka kusu = nejdelší hrana dílu (pokos se počítá celý, kusy se do sebe nezaklesávají – na straně jistoty).
+     K2: každá tyč má nevyužitelný konec v upínači; pila: prořez za každým kusem. */
+  function cutPlan(A, R) {
+    R = rates0(R || A.R);
+    const groups = new Map();
+    A.rows.forEach((r) => {
+      if (r.kind !== 'tube' && r.kind !== 'bar') return;
+      const k = r.prof + '|' + r.stroj;
+      if (!groups.has(k)) groups.set(k, { prof: r.prof, stroj: r.stroj, pieces: [] });
+      for (let i = 0; i < r.q * A.cfg.qty; i++) groups.get(k).pieces.push({ poz: r.poz, L: r.L, name: r.name, cut: r.cut });
+    });
+    const out = [];
+    groups.forEach((g) => {
+      const k2 = g.stroj === 'K2', kerf = k2 ? R.prorezK2 : R.prorezPila, cap = R.tycDelka - (k2 ? R.zbytekK2 : 0);
+      const bars = [], over = [];
+      g.pieces.slice().sort((a, b) => b.L - a.L).forEach((pc) => {
+        if (pc.L > cap) { over.push(pc); return; }
+        let bar = bars.find((b) => b.used + pc.L + (b.pieces.length ? kerf : 0) <= cap + 1e-6);
+        if (!bar) { bar = { pieces: [], used: 0 }; bars.push(bar); }
+        bar.used += pc.L + (bar.pieces.length ? kerf : 0); bar.pieces.push(pc);
+      });
+      bars.forEach((b) => { b.rest = R.tycDelka - b.used - (k2 ? R.zbytekK2 : 0); });
+      const usedL = g.pieces.reduce((a, p) => a + p.L, 0);
+      out.push({ prof: g.prof, stroj: g.stroj, stock: R.tycDelka, kerf, end: k2 ? R.zbytekK2 : 0, bars, over, n: g.pieces.length, usedL,
+        util: bars.length ? usedL / (bars.length * R.tycDelka) : 0 });
+    });
+    return out.sort((a, b) => (a.stroj === b.stroj ? 0 : a.stroj === 'K2' ? -1 : 1) || b.usedL - a.usedL);
+  }
+
   /* kontrola rozmístění kotev: červeně (nejde poptat) nad maximum dílny, oranžově nad doporučenou hodnotu */
   function anchorCheck(an, R, cfg) {
     const out = { gaps: [], ends: [0, 0], lvl: [], endLvl: ['ok', 'ok'], msgs: [], groups: [] };
@@ -1071,6 +1103,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { VERSION: '20261005c', TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261005d', TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);

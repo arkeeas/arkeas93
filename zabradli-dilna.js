@@ -46,6 +46,58 @@
     return pages;
   }
 
+  /* řezný plán: co objednat + tyče jako proužky (stejné tyče sloučené) */
+  function reznyPlan(order, A) {
+    const plan = Zb.cutPlan(A), pages = [], M = 80, W = PW - 2 * M;
+    let [c, x] = page(); pages.push(c);
+    let y = 120;
+    const np = () => { [c, x] = page(); pages.push(c); y = 110; txt(x, 'Řezný plán – ' + order.number + ' (pokračování)', M, 70, 24, true); };
+    txt(x, 'Řezný plán – ' + order.number, M, y, 42, true); y += 50;
+    txt(x, fit(x, (order.customer.name || '') + ' · ' + Zb.describe(A.cfg), W, 17), M, y, 17, false, '#555'); y += 50;
+    txt(x, 'Objednat materiál', M, y, 24, true); y += 36;
+    plan.forEach((g) => {
+      txt(x, g.prof + ' (' + g.stroj + ')', M, y, 20); txt(x, g.bars.length + ' × ' + nf(g.stock / 1000, 1) + ' m', M + 520, y, 20, true);
+      txt(x, nf(g.n) + ' kusů · využití ' + Math.round(g.util * 100) + ' %' + (g.over.length ? ' · ' + g.over.length + ' kus(y) delší než tyč!' : ''), M + 700, y, 17, false, g.over.length ? '#B3261E' : '#555'); y += 32;
+    });
+    txt(x, 'Délka kusu = nejdelší hrana (pokos počítán celý). Prořez pily ' + A.R.prorezPila + ' mm, K2 řez ' + A.R.prorezK2 + ' mm + konec v upínači ' + A.R.zbytekK2 + ' mm. Nastavení: Dílna → Ceník.', M, y + 8, 15, false, '#777'); y += 50;
+    const COL = ['#E8D6C8', '#D3DFE8', '#DCE8D3', '#E8E2C8', '#E2D3E8', '#C8E8E2'];
+    plan.forEach((g) => {
+      if (y > PH - 220) np();
+      x.fillStyle = '#111'; x.fillRect(M, y, W, 2); y += 36;
+      txt(x, g.prof + ' – ' + (g.stroj === 'K2' ? 'K2 (STEP díly v dily/K2)' : 'pila'), M, y, 24, true); y += 14;
+      const pozCol = {}; let ci = 0;
+      const pat = new Map();
+      g.bars.forEach((b) => { const k = b.pieces.map((p) => p.poz + ':' + Math.round(p.L)).join('|'); if (!pat.has(k)) pat.set(k, { b, n: 0 }); pat.get(k).n++; });
+      pat.forEach(({ b, n }) => {
+        if (y > PH - 120) np();
+        y += 24;
+        txt(x, n + '× tyč', M, y + 30, 20, true);
+        const bx = M + 110, bw = W - 110, sc = bw / g.stock;
+        x.fillStyle = '#F2F2F2'; x.fillRect(bx, y + 6, bw, 40); x.strokeStyle = '#999'; x.lineWidth = 1; x.strokeRect(bx, y + 6, bw, 40);
+        let px = bx;
+        b.pieces.forEach((pc, i) => {
+          if (i) px += g.kerf * sc;
+          if (!(pc.poz in pozCol)) pozCol[pc.poz] = COL[ci++ % COL.length];
+          const w = pc.L * sc;
+          x.fillStyle = pozCol[pc.poz]; x.fillRect(px, y + 6, w, 40); x.strokeStyle = '#333'; x.strokeRect(px, y + 6, w, 40);
+          const lab = pc.poz + ' ' + nf(pc.L, pc.L % 1 ? 1 : 0);
+          x.font = '600 14px ' + FONT;
+          if (x.measureText(lab).width < w - 6) txt(x, lab, px + w / 2, y + 31, 14, true, '#111', 'center');
+          else if (x.measureText(pc.poz).width < w - 4) txt(x, pc.poz, px + w / 2, y + 31, 12, true, '#111', 'center');
+          px += w;
+        });
+        if (g.end) { x.fillStyle = '#bbb'; x.fillRect(bx + bw - g.end * sc, y + 6, g.end * sc, 40); }
+        y += 52;
+        const list = []; b.pieces.forEach((pc) => { const l = list.find((q) => q.poz === pc.poz); if (l) l.q++; else list.push({ poz: pc.poz, q: 1, L: pc.L, cut: pc.cut }); });
+        txt(x, fit(x, list.map((q) => q.q + '× ' + q.poz + ' ' + nf(q.L, q.L % 1 ? 1 : 0) + (q.cut && q.cut !== '0° / 0°' ? ' (' + q.cut + ')' : '')).join('  ·  ') + '   |   zbytek ' + nf(Math.max(0, Math.round(b.rest))) + ' mm', bw, 15), bx, y + 4, 15, false, '#333');
+        y += 14;
+      });
+      g.over.forEach((pc) => { if (y > PH - 80) np(); y += 30; txt(x, pc.poz + ' ' + pc.name + ' ' + nf(pc.L) + ' mm – delší než tyč, potřeba styk', M, y, 17, true, '#B3261E'); });
+      y += 30;
+    });
+    return pages;
+  }
+
   function doklad(order, A) {
     const [c, x] = page(), M = 110;
     txt(x, 'TESTOVACÍ DOKLAD – NENÍ DAŇOVÝ DOKLAD', M, 140, 22, true, '#B3261E');
@@ -82,6 +134,7 @@
     files.push({ name: dir + num + '_sestava.step', data: G.stepFile(num + '_sestava', A.lay.members.map((m) => m.solid)) });
     if (typeof document !== 'undefined') {
       files.push({ name: dir + num + '_kusovnik.pdf', data: G.pdfFromCanvases(kusovnik(order, A)) });
+      files.push({ name: dir + num + '_rezny_plan.pdf', data: G.pdfFromCanvases(reznyPlan(order, A)) });
       files.push({ name: dir + num + '_doklad_o_zaplaceni.pdf', data: G.pdfFromCanvases([doklad(order, A)]) });
     }
     return { filename: dir.slice(0, -1) + '.zip', bytes: G.zip(files), files: files.map((f) => f.name), problems, analysis: A };
@@ -96,14 +149,14 @@
     if (!A) return;
     const o = order(), num = G.asciiName(o.number), dir = G.asciiName(o.customer.name) + '_' + num + '/';
     const by = (k) => A.rows.filter((r) => r.kind === k && r.file).map((r) => '    ' + r.file).join('\n');
-    $('zFiles').textContent = dir + '\n  ' + num + '_sestava.step\n  ' + num + '_kusovnik.pdf\n  ' + num + '_doklad_o_zaplaceni.pdf\n  dily/C2/\n' + by('plate') + '\n  dily/K2/\n' + by('tube') + '\n  dily/pasovina/\n' + by('bar');
+    $('zFiles').textContent = dir + '\n  ' + num + '_sestava.step\n  ' + num + '_kusovnik.pdf\n  ' + num + '_rezny_plan.pdf\n  ' + num + '_doklad_o_zaplaceni.pdf\n  dily/C2/\n' + by('plate') + '\n  dily/K2/\n' + by('tube') + '\n  dily/pasovina/\n' + by('bar');
   }
   function visible() { return $('p-zab') && !$('p-zab').hidden; }
   function render() {
     A = Zb.analyze(cfg, rates);
     $('zCfg').innerHTML = '<strong>' + esc(Zb.describe(cfg)) + '</strong><br><span style="color:var(--muted)">Trasa: ' + cfg.segs.map((s, i) => (i + 1) + ') ' + s.L + (s.rise ? ' ↑' + s.rise : '') + (s.turn ? ' ' + (s.turn > 0 ? '↰' : '↱') + Math.abs(s.turn) + '°' : '')).join(' · ') + ' · stavba ' + (cfg.side === 'L' ? 'vlevo' : 'vpravo') + '</span>' +
       (A.svc.length ? '<br>Služby: ' + A.svc.map((s) => esc(s.lab)).join(', ') : '');
-    const facts = [['Délka', nf(A.lenM, 2) + ' m'], ['Ocel', nf(A.kg, 1) + ' kg'], ['Jekl', nf(A.tubeM, 1) + ' m'], ['Pásovina', nf(A.barM, 1) + ' m'], ['Kotvy', A.anchorsN], ['Zámky', A.locks.ok ? A.slots + ' drážek' + (A.tabs ? ', ' + A.tabs + ' zámečků' : '') : 'ne'], ['Svary (odhad)', A.welds], ['Dílů / pozic', A.parts.length + ' / ' + A.rows.length]];
+    const facts = [['Délka', nf(A.lenM, 2) + ' m'], ['Ocel', nf(A.kg, 1) + ' kg'], ['Jekl', nf(A.tubeM, 1) + ' m'], ['Pásovina', nf(A.barM, 1) + ' m'], ['Kotvy', A.anchorsN], ['Zámky', A.locks.ok ? A.slots + ' drážek' + (A.tabs ? ', ' + A.tabs + ' zámečků' : '') : 'ne'], ['Tyče', Zb.cutPlan(A).map((g) => g.bars.length + '× ' + g.prof.replace('jekl ', '')).join(', ')], ['Svary (odhad)', A.welds], ['Dílů / pozic', A.parts.length + ' / ' + A.rows.length]];
     $('zFacts').innerHTML = facts.map((f) => '<div class="fact"><b>' + esc(f[1]) + '</b><span>' + f[0] + '</span></div>').join('');
     $('zWarns').innerHTML = A.warns.filter((w) => w.lvl !== 'info').map((w) => '<div>' + esc(w.t) + '</div>').join('') + '<div style="background:var(--line-soft);color:var(--ink)">' + esc(A.locks.why) + '</div>';
     $('zBom').innerHTML = A.rows.map((r) => '<tr><td class="mono">' + r.poz + '</td><td>' + esc(r.name) + (r.feat ? ' <span style="color:var(--muted);font-size:12px">(' + esc(r.feat) + ')</span>' : '') + '</td><td>' + esc(r.prof) + '</td><td class="num mono">' + r.len + '</td><td class="num mono">' + r.cut + '</td><td class="num">' + r.q + '</td><td>' + r.stroj + '</td><td class="mono">' + esc(r.file) + '</td></tr>').join('');
@@ -123,7 +176,7 @@
   function msg(t, kind) { const m = $('zMsg'); m.hidden = false; m.innerHTML = t; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
 
   /* ---------- ceník zábradlí ---------- */
-  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['kotvaMax', 'Kotvy – max. mezera (nad = nejde poptat)', 'mm'], ['kotvaDop', 'Kotvy – doporučená mezera (nad = varování)', 'mm'], ['kotvaKonecMax', 'Kotvy – max. přesah konce za kotvu', 'mm'], ['kotvaKonecDop', 'Kotvy – doporučený přesah konce', 'mm'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
+  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['kotvaMax', 'Kotvy – max. mezera (nad = nejde poptat)', 'mm'], ['kotvaDop', 'Kotvy – doporučená mezera (nad = varování)', 'mm'], ['kotvaKonecMax', 'Kotvy – max. přesah konce za kotvu', 'mm'], ['kotvaKonecDop', 'Kotvy – doporučený přesah konce', 'mm'], ['tycDelka', 'Řezný plán – délka tyče', 'mm'], ['prorezPila', 'Řezný plán – prořez pily', 'mm'], ['prorezK2', 'Řezný plán – řez K2', 'mm'], ['zbytekK2', 'Řezný plán – konec tyče v upínači K2', 'mm'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
     ['madlo', 'Dřevěné madlo', 'Kč/m'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže', '%'], ['zamereni', 'Zaměření', 'Kč'], ['kotveni', 'Pomoc s kotvením', 'Kč'], ['montazM', 'Montáž', 'Kč/m'], ['montazKotva', 'Montáž – kotva', 'Kč/ks']];
   const KF = [['beton', 'Kotva do betonu'], ['zdivo', 'Kotva do zdiva (sítko)'], ['ocel', 'Šroub do oceli']];
   function fillRates() {

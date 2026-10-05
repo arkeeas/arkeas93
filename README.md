@@ -40,7 +40,7 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `zabradli.html` | stránka Zábradlí pro zákazníky |
 | `zabradli-core.js` | zábradlí bez 3D: trasa, díly typu 01 a 02 (port generátorů ze skillu sldprt-zabradli), zámky, kotvy, tělesa, kusovník, cena (běží i v Node) |
 | `zabradli-viewer.js` | 3D náhled zábradlí se stavbou (deska, fasáda) |
-| `zabradli-dilna.js` | dílna – záložka *Zábradlí – podklady*: kusovník, 3D, ZIP (sestava STEP, `dily/K2` jekly, `dily/pasovina`, `dily/C2` plotny a patky, kusovník PDF, doklad), ceník zábradlí |
+| `zabradli-dilna.js` | dílna – záložka *Zábradlí – podklady*: kusovník, 3D, ZIP (sestava STEP, `dily/K2` jekly, `dily/pasovina`, `dily/C2` plotny a patky, kusovník PDF, **řezný plán PDF**, doklad), ceník zábradlí |
 | `lokal.js` | náhrada databáze a stahování mimo Claude (localStorage) |
 | `modebar.css` | horní přepínač Zákazník / Dílna |
 | `tests/` | kontrola STEP bez CAD, zámků a drážek, stránky Testing |
@@ -89,5 +89,7 @@ Pravidla v `zabradli-core.js` (společná pro oba typy, funkce `barSet` a `joint
 - **širší než rám** → vždy zámečky.
 
 U spoje na tupo / se zámečky je přesah **samostatný kus** (se zámečky má spodní rám drážky z obou stran). Přesah nahoru jen bez dřevěného madla, dolů jen při kotvení z boku (jinak je spodní rám u podlahy). Příplatek za zámeček na špruši je v Dílna → Ceník (`zamekSpruse`, Kč/ks, zatím orientačně). Zinkovací otvory se nepřidávají. Patky shora jen se sloupky na rovině. **Vlastní úhel rohu** (rychlý režim i stavba): vnitřní úhel 60–179° (změna směru max. ±120°, ostřejší roh by dal pokosy přes 60°). Krajní špruše se od rohu odsadí podle úhlu a šířky špruše (c ≥ š/2·cotg α + t/2), aby se v rohu nesrazily – test kontroluje překryv svislých dílů v půdorysu. Skripty se načítají s `?v=verze` a stránka zábradlí hlásí, když se načte jádro jiné verze (stará mezipaměť) – při změně jádra zvedni verzi v `zabradli-core.js` i v HTML. Se sloupky jen čtvercový jekl (sloupek z 40×20 je napříč slabý). Interně je „se sloupky“ = typ A (port railing.py), „bez sloupků“ = typ B (railing_b.py) – kvůli uloženým poptávkám.
+
+**Řezný plán** (`cutPlan` v `zabradli-core.js`, PDF v ZIPu): kusy jeklu a pásoviny na tyče od nejdelšího (první vhodná tyč), stejné tyče sloučené, nahoře co objednat. Délka kusu = nejdelší hrana (pokos celý, kusy se nezaklesávají – na straně jistoty). Délka tyče, prořez pily, řez K2 a nevyužitelný konec v upínači K2 (výchozí 6000 / 3 / 1 / 120 mm, odhad) nastavuje Dílna → Ceník. Cena zatím počítá materiál z kg, ne z počtu tyčí.
 
 **Kotvy:** meze `kotvaMax` / `kotvaDop` (mezera mezi kotvami) a `kotvaKonecMax` / `kotvaKonecDop` (přesah konce za krajní kotvu) jsou v Dílna → Ceník. Výchozí 1500 / 1200 / 600 / 400 mm jsou **odhad, ne statický výpočet** – dílna je musí nastavit. Mezera přes půdorysný roh se hlídá jen proti maximu (roh je ztužený). Každé pole (bez sloupků) musí mít aspoň jednu kotvu. Výjimka s podpisem odpovědné osoby zatím není. Ceník zábradlí je zatím orientační.

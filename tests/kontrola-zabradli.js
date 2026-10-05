@@ -90,6 +90,11 @@ function check(cfg) {
     if (Math.abs(depth - jt.rail.t) > 1e-6) errs.push(m.name + ": zámeček " + depth.toFixed(2) + " mm místo stěny " + jt.rail.t);
   }));
   if (!(A.price > 0)) errs.push("cena nevyšla");
+  // řezný plán: každý kus jekl/pásoviny právě jednou, žádná tyč přes délku
+  const R = A.R, plan = Z.cutPlan(A), want = A.rows.filter((r) => r.kind === "tube" || r.kind === "bar").reduce((a, r) => a + r.q * A.cfg.qty, 0);
+  const got = plan.reduce((a, g) => a + g.bars.reduce((b, x) => b + x.pieces.length, 0) + g.over.length, 0);
+  if (got !== want) errs.push("řezný plán: " + got + " kusů místo " + want);
+  plan.forEach((g) => g.bars.forEach((b) => { const L = b.pieces.reduce((a, p) => a + p.L, 0) + (b.pieces.length - 1) * g.kerf + g.end; if (L > R.tycDelka + 1e-6) errs.push("řezný plán: tyč " + g.prof + " přeplněná " + L.toFixed(1)); }));
   // svislé díly (špruše, sloupky) se v půdorysu nesmí překrývat – hlavně v rozích
   const rect = (m) => ({ c: [m.p0[0], m.p0[1]], a: [[m.e1[0], m.e1[1]], [m.e2[0], m.e2[1]]], h: [m.h1, m.h2] });
   const ov = (P, Q) => [...P.a, ...Q.a].every((n) => {
