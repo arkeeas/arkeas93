@@ -181,6 +181,10 @@
     { id: 'kotveni', lab: 'Pomoc s kotvením', sub: 'posoudíme podklad a navrhneme kotvy' },
     { id: 'montaz', lab: 'Montáž', sub: 'osadíme a ukotvíme' }
   ];
+  /* zatočení = změna směru (kladně vlevo). Vlastní úhel: vnitřní úhel rohu 60–179°, tedy změna směru nejvýš ±120°,
+     ostřejší roh by dal pokosy přes 60° (dlouhé, slabé spoje). Zaokrouhleno na 0,5°. */
+  const TURN_MAX = 120;
+  const normTurn = (v) => { const n = Number(v); return isFinite(n) ? Math.round(Math.max(-TURN_MAX, Math.min(TURN_MAX, n)) * 2) / 2 : 0; };
   const TURNS = [{ v: 0, lab: 'rovně' }, { v: 90, lab: 'vlevo 90°' }, { v: -90, lab: 'vpravo 90°' }, { v: 45, lab: 'vlevo 45°' }, { v: -45, lab: 'vpravo 45°' }];
   const PRESETS = [
     { id: 'rovne', lab: 'Rovné', icon: 'M6 24 H58', segs: [{ L: 3000, rise: 0 }] },
@@ -218,7 +222,8 @@
     o.segs = segs.map((s, i) => {
       const L = Math.round(num(s.L, 300, 12000, 3000));
       const rise = Math.round(num(s.rise, -L, L, 0));                 // max. sklon 45°
-      const o2 = { L, rise, turn: i < segs.length - 1 ? pick(TURNS, Number(s.turn), 0) : 0 };
+      const o2 = { L, rise, turn: i < segs.length - 1 ? normTurn(s.turn) : 0 };
+      if (o2.turn && (s.custom || !TURNS.some((t) => t.v === o2.turn))) o2.custom = true;
       if (rise && s.steps) o2.steps = Math.round(num(s.steps, 2, 40, 2));      // počet stupňů – jen pro náhled stavby
       return o2;
     });
@@ -264,9 +269,9 @@
   function normStavba(st) {
     if (!st || typeof st !== 'object') return null;
     const bl = (Array.isArray(st.bloky) ? st.bloky : []).slice(0, 8).map((b, i, arr) => {
-      const turn = i < arr.length - 1 ? pick(TURNS, Number(b.turn), 0) : 0;
-      if (b.t === 'schody') return { t: 'schody', n: nn(b.n, 2, 40), h: nn(b.h, 50, 300), g: nn(b.g, 100, 500), H: nn(b.H, 100, 8000), D: nn(b.D, 100, 15000), dir: b.dir === 'dolu' ? 'dolu' : 'nahoru', turn };
-      return { t: 'hrana', A: nn(b.A, 1, 15000), B: nn(b.B, 1, 15000), turn, C: nn(b.C, 1, 2000) };
+      const turn = i < arr.length - 1 ? normTurn(b.turn) : 0, custom = !!turn && (!!b.custom || !TURNS.some((t) => t.v === turn));
+      if (b.t === 'schody') return { t: 'schody', n: nn(b.n, 2, 40), h: nn(b.h, 50, 300), g: nn(b.g, 100, 500), H: nn(b.H, 100, 8000), D: nn(b.D, 100, 15000), dir: b.dir === 'dolu' ? 'dolu' : 'nahoru', turn, custom };
+      return { t: 'hrana', A: nn(b.A, 1, 15000), B: nn(b.B, 1, 15000), turn, custom, C: nn(b.C, 1, 2000) };
     });
     return { on: !!st.on, bloky: bl.length ? bl : [{ t: 'hrana', A: null, B: null, turn: 0, C: null }],
       start: st.start === 'zed' ? 'zed' : 'volny', end: st.end === 'zed' ? 'zed' : 'volny', deska: nn(st.deska, 50, 600) };
@@ -280,12 +285,12 @@
     return bl.map((b, i) => {
       if (b.t === 'schody') {
         const d = stairDims(b), sg = b.dir === 'dolu' ? -1 : 1;
-        return { L: Math.max(300, Math.round((d.n - 1) * d.g)), rise: sg * Math.round((d.n - 1) * d.h), turn: b.turn, steps: d.n };
+        return { L: Math.max(300, Math.round((d.n - 1) * d.g)), rise: sg * Math.round((d.n - 1) * d.h), turn: b.turn, custom: b.custom, steps: d.n };
       }
       let L = b.A && b.B ? (b.A + b.B) / 2 : b.A || b.B || 1000;
       if (i === 0 && st.start === 'zed') L -= WALL_GAP;
       if (i === bl.length - 1 && st.end === 'zed') L -= WALL_GAP;
-      return { L: Math.max(300, Math.round(L)), rise: 0, turn: b.turn };
+      return { L: Math.max(300, Math.round(L)), rise: 0, turn: b.turn, custom: b.custom };
     });
   }
   /* co chybí změřit (nejde poptat) a co přeměřit (varování) */
@@ -315,7 +320,7 @@
         if (b.C == null) missing.push({ i, k: 'C', t: 'Roh za blokem ' + (i + 1) + ': úhlopříčka C mezi značkami 1 m od rohu (u tohoto rohu má vyjít ' + nf(cw) + ' mm)' });
         else {
           const ang = 2 * Math.asin(Math.min(1, b.C / (2 * MARK))) * DEG, dev = ang - want;
-          if (Math.abs(dev) > 1.5) remeasure.push({ i, k: 'C', lvl: Math.abs(dev) > 10 ? 'bad' : 'warn', t: 'Roh za blokem ' + (i + 1) + ': podle úhlopříčky má roh ' + nf(ang, 1) + '° místo ' + want + '° (C má být ' + nf(cw) + ' mm). ' + (Math.abs(dev) > 10 ? 'To je spíš jiný roh, než jste vybrali – zkontrolujte směr zatočení a přeměřte.' : 'Přeměřte; pokud to platí, objednejte zaměření – nepravý roh vyrobíme na míru.') });
+          if (Math.abs(dev) > 1.5) remeasure.push({ i, k: 'C', lvl: Math.abs(dev) > 10 ? 'bad' : 'warn', t: 'Roh za blokem ' + (i + 1) + ': podle úhlopříčky má roh ' + nf(ang, 1) + '° místo ' + want + '° (C má být ' + nf(cw) + ' mm). ' + (Math.abs(dev) > 10 ? 'To je spíš jiný roh, než jste vybrali – zkontrolujte směr zatočení a přeměřte. Pokud míra platí, převezměte změřený úhel (tlačítko u rohu).' : 'Přeměřte; pokud to platí, převezměte změřený úhel (tlačítko u rohu).'), ang: Math.round(ang * 2) / 2 });
         }
       }
     });
@@ -641,8 +646,14 @@
     const bars = [], pd = hh;
     segs.forEach((s, k) => {
       const Lh = s.L * s.cos, first = k === 0, last = k === segs.length - 1;
-      const st = first && P.end_post ? pd - P.bar_t / 2 : first ? P.bar_t / 2 : hw + P.bar_t / 2;
-      const en = Lh - (last && P.end_post ? pd - P.bar_t / 2 : last ? P.bar_t / 2 : hw + P.bar_t / 2);
+      // odsazení krajní špruše od rohu: obdélník špruše (šířka napříč, tloušťka podél) musí zůstat na své straně osy rohu,
+      // jinak se v ostrém rohu nebo u široké špruše srazí se špruší z druhé strany: c ≥ (š/2)·cotg(α) + t/2, α = půlka vnitřního úhlu
+      const keep = (ka, kb) => {
+        const c = Math.max(-1, Math.min(1, -dot(segs[ka].hz, segs[kb].hz))), al = Math.acos(c) / 2;
+        return Math.max(hw + P.bar_t / 2, al > 1e-6 && al < Math.PI / 2 - 1e-6 ? P.bar_w / 2 / Math.tan(al) + P.bar_t / 2 : 0);
+      };
+      const st = first && P.end_post ? pd - P.bar_t / 2 : first ? P.bar_t / 2 : keep(k - 1, k);
+      const en = Lh - (last && P.end_post ? pd - P.bar_t / 2 : last ? P.bar_t / 2 : keep(k, k + 1));
       const nInt = Math.ceil((en - st) / P.pitch_max - 1e-9), pitch = (en - st) / nInt;
       for (let j = 0; j <= nInt; j++) {
         if (P.end_post && ((first && j === 0) || (last && j === nInt))) continue;
@@ -1060,6 +1071,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { VERSION: '20261005c', TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);

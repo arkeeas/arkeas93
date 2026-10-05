@@ -160,7 +160,9 @@ function validate(text, label) {
         if (onLo || onHi) { bboxFaces++; if (dot(fn, sub(sa.o, mid)) <= 0) errs.push("plocha #" + fr.ref + " má normálu dovnitř tělesa"); }
       }
     }
-    if (!bboxFaces) errs.push("nenalezena žádná obalová plocha pro kontrolu orientace");
+    // těleso natočené v obecném úhlu (např. závitová tyč kotvy) nemusí mít plochu rovnoběžnou s osami –
+    // pak orientaci ploch ověří znaménko objemu (normály ven => kladný objem)
+    if (!bboxFaces && !(vol > 1e-6)) errs.push("orientace ploch: bez obalové plochy a objem vychází " + vol.toFixed(3));
     for (const k in use) {
       const u = use[k];
       if (u.length !== 2 || u[0] === u[1]) errs.push("hrana #" + k + " použita " + u.length + "× (" + u.join(",") + ") – skořepina není uzavřená/orientovaná");

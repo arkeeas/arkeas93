@@ -1,6 +1,6 @@
 <!doctype html><html lang="cs"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Zábradlí na míru</title>
-<link rel="stylesheet" href="modebar.css">
+<link rel="stylesheet" href="modebar.css?v=20261005c">
 <div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="zabradli.html" aria-current="page">Zákazník</a><a href="interni.html">Dílna</a><a href="montaz.html">Testing</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap">
@@ -351,15 +351,17 @@
   </form>
 </div>
 
-<script src="lokal.js"></script>
+<script src="lokal.js?v=20261005c"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js"></script>
-<script src="zabradli-core.js"></script>
-<script src="zabradli-viewer.js"></script>
+<script src="core.js?v=20261005c"></script>
+<script src="zabradli-core.js?v=20261005c"></script>
+<script src="zabradli-viewer.js?v=20261005c"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
+  // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
+  if (Zb.VERSION !== '20261005c') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -377,6 +379,14 @@
   }
   const optBtn = (id, on, l, s, ic, dis, title) => '<button type="button" class="opt" data-id="' + id + '" aria-pressed="' + on + '"' + (dis ? ' disabled' : '') + (title ? ' title="' + esc(title) + '"' : '') + '>' + (ic ? svg(ic) : '') + '<span class="l" style="font-weight:600">' + l + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</button>';
 
+  /* ---------- zatočení: předvolby + vlastní úhel (vnitřní úhel rohu 60–179°) ---------- */
+  const turnSel = (t, custom, last) => last ? '<option>konec</option>' :
+    Zb.TURNS.map((x) => '<option value="' + x.v + '"' + (!custom && x.v === t ? ' selected' : '') + '>' + (x.v ? 'zatáčí ' + x.lab : 'rovně') + '</option>').join('') +
+    '<option value="cL"' + (custom && t > 0 ? ' selected' : '') + '>vlevo – vlastní úhel</option><option value="cR"' + (custom && t < 0 ? ' selected' : '') + '>vpravo – vlastní úhel</option>';
+  const inner = (t) => 180 - Math.abs(t);
+  // hodnota selectu -> {turn, custom}; u vlastního úhlu zachová velikost, když jen mění stranu
+  const turnFrom = (v, prev) => (v === 'cL' || v === 'cR') ? { turn: (v === 'cL' ? 1 : -1) * (Math.abs(prev.turn) || 90), custom: true } : { turn: Number(v), custom: false };
+
   /* ---------- úseky ---------- */
   function renderSegs() {
     const el = $('segs'), focusId = document.activeElement && document.activeElement.id;
@@ -384,11 +394,15 @@
       '<span class="no">' + (i + 1) + '</span>' +
       '<label for="sL' + i + '">Délka [mm]<input id="sL' + i + '" data-i="' + i + '" data-k="L" type="number" inputmode="numeric" value="' + s.L + '"></label>' +
       '<label for="sR' + i + '">Převýšení [mm]<input id="sR' + i + '" data-i="' + i + '" data-k="rise" type="number" inputmode="numeric" value="' + s.rise + '"></label>' +
-      '<label class="turn" for="sT' + i + '">Na konci<select id="sT' + i + '" data-i="' + i + '" data-k="turn"' + (i === cfg.segs.length - 1 ? ' disabled' : '') + '>' + Zb.TURNS.map((t) => '<option value="' + t.v + '"' + (t.v === s.turn ? ' selected' : '') + '>' + (i === cfg.segs.length - 1 ? 'konec' : t.lab) + '</option>').join('') + '</select></label>' +
+      '<label class="turn" for="sT' + i + '">Na konci<select id="sT' + i + '" data-i="' + i + '" data-k="turn"' + (i === cfg.segs.length - 1 ? ' disabled' : '') + '>' + turnSel(s.turn, s.custom, i === cfg.segs.length - 1) + '</select>' +
+      (s.custom ? '<span style="display:flex;gap:4px;align-items:center;margin-top:4px">úhel rohu <input id="sA' + i + '" data-i="' + i + '" data-k="ang" type="number" min="60" max="179" step="0.5" value="' + inner(s.turn) + '" style="width:72px">°</span>' : '') + '</label>' +
       '<button type="button" class="del" data-del="' + i + '" aria-label="Odebrat úsek ' + (i + 1) + '"' + (cfg.segs.length < 2 ? ' disabled' : '') + '>×</button></div>').join('');
     el.querySelectorAll('input,select').forEach((x) => x.addEventListener('change', () => {
       const segs = cfg.segs.map((s) => Object.assign({}, s)), i = Number(x.dataset.i);
-      segs[i][x.dataset.k] = Number(x.value); set({ segs });
+      if (x.dataset.k === 'turn') Object.assign(segs[i], turnFrom(x.value, segs[i]));
+      else if (x.dataset.k === 'ang') segs[i].turn = Math.sign(segs[i].turn || 1) * (180 - Math.min(179, Math.max(60, Number(x.value) || 90)));
+      else segs[i][x.dataset.k] = Number(x.value);
+      set({ segs });
     }));
     el.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { const segs = cfg.segs.slice(); segs.splice(Number(b.dataset.del), 1); set({ segs }); }));
     if (focusId && $(focusId)) $(focusId).focus();
@@ -485,6 +499,7 @@
   const HOW = {
     A: ['hrana', 'Svinovacím metrem po čele desky (hraně balkonu / podesty) tam, kde povede zábradlí – od rohu k rohu. U zdi měřte až ke zdi, mezeru 20 mm odečteme sami.'],
     B: ['hrana', 'Stejnou hranu změřte ještě jednou, metr ale přiložte z druhého konce. Chytí to přehlédnutí na metru (např. 3 480 místo 3 840). Má vyjít stejně ±1 cm.'],
+    U: ['roh', 'Vnitřní úhel rohu ve stupních (pravý roh = 90°, tupý roh např. 120°). Když úhel neznáte, nechte 90 a změřte úhlopříčku C – úhel z ní spočítáme a jedním klikem převezmete.'],
     C: ['roh', 'Od rohu odměřte po každé hraně 1 m a udělejte značku (tužka, lepicí páska). Změřte vzdálenost mezi značkami. U pravého rohu vyjde 1 414 mm, u rohu 45° 1 848 mm.'],
     n: ['schody', 'Spočítejte schody – kolikrát vystoupíte, než stojíte na podestě (počítá se i poslední krok na podestu).'],
     h: ['schody', 'Svisle od horní plochy jednoho schodu k horní ploše dalšího. Změřte u 3 schodů a zadejte průměr.'],
@@ -493,7 +508,7 @@
     D: ['schody', 'Vodorovně od hrany prvního schodu k hraně podesty. Nepovinné – zpřesní délku zábradlí.'],
     deska: ['deska', 'Tloušťka betonové desky na čele, bez zateplení. Najdete ji u okapnice, v ostění dveří nebo ve výkresu domu. Kotva potřebuje aspoň 150 mm betonu.']
   };
-  const LAB = { C: 'Úhlopříčka mezi značkami 1 m od rohu', A: 'Délka hrany', B: 'Kontrolní délka (z druhého konce)', n: 'Počet schodů', h: 'Výška schodu', g: 'Hloubka schodu', H: 'Celé převýšení', D: 'Vodorovná délka schodiště', deska: 'Tloušťka nosné desky' };
+  const LAB = { U: 'Úhel rohu (vnitřní, °)', C: 'Úhlopříčka mezi značkami 1 m od rohu', A: 'Délka hrany', B: 'Kontrolní délka (z druhého konce)', n: 'Počet schodů', h: 'Výška schodu', g: 'Hloubka schodu', H: 'Celé převýšení', D: 'Vodorovná délka schodiště', deska: 'Tloušťka nosné desky' };
   const OPT = { H: 'doporučeno', D: 'nepovinné' };
   function stDefault() {
     return { on: true, start: 'volny', end: 'volny', deska: null,
@@ -506,7 +521,7 @@
     '<button type="button" class="help" data-how="' + id + '" data-k="' + k + '" aria-label="Jak měřit: ' + LAB[k] + '">?</button></div><div class="howto" id="how-' + id + '" hidden></div>';
   function renderStavba() {
     const st = cfg.stavba, bl = st.bloky, ms = A.meas || { missing: [], remeasure: [] };
-    const key = JSON.stringify(bl.map((b, i) => [b.t, b.turn, i < bl.length - 1 && b.turn && b.t === 'hrana' && bl[i + 1].t === 'hrana'])) + cfg.anchor;
+    const key = JSON.stringify(bl.map((b, i) => [b.t, b.custom ? 'c' + Math.sign(b.turn) : b.turn, i < bl.length - 1 && b.turn && b.t === 'hrana' && bl[i + 1].t === 'hrana'])) + cfg.anchor;
     if (key !== ui.stKey) {
       ui.stKey = key;
       $('stBlocks').innerHTML = bl.map((b, i) => {
@@ -519,15 +534,19 @@
         h += '</div>';
         if (i < bl.length - 1) {
           const cc = b.turn && b.t === 'hrana' && bl[i + 1].t === 'hrana';
-          h += '<div class="corner"><label>Potom zábradlí<select data-b="' + i + '" data-k="turn">' + Zb.TURNS.map((t) => '<option value="' + t.v + '"' + (t.v === b.turn ? ' selected' : '') + '>' + (t.v ? 'zatáčí ' + t.lab : 'pokračuje rovně') + '</option>').join('') + '</select></label>' +
-            (cc ? '<div>' + mrow('st' + i + 'C', 'C', b.C, 'data-b="' + i + '" data-k="C"') + '</div>' : '<span></span>') + '</div>';
+          h += '<div class="corner"><label>Potom zábradlí<select data-b="' + i + '" data-k="turn">' + turnSel(b.turn, b.custom, false) + '</select></label>' +
+            (b.custom ? mrow('st' + i + 'U', 'U', inner(b.turn), 'data-b="' + i + '" data-k="ang" min="60" max="179" step="0.5"') : '') +
+            (cc ? mrow('st' + i + 'C', 'C', b.C, 'data-b="' + i + '" data-k="C"') + '<div id="stApply' + i + '"></div>' : '') + '</div>';
         }
         return h;
       }).join('');
       $('stDeskaRow').innerHTML = cfg.anchor === 'bocni' ? mrow('stDeska', 'deska', st.deska, 'data-k="deska"') : '';
       document.querySelectorAll('#stavbaBox [data-k]').forEach((x) => { if (x.tagName === 'BUTTON') return; x.addEventListener('change', () => stSet((s2) => {
-        const v = x.value === '' ? null : (x.dataset.k === 'dir' ? x.value : Number(x.value));
-        if (x.dataset.b == null) s2[x.dataset.k] = v; else s2.bloky[Number(x.dataset.b)][x.dataset.k] = v;
+        const v = x.value === '' ? null : (x.dataset.k === 'dir' ? x.value : Number(x.value)), bb = x.dataset.b == null ? null : s2.bloky[Number(x.dataset.b)];
+        if (!bb) s2[x.dataset.k] = v;
+        else if (x.dataset.k === 'turn') Object.assign(bb, turnFrom(x.value, bb));
+        else if (x.dataset.k === 'ang') bb.turn = Math.sign(bb.turn || 1) * (180 - Math.min(179, Math.max(60, v || 90)));
+        else bb[x.dataset.k] = v;
       })); });
       document.querySelectorAll('#stavbaBox [data-how]').forEach((b) => b.addEventListener('click', () => {
         const el = $('how-' + b.dataset.how), H = HOW[b.dataset.k]; el.hidden = !el.hidden;
@@ -546,6 +565,12 @@
     $('stList').innerHTML = items.length ? items.map((it) => '<button type="button" class="w-' + it[0] + '" data-go="' + it[2] + '">' + esc(it[1]) + '</button>').join('')
       : '<div class="box lock on"><span><strong>Vše změřeno a sedí.</strong> I tak doporučujeme zaměření – rozměry před výrobou potvrdíme.</span></div>';
     $('stList').querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { const x = $(b.dataset.go); if (x) { x.scrollIntoView({ block: 'center', behavior: 'smooth' }); x.focus(); } }));
+    bl.forEach((b, i) => {
+      const el = $('stApply' + i); if (!el) return;
+      const m = ms.remeasure.find((r) => r.i === i && r.k === 'C' && r.ang);
+      el.innerHTML = m ? '<button type="button" class="kbtn" style="margin-top:6px" data-apply="' + i + '">Převzít změřený úhel ' + nf(m.ang, 1) + '°</button>' : '';
+      if (m) el.querySelector('button').addEventListener('click', () => stSet((s2) => { const x = s2.bloky[i]; x.turn = Math.sign(x.turn || 1) * (180 - m.ang); x.custom = true; }));
+    });
     renderPlan();
   }
   function renderPlan() {

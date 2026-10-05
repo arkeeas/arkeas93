@@ -90,6 +90,14 @@ function check(cfg) {
     if (Math.abs(depth - jt.rail.t) > 1e-6) errs.push(m.name + ": zámeček " + depth.toFixed(2) + " mm místo stěny " + jt.rail.t);
   }));
   if (!(A.price > 0)) errs.push("cena nevyšla");
+  // svislé díly (špruše, sloupky) se v půdorysu nesmí překrývat – hlavně v rozích
+  const rect = (m) => ({ c: [m.p0[0], m.p0[1]], a: [[m.e1[0], m.e1[1]], [m.e2[0], m.e2[1]]], h: [m.h1, m.h2] });
+  const ov = (P, Q) => [...P.a, ...Q.a].every((n) => {
+    const pr = (R) => Math.abs(R.a[0][0] * n[0] + R.a[0][1] * n[1]) * R.h[0] + Math.abs(R.a[1][0] * n[0] + R.a[1][1] * n[1]) * R.h[1];
+    return Math.abs((P.c[0] - Q.c[0]) * n[0] + (P.c[1] - Q.c[1]) * n[1]) < pr(P) + pr(Q) - 0.01;
+  });
+  const vert = A.parts.filter((m) => ["bar", "post", "end_post"].includes(m.role) && Math.abs(m.d[2]) > 0.99).map(rect);
+  for (let i = 0; i < vert.length; i++) for (let j = i + 1; j < vert.length; j++) if (ov(vert[i], vert[j])) { errs.push("svislé díly se v půdorysu překrývají"); i = vert.length; break; }
   // kotvy: jen na povolených místech, počet ramen = počet kotev
   const an = A.lay.anch;
   if (an && cfg.anchor === "bocni") {
@@ -123,6 +131,9 @@ for (const pid of ["L", "schodypod"]) for (const postPitch of [600, 1500]) for (
   const pr = Z.PRESETS.find((p) => p.id === pid);
   run(Object.assign({ typ: sloupky ? "A" : "B", sloupky, preset: pid, segs: pr.segs, anchor: "bocni", side: "R", madlo: true, postPitch }, kotvy), true);
 }
+// e) vlastní úhly rohů (vnitřní úhel 60–179°), široká i úzká špruše
+for (const turn of [30, 75, 120, -60, -120]) for (const sloupky of [true, false]) for (const bar of ["20x5", "60x10"])
+  run({ typ: sloupky ? "A" : "B", sloupky, preset: "uhel" + turn, segs: [{ L: 3000, rise: 0, turn, custom: true }, { L: 2500, rise: 0, turn: -turn / 2, custom: true }, { L: 2000, rise: 0 }], anchor: "bocni", side: "L", madlo: true, bar }, true);
 // d) stavba z bloků: trasa ze změřených bloků, kontrola měření
 {
   const st = { on: true, start: "zed", end: "volny", deska: 180, bloky: [{ t: "schody", n: 12, h: 172, g: 280, H: 2064, turn: 90 }, { t: "hrana", A: 4480, B: 4484, turn: 90, C: 1414 }, { t: "hrana", A: 3000, B: 3004 }] };
