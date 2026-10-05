@@ -81,6 +81,11 @@ Rozteč patek a odsazení noh se dopočítá z rozměru stolu a profilu jeklu. A
 ```bash
 node tests/kontrola-zabradli.js -v
 ```
-Vzor akce 01 (rám proti kusovníku vzoru) a akce 02 (pole, kotvy, vložky, madla proti `railing_b.py`), pak všechny typy × tvary × kotvení × strany × profily: uzavřená tělesa, platný STEP dílů i sestavy, zámky jen v rovné části stěny rámu.
+Vzor akce 01 (rám proti kusovníku vzoru) a akce 02 (pole, kotvy, vložky, madla proti `railing_b.py`), pak všechny typy × tvary × kotvení × strany a rám × špruše × spoj × přesahy: uzavřená tělesa, platný STEP dílů i sestavy, zámky jen v rovné části stěny rámu, počty drážek a zámečků podle spoje, zámeček přesně na tloušťku stěny. Trvá ~3 min.
 
-Pravidla v `zabradli-core.js`: **zámky jen tehdy, když drážka (pásovina + 2× vůle 0,5) padne celá do rovné části stěny rámu** (šířka − 2 × 2,4 t), tedy když je rám širší než pásovina – jinak se pásovina svaří na tupo. Typ 02 (rám 40 × pásovina 40) je proto bez zámků; typ 01 má zámky jen s jeklem 50×50×2 (s 40×40×2 má rovná část stěny 30,4 mm a drážka by šla do rádiusu). Zinkovací otvory se nepřidávají. Patky shora jen u typu 01 na rovině. Ceník zábradlí (Dílna → Ceník) je zatím orientační.
+Pravidla v `zabradli-core.js` (společná pro oba typy, funkce `barSet` a `jointInfo`): spoj špruše s rámem se řídí šířkou špruše proti rovné části stěny rámu (šířka − 2 × 2,4 t):
+- **vejde se** (špruše + 2× vůle 0,5 ≤ rovná část) → drážka v rámu, špruše projde; s přesahem jde skrz rám **jedním kusem** (drážky v obou stěnách),
+- **široká jako rám** (do šířky rámu) → **na tupo** (řez na pile), nebo za příplatek **zámečky**: konec špruše zúžený na zámeček, který projde stěnou a lícuje s jejím vnitřkem (nevyčnívá),
+- **širší než rám** → vždy zámečky.
+
+U spoje na tupo / se zámečky je přesah **samostatný kus** (se zámečky má spodní rám drážky z obou stran). Přesah nahoru jen bez dřevěného madla, dolů jen při kotvení z boku (jinak je spodní rám u podlahy). Příplatek za zámeček na špruši je v Dílna → Ceník (`zamekSpruse`, Kč/ks, zatím orientačně). Zinkovací otvory se nepřidávají. Patky shora jen u typu 01 na rovině. Ceník zábradlí je zatím orientační.

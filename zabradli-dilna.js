@@ -20,7 +20,7 @@
     txt(x, 'Kusovník zábradlí – ' + order.number, M, 120, 42, true);
     const info = [['Zákazník', order.customer.name], ['Objednávka', order.number], ['Typ', Zb.TYPES.find((t) => t.id === c0.typ).lab + ' (vzor ' + (c0.typ === 'A' ? '01' : '02') + ')'], ['Datum', order.date || ''],
       ['Délka', nf(A.lenM, 2) + ' m, ' + c0.segs.length + ' úsek(y)'], ['Výška', c0.vyska + ' mm'], ['Kotvení', Zb.ANCHOR.find((a) => a.id === c0.anchor).lab + (c0.anchor === 'bez' ? '' : ' – ' + Zb.BASE.find((b) => b.id === c0.base).lab.toLowerCase()) + (c0.anchor === 'bocni' ? ', fasáda ' + c0.facade + ', rameno ' + c0.arm : '')],
-      ['Povrch', Zb.FIN.find((f) => f.id === c0.fin).lab], ['Zámky', A.locks.ok ? 'ano' : 'ne – pásovina na tupo'], ['Služby', A.svc.length ? A.svc.map((s) => s.id).join(', ') : '–']];
+      ['Povrch', Zb.FIN.find((f) => f.id === c0.fin).lab], ['Špruše', { drazka: 'v drážkách rámu', tupo: 'na tupo', zamek: 'se zámečky' }[A.locks.mode] + (c0.overTop || c0.overBot ? ', přesah ' + c0.overTop + ' / ' + c0.overBot + ' mm' : '')], ['Služby', A.svc.length ? A.svc.map((s) => s.id).join(', ') : '–']];
     info.forEach((r, i) => { const px = M + (i % 2) * 545, py = 175 + Math.floor(i / 2) * 34; txt(x, r[0], px, py, 20, true); txt(x, fit(x, r[1], 370, 20), px + 150, py, 20); });
     txt(x, 'Trasa (osa zábradlí): ' + c0.segs.map((s, i) => (i + 1) + ') ' + s.L + (s.rise ? ' ↑' + s.rise : '') + (s.turn ? ' ' + (s.turn > 0 ? 'vlevo ' : 'vpravo ') + Math.abs(s.turn) + '°' : '')).join('   '), M, 355, 18, false, '#444');
     const pv = document.createElement('canvas'); pv.width = 1080; pv.height = 560;
@@ -102,7 +102,7 @@
     A = Zb.analyze(cfg, rates);
     $('zCfg').innerHTML = '<strong>' + esc(Zb.describe(cfg)) + '</strong><br><span style="color:var(--muted)">Trasa: ' + cfg.segs.map((s, i) => (i + 1) + ') ' + s.L + (s.rise ? ' ↑' + s.rise : '') + (s.turn ? ' ' + (s.turn > 0 ? '↰' : '↱') + Math.abs(s.turn) + '°' : '')).join(' · ') + ' · stavba ' + (cfg.side === 'L' ? 'vlevo' : 'vpravo') + '</span>' +
       (A.svc.length ? '<br>Služby: ' + A.svc.map((s) => esc(s.lab)).join(', ') : '');
-    const facts = [['Délka', nf(A.lenM, 2) + ' m'], ['Ocel', nf(A.kg, 1) + ' kg'], ['Jekl', nf(A.tubeM, 1) + ' m'], ['Pásovina', nf(A.barM, 1) + ' m'], ['Kotvy', A.anchorsN], ['Zámky', A.locks.ok ? A.slots + ' drážek' : 'ne'], ['Svary (odhad)', A.welds], ['Dílů / pozic', A.parts.length + ' / ' + A.rows.length]];
+    const facts = [['Délka', nf(A.lenM, 2) + ' m'], ['Ocel', nf(A.kg, 1) + ' kg'], ['Jekl', nf(A.tubeM, 1) + ' m'], ['Pásovina', nf(A.barM, 1) + ' m'], ['Kotvy', A.anchorsN], ['Zámky', A.locks.ok ? A.slots + ' drážek' + (A.tabs ? ', ' + A.tabs + ' zámečků' : '') : 'ne'], ['Svary (odhad)', A.welds], ['Dílů / pozic', A.parts.length + ' / ' + A.rows.length]];
     $('zFacts').innerHTML = facts.map((f) => '<div class="fact"><b>' + esc(f[1]) + '</b><span>' + f[0] + '</span></div>').join('');
     $('zWarns').innerHTML = A.warns.filter((w) => w.lvl !== 'info').map((w) => '<div>' + esc(w.t) + '</div>').join('') + '<div style="background:var(--line-soft);color:var(--ink)">' + esc(A.locks.why) + '</div>';
     $('zBom').innerHTML = A.rows.map((r) => '<tr><td class="mono">' + r.poz + '</td><td>' + esc(r.name) + (r.feat ? ' <span style="color:var(--muted);font-size:12px">(' + esc(r.feat) + ')</span>' : '') + '</td><td>' + esc(r.prof) + '</td><td class="num mono">' + r.len + '</td><td class="num mono">' + r.cut + '</td><td class="num">' + r.q + '</td><td>' + r.stroj + '</td><td class="mono">' + esc(r.file) + '</td></tr>').join('');
@@ -122,7 +122,7 @@
   function msg(t, kind) { const m = $('zMsg'); m.hidden = false; m.innerHTML = t; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
 
   /* ---------- ceník zábradlí ---------- */
-  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
+  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
     ['madlo', 'Dřevěné madlo', 'Kč/m'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže', '%'], ['zamereni', 'Zaměření', 'Kč'], ['kotveni', 'Pomoc s kotvením', 'Kč'], ['montazM', 'Montáž', 'Kč/m'], ['montazKotva', 'Montáž – kotva', 'Kč/ks']];
   const KF = [['beton', 'Kotva do betonu'], ['zdivo', 'Kotva do zdiva (sítko)'], ['ocel', 'Šroub do oceli']];
   function fillRates() {

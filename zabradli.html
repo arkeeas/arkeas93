@@ -221,6 +221,12 @@
         <h2><small>Krok 3</small>Profil a výplň</h2>
         <div id="profBox"></div>
         <div class="box lock" id="lockBox"></div>
+        <p class="sub-h">Délka špruší – přesah přes rám (0 = zarovnané s rámem)</p>
+        <div class="split">
+          <label for="ovT">Nahoře nad horním rámem [mm]<input id="ovT" type="number" inputmode="numeric" min="0" step="10"></label>
+          <label for="ovB">Dole pod spodním rámem [mm]<input id="ovB" type="number" inputmode="numeric" min="0" step="10"></label>
+        </div>
+        <p class="note" id="ovNote" style="margin:8px 0 0"></p>
       </div>
 
       <div class="step">
@@ -330,7 +336,7 @@
     $('mSub').textContent = nf(A.lenM, 1) + ' m · výška ' + cfg.vyska + ' mm · ' + Zb.FIN.find((f) => f.id === cfg.fin).lab;
     $('factChip').textContent = A.anchorsN + ' kotev · ' + nf(A.kg) + ' kg oceli';
 
-    group($('types'), Zb.TYPES, (t) => optBtn(t.id, t.id === cfg.typ, t.lab, t.sub, t.icon), (id) => set({ typ: id, vyska: id === 'A' ? 1050 : 1000, fin: id === 'A' ? 'zn' : 'znpu' }));
+    group($('types'), Zb.TYPES, (t) => optBtn(t.id, t.id === cfg.typ, t.lab, t.sub, t.icon), (id) => set({ typ: id, vyska: id === 'A' ? 1050 : 1000, fin: id === 'A' ? 'zn' : 'znpu', rail: null, bar: null, join: 'tupo', overTop: null, overBot: null }));
     $('typeNote').textContent = cfg.typ === 'A'
       ? 'Rám z jeklu se sloupky po max. 1 m, výplň ze svislé pásoviny. Madla probíhají v celé délce, rohy a konce jsou na pokos.'
       : 'Bez sloupků: pole do 1,5 m se sesadí na tupo přes vložky, styky zakryje dřevěné madlo. Kotví se z boku, kotvy schová zateplení.';
@@ -344,17 +350,23 @@
     const sl = cfg.segs.filter((s) => s.rise).map((s) => Math.round(Math.atan2(Math.abs(s.rise), s.L) * 180 / Math.PI) + '°');
     $('dimNote').textContent = 'Celková délka podél zábradlí ' + nf(A.lenM, 2) + ' m' + (sl.length ? ', sklon schodiště ' + sl.join(', ') : '') + '. ' + (cfg.typ === 'B' ? 'Výška se měří k horní hraně madla' : 'Výška se měří k horní hraně horního madla') + ', na schodišti svisle od hrany stupňů.';
 
-    if (cfg.typ === 'A') {
-      $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">Rám (madla a sloupky)</p><div class="grid g2" id="profs"></div><p class="sub-h">Výplň – svislá pásovina</p><div class="grid g2" id="barsA"></div>';
-      group($('profs'), Zb.PROF_A, (p) => optBtn(p.id, p.id === cfg.profA, 'Jekl ' + p.lab, p.sub), (id) => set({ profA: id }));
-      group($('barsA'), Zb.BAR_A, (b) => optBtn(b.id, b.id === cfg.barA, b.lab, b.sub), (id) => set({ barA: id }));
-    } else {
-      $('profBox').innerHTML = '<div class="box" style="flex-direction:column;gap:4px"><strong>Rám jekl 40×20×3 naplocho · špruše PL 40×10</strong><span>Přesah špruší 150 mm pod spodní rám. Kotevní ramena z jeklu 40×20×3.</span></div>' +
-        '<p class="sub-h">Madlo</p><div class="grid g2" id="madla"></div>';
-      group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40, zakryje horní styky' }, { id: 'n', l: 'Bez madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
-    }
+    const jt = A.locks;
+    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' +
+      '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
+      (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
+      (cfg.typ === 'B' ? '<p class="sub-h">Madlo</p><div class="grid g2" id="madla"></div>' : '');
+    group($('profs'), Zb.RAILS[cfg.typ], (p) => optBtn(p.id, p.id === cfg.rail, 'Jekl ' + p.lab, p.sub), (id) => set({ rail: id }));
+    group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
+    if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
+    if (cfg.typ === 'B') group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40, zakryje horní styky' }, { id: 'n', l: 'Bez madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
+    const ov = Zb.overAllowed(cfg);
+    $('ovT').disabled = !ov.top; $('ovB').disabled = !ov.bot;
+    if (document.activeElement !== $('ovT')) $('ovT').value = cfg.overTop;
+    if (document.activeElement !== $('ovB')) $('ovB').value = cfg.overBot;
+    const pieces = A.rows.filter((r) => r.kind === 'bar' && r.cut === '0° / 0°');
+    $('ovNote').textContent = [ov.whyTop, ov.whyBot].filter(Boolean).join(' ') + (pieces.length ? (ov.whyTop || ov.whyBot ? ' ' : '') + 'Špruše na rovině: ' + pieces.map((r) => r.name + ' ' + r.len + ' mm').join(', ') + '.' : '');
     $('lockBox').className = 'box lock' + (A.locks.ok ? ' on' : '');
-    $('lockBox').innerHTML = '<span><strong>' + (A.locks.ok ? 'Se zámky.' : 'Bez zámků.') + '</strong> ' + esc(A.locks.why) + '</span>';
+    $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
 
     const pOK = Zb.patkaAllowed(cfg);
     group($('anchors'), Zb.ANCHOR, (a) => optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', a.id === 'patka' && !pOK, a.id === 'patka' && !pOK ? (cfg.typ === 'B' ? 'Typ bez sloupků má špruše přes spodní rám – kotví se jen z boku.' : 'Patky jen na rovné podlaze – na schodišti kotvíme z boku.') : ''), (id) => set({ anchor: id }));
@@ -391,6 +403,8 @@
   $('vyn').addEventListener('change', (e) => set({ vyska: e.target.value }));
   $('fac').addEventListener('change', (e) => { const f = Number(e.target.value) || 0; set({ facade: f, arm: Math.max(cfg.arm, f + 50) }); });
   $('arm').addEventListener('change', (e) => set({ arm: e.target.value }));
+  $('ovT').addEventListener('change', (e) => set({ overTop: Number(e.target.value) || 0 }));
+  $('ovB').addEventListener('change', (e) => set({ overBot: Number(e.target.value) || 0 }));
   $('ctx').addEventListener('change', (e) => { ui.ctx = e.target.checked; render(); });
   document.querySelectorAll('.views button').forEach((b) => b.addEventListener('click', () => { ui.view = b.dataset.view; render(); viewer.view(ui.view); }));
 
