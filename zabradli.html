@@ -160,6 +160,25 @@
   .breakdown { font-size: 13px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; margin-top: 12px; font-variant-numeric: tabular-nums; }
   .breakdown b { color: var(--ink); font-weight: 600; }
   .sub-h { font-size: 13px; color: var(--muted); margin: 16px 0 8px; }
+  .mode2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .blk { border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 12px 14px; margin-top: 10px; }
+  .blk-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+  .blk-h .del { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); font-size: 18px; }
+  .mrow { display: grid; grid-template-columns: 1fr 120px 28px; gap: 8px; align-items: center; margin-top: 8px; font-size: 14px; }
+  .mrow .k { display: inline-block; min-width: 18px; padding: 0 5px; margin-right: 6px; border-radius: 3px; background: var(--ink); color: var(--surface); font-size: 12px; font-weight: 700; text-align: center; }
+  .mrow input, .mrow select { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); text-align: right; font-variant-numeric: tabular-nums; width: 100%; }
+  .mrow input.miss { border-color: var(--bad); background: var(--bad-bg); } .mrow input.chk { border-color: var(--warn); background: var(--warn-bg); }
+  .mrow .opt-l { color: var(--muted); font-size: 12px; }
+  .help { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-weight: 700; color: var(--muted); }
+  .howto { display: grid; grid-template-columns: 200px 1fr; gap: 12px; align-items: center; margin-top: 8px; padding: 10px; background: var(--line-soft); border-radius: 4px; font-size: 13px; }
+  .howto svg { width: 100%; height: auto; color: var(--ink); } .howto svg .hl { color: var(--accent); }
+  @media (max-width: 520px) { .howto { grid-template-columns: 1fr; } .mrow { grid-template-columns: 1fr 100px 28px; } }
+  .corner { display: grid; grid-template-columns: 1fr; gap: 4px; margin: 8px 0 0 18px; padding: 8px 12px; border-left: 3px solid var(--line); font-size: 14px; }
+  .corner select, .corner input { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); width: 100%; }
+  .corner label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 13px; }
+  .plan { margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .plan svg { display: block; width: 100%; height: auto; } .plan text { font: 12px system-ui, sans-serif; fill: var(--ink); }
+  .chk-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; } .chk-list button { text-align: left; border: 0; padding: 9px 12px; border-radius: 4px; font: inherit; font-size: 13px; cursor: pointer; }
   .kbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
   .kbar label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); flex: 1 1 160px; }
   .kbar input { height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); text-align: right; font-variant-numeric: tabular-nums; }
@@ -222,9 +241,23 @@
 
       <div class="step">
         <h2><small>Krok 2</small>Tvar a rozměry</h2>
+        <div class="mode2" id="modeT"></div>
+        <div id="quickBox">
         <div class="grid g5" id="presets"></div>
         <p class="sub-h">Úseky zábradlí za sebou. Délka je vodorovná (v půdorysu), u schodiště zadejte i převýšení.</p>
         <div class="segs" id="segs"></div>
+        </div>
+        <div id="stavbaBox" hidden>
+          <p class="note" style="margin:0">Poskládejte, jak to u vás vypadá – od začátku zábradlí po konec. U každého rozměru je <b>?</b> s návodem. Každou míru chceme dvakrát jinou cestou, aby se chyba chytila hned teď a ne až při montáži.</p>
+          <div class="mrow"><span>Začátek zábradlí</span><select id="stStart" style="text-align:left"><option value="volny">volný konec</option><option value="zed">u zdi (−20 mm)</option></select><span></span></div>
+          <div id="stBlocks"></div>
+          <div class="rowbtns" style="margin-top:10px"><button type="button" class="seg-add" id="stAddH">+ Rovná hrana</button><button type="button" class="seg-add" id="stAddS">+ Schodiště</button></div>
+          <div class="mrow"><span>Konec zábradlí</span><select id="stEnd" style="text-align:left"><option value="volny">volný konec</option><option value="zed">u zdi (−20 mm)</option></select><span></span></div>
+          <div id="stDeskaRow"></div>
+          <p class="sub-h">Půdorys – takhle to chápeme (pohled shora, šedě stavba)</p>
+          <div class="plan" id="stPlan"></div>
+          <div class="chk-list" id="stList"></div>
+        </div>
         <div class="rowbtns">
           <button type="button" class="seg-add" id="segAdd">+ Přidat úsek</button>
           <div class="toggle2" role="group" aria-label="Na které straně je stavba" id="sideT">
@@ -381,7 +414,10 @@
 
     const curPreset = Zb.PRESETS.find((p) => JSON.stringify(p.segs.map((s) => [s.L, s.rise, s.turn || 0])) === JSON.stringify(cfg.segs.map((s) => [s.L, s.rise, s.turn])));
     group($('presets'), Zb.PRESETS, (p) => optBtn(p.id, !!curPreset && curPreset.id === p.id, p.lab, '', p.icon), (id) => set({ segs: Zb.PRESETS.find((p) => p.id === id).segs.map((s) => Object.assign({ turn: 0 }, s)) }));
-    renderSegs();
+    const stOn = !!(cfg.stavba && cfg.stavba.on);
+    group($('modeT'), [{ id: 'q', l: 'Rychle', s: 'zadám délky sám' }, { id: 's', l: 'Podle stavby', s: 'provedete mě měřením' }], (o) => optBtn(o.id, (o.id === 's') === stOn, o.l, o.s), (id) => setMode(id === 's'));
+    $('quickBox').hidden = stOn; $('segAdd').hidden = stOn; $('stavbaBox').hidden = !stOn;
+    if (stOn) renderStavba(); else renderSegs();
     document.querySelectorAll('#sideT button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.side === cfg.side)));
     if (document.activeElement !== $('vy')) $('vy').value = cfg.vyska;
     if (document.activeElement !== $('vyn')) $('vyn').value = cfg.vyska;
@@ -434,6 +470,108 @@
     document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
     viewer.update(A, { ctx: ui.ctx });
   }
+
+  /* ---------- stavba z bloků + průvodce měřením ---------- */
+  const FIG = {
+    hrana: '<svg viewBox="0 0 220 110"><path d="M10 70 H200 V90 H10 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 70 L40 30 H230" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/>' +
+      '<g class="hl" stroke="currentColor" fill="currentColor"><path d="M10 100 H200" stroke-width="2"/><path d="M10 96 V104 M200 96 V104" stroke-width="2"/></g><text x="105" y="98" text-anchor="middle" font-size="12" font-weight="700">A ⟶</text>' +
+      '<text x="105" y="62" text-anchor="middle" font-size="11">čelo desky (hrana balkonu)</text><text x="105" y="20" text-anchor="middle" font-size="11">B = totéž, metr z druhého konce ⟵</text></svg>',
+    roh: '<svg viewBox="0 0 220 110"><path d="M30 95 V15 M30 95 H210" fill="none" stroke="currentColor" stroke-width="3"/><g class="hl"><circle cx="30" cy="35" r="4" fill="currentColor"/><circle cx="90" cy="95" r="4" fill="currentColor"/>' +
+      '<path d="M30 35 L90 95" stroke="currentColor" stroke-width="2" stroke-dasharray="5 4"/></g><text x="14" y="68" font-size="11">1 m</text><text x="52" y="108" font-size="11">1 m</text><text x="72" y="58" font-size="12" font-weight="700">C</text><text x="100" y="40" font-size="11">pravý roh: C = 1 414 mm</text></svg>',
+    schody: '<svg viewBox="0 0 220 110"><path d="M10 100 H40 V85 H70 V70 H100 V55 H130 V40 H160 V25 H215" fill="none" stroke="currentColor" stroke-width="2"/><g class="hl" stroke="currentColor" fill="none" stroke-width="2"><path d="M76 85 V70"/><path d="M70 64 H100"/><path d="M200 100 V25" stroke-dasharray="4 3"/><path d="M40 108 H160" stroke-dasharray="4 3"/></g>' +
+      '<text x="80" y="82" font-size="12" font-weight="700">h</text><text x="80" y="62" font-size="12" font-weight="700">g</text><text x="204" y="66" font-size="12" font-weight="700">H</text><text x="96" y="106" font-size="11" font-weight="700">D</text><text x="16" y="40" font-size="11">n = počet schodů</text></svg>',
+    deska: '<svg viewBox="0 0 220 110"><path d="M20 30 H150 V70 H20" fill="none" stroke="currentColor" stroke-width="2"/><path d="M150 22 H175 V78 H150" fill="none" stroke="currentColor" stroke-dasharray="3 3"/><g class="hl" stroke="currentColor" stroke-width="2"><path d="M140 30 V70 M134 30 H146 M134 70 H146"/></g><text x="100" y="54" font-size="12" font-weight="700">tloušťka</text><text x="178" y="54" font-size="10">zateplení</text><text x="40" y="95" font-size="11">beton desky (bez zateplení)</text></svg>'
+  };
+  const HOW = {
+    A: ['hrana', 'Svinovacím metrem po čele desky (hraně balkonu / podesty) tam, kde povede zábradlí – od rohu k rohu. U zdi měřte až ke zdi, mezeru 20 mm odečteme sami.'],
+    B: ['hrana', 'Stejnou hranu změřte ještě jednou, metr ale přiložte z druhého konce. Chytí to přehlédnutí na metru (např. 3 480 místo 3 840). Má vyjít stejně ±1 cm.'],
+    C: ['roh', 'Od rohu odměřte po každé hraně 1 m a udělejte značku (tužka, lepicí páska). Změřte vzdálenost mezi značkami. U pravého rohu vyjde 1 414 mm, u rohu 45° 1 848 mm.'],
+    n: ['schody', 'Spočítejte schody – kolikrát vystoupíte, než stojíte na podestě (počítá se i poslední krok na podestu).'],
+    h: ['schody', 'Svisle od horní plochy jednoho schodu k horní ploše dalšího. Změřte u 3 schodů a zadejte průměr.'],
+    g: ['schody', 'Vodorovně od hrany (nosu) jednoho schodu k hraně dalšího.'],
+    H: ['schody', 'Celé převýšení od spodní podlahy po podestu, svisle – nejlépe s vodováhou nebo laserem. Kontrola počtu schodů: má vyjít n × h.'],
+    D: ['schody', 'Vodorovně od hrany prvního schodu k hraně podesty. Nepovinné – zpřesní délku zábradlí.'],
+    deska: ['deska', 'Tloušťka betonové desky na čele, bez zateplení. Najdete ji u okapnice, v ostění dveří nebo ve výkresu domu. Kotva potřebuje aspoň 150 mm betonu.']
+  };
+  const LAB = { C: 'Úhlopříčka mezi značkami 1 m od rohu', A: 'Délka hrany', B: 'Kontrolní délka (z druhého konce)', n: 'Počet schodů', h: 'Výška schodu', g: 'Hloubka schodu', H: 'Celé převýšení', D: 'Vodorovná délka schodiště', deska: 'Tloušťka nosné desky' };
+  const OPT = { H: 'doporučeno', D: 'nepovinné' };
+  function stDefault() {
+    return { on: true, start: 'volny', end: 'volny', deska: null,
+      bloky: cfg.segs.map((sg) => (sg.rise ? { t: 'schody', n: null, h: null, g: null, H: null, D: null, dir: sg.rise < 0 ? 'dolu' : 'nahoru', turn: sg.turn } : { t: 'hrana', A: null, B: null, C: null, turn: sg.turn })) };
+  }
+  function setMode(on) { const st = cfg.stavba ? Object.assign({}, cfg.stavba, { on }) : (on ? stDefault() : null); ui.stKey = null; set({ stavba: st, kotvyPos: null }); }
+  function stSet(fn) { const st = JSON.parse(JSON.stringify(cfg.stavba)); fn(st); set({ stavba: st }); }
+  const mrow = (id, k, v, extra) => '<div class="mrow"><span><span class="k">' + k + '</span>' + LAB[k] + (OPT[k] ? ' <span class="opt-l">(' + OPT[k] + ')</span>' : '') + '</span>' +
+    '<input id="' + id + '" type="number" inputmode="numeric" placeholder="' + (k === 'n' ? 'ks' : 'mm') + '" value="' + (v == null ? '' : v) + '" ' + extra + '>' +
+    '<button type="button" class="help" data-how="' + id + '" data-k="' + k + '" aria-label="Jak měřit: ' + LAB[k] + '">?</button></div><div class="howto" id="how-' + id + '" hidden></div>';
+  function renderStavba() {
+    const st = cfg.stavba, bl = st.bloky, ms = A.meas || { missing: [], remeasure: [] };
+    const key = JSON.stringify(bl.map((b, i) => [b.t, b.turn, i < bl.length - 1 && b.turn && b.t === 'hrana' && bl[i + 1].t === 'hrana'])) + cfg.anchor;
+    if (key !== ui.stKey) {
+      ui.stKey = key;
+      $('stBlocks').innerHTML = bl.map((b, i) => {
+        let h = '<div class="blk"><div class="blk-h"><span>' + (i + 1) + ' · ' + (b.t === 'schody' ? 'Schodiště' : 'Rovná hrana (balkon, podesta)') + '</span><button type="button" class="del" data-stdel="' + i + '" aria-label="Odebrat blok"' + (bl.length < 2 ? ' disabled' : '') + '>×</button></div>';
+        if (b.t === 'hrana') h += mrow('st' + i + 'A', 'A', b.A, 'data-b="' + i + '" data-k="A"') + mrow('st' + i + 'B', 'B', b.B, 'data-b="' + i + '" data-k="B"');
+        else {
+          h += '<div class="mrow"><span>Schody od začátku zábradlí vedou</span><select data-b="' + i + '" data-k="dir" style="text-align:left"><option value="nahoru"' + (b.dir !== 'dolu' ? ' selected' : '') + '>nahoru</option><option value="dolu"' + (b.dir === 'dolu' ? ' selected' : '') + '>dolů</option></select><span></span></div>';
+          ['n', 'h', 'g', 'H', 'D'].forEach((k) => { h += mrow('st' + i + k, k, b[k], 'data-b="' + i + '" data-k="' + k + '"'); });
+        }
+        h += '</div>';
+        if (i < bl.length - 1) {
+          const cc = b.turn && b.t === 'hrana' && bl[i + 1].t === 'hrana';
+          h += '<div class="corner"><label>Potom zábradlí<select data-b="' + i + '" data-k="turn">' + Zb.TURNS.map((t) => '<option value="' + t.v + '"' + (t.v === b.turn ? ' selected' : '') + '>' + (t.v ? 'zatáčí ' + t.lab : 'pokračuje rovně') + '</option>').join('') + '</select></label>' +
+            (cc ? '<div>' + mrow('st' + i + 'C', 'C', b.C, 'data-b="' + i + '" data-k="C"') + '</div>' : '<span></span>') + '</div>';
+        }
+        return h;
+      }).join('');
+      $('stDeskaRow').innerHTML = cfg.anchor === 'bocni' ? mrow('stDeska', 'deska', st.deska, 'data-k="deska"') : '';
+      document.querySelectorAll('#stavbaBox [data-k]').forEach((x) => { if (x.tagName === 'BUTTON') return; x.addEventListener('change', () => stSet((s2) => {
+        const v = x.value === '' ? null : (x.dataset.k === 'dir' ? x.value : Number(x.value));
+        if (x.dataset.b == null) s2[x.dataset.k] = v; else s2.bloky[Number(x.dataset.b)][x.dataset.k] = v;
+      })); });
+      document.querySelectorAll('#stavbaBox [data-how]').forEach((b) => b.addEventListener('click', () => {
+        const el = $('how-' + b.dataset.how), H = HOW[b.dataset.k]; el.hidden = !el.hidden;
+        if (!el.hidden) el.innerHTML = FIG[H[0]] + '<div>' + H[1] + '</div>';
+      }));
+      document.querySelectorAll('[data-stdel]').forEach((b) => b.addEventListener('click', () => stSet((s2) => { s2.bloky.splice(Number(b.dataset.stdel), 1); s2.bloky[s2.bloky.length - 1].turn = 0; })));
+    }
+    // hodnoty a zvýraznění (bez přestavění – nepřeskočí kurzor)
+    if (document.activeElement !== $('stStart')) $('stStart').value = st.start;
+    if (document.activeElement !== $('stEnd')) $('stEnd').value = st.end;
+    const missId = (m) => (m.i < 0 ? 'stDeska' : 'st' + m.i + m.k);
+    const miss = new Set(ms.missing.map(missId)), chk = new Set(ms.remeasure.filter((m) => m.lvl !== 'info').map(missId));
+    document.querySelectorAll('#stavbaBox input[id^="st"]').forEach((x) => { x.classList.toggle('miss', miss.has(x.id)); x.classList.toggle('chk', chk.has(x.id)); });
+    // co ještě změřit / přeměřit – klik skočí na políčko
+    const items = ms.missing.map((m) => ['bad', 'Změřte: ' + m.t, missId(m)]).concat(ms.remeasure.map((m) => [m.lvl === 'info' ? 'info' : m.lvl || 'warn', m.t, missId(m)]));
+    $('stList').innerHTML = items.length ? items.map((it) => '<button type="button" class="w-' + it[0] + '" data-go="' + it[2] + '">' + esc(it[1]) + '</button>').join('')
+      : '<div class="box lock on"><span><strong>Vše změřeno a sedí.</strong> I tak doporučujeme zaměření – rozměry před výrobou potvrdíme.</span></div>';
+    $('stList').querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { const x = $(b.dataset.go); if (x) { x.scrollIntoView({ block: 'center', behavior: 'smooth' }); x.focus(); } }));
+    renderPlan();
+  }
+  function renderPlan() {
+    // půdorys trasy s čísly bloků a stavbou na straně, kde je
+    const P = A.build.pts.map((p) => [p[0], p[1]]), side = cfg.side === 'R' ? -1 : 1;
+    const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]), pad = 900;
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    const W = 600, sc = Math.min(W / (x1 - x0), 260 / (y1 - y0)), Hh = Math.round((y1 - y0) * sc);
+    const T = (p) => [((p[0] - x0) * sc).toFixed(1), (Hh - (p[1] - y0) * sc).toFixed(1)];
+    let g = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="Půdorys zábradlí">';
+    for (let i = 0; i < P.length - 1; i++) {
+      const a = P[i], b = P[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy), wx = -dy / l * side, wy = dx / l * side, o = 700;
+      const q = [a, b, [b[0] + wx * o, b[1] + wy * o], [a[0] + wx * o, a[1] + wy * o]].map(T).map((t) => t.join(',')).join(' ');
+      g += '<polygon points="' + q + '" fill="var(--line-soft)" stroke="none"></polygon>';
+      const m = T([(a[0] + b[0]) / 2 - wx * 260, (a[1] + b[1]) / 2 - wy * 260]);
+      const sg = cfg.segs[i];
+      g += '<text x="' + m[0] + '" y="' + m[1] + '" text-anchor="middle">' + (i + 1) + (sg.rise ? (sg.rise > 0 ? ' ↗ schody' : ' ↘ schody') : '') + ' · ' + nf(Math.round(sg.L)) + '</text>';
+    }
+    g += '<polyline points="' + P.map(T).map((t) => t.join(',')).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round"></polyline>';
+    const s0 = T(P[0]); g += '<circle cx="' + s0[0] + '" cy="' + s0[1] + '" r="6" fill="var(--ink)"></circle><text x="' + (Number(s0[0]) + 8) + '" y="' + (Number(s0[1]) - 8) + '">začátek</text></svg>';
+    $('stPlan').innerHTML = g;
+  }
+  $('stStart').addEventListener('change', (e) => stSet((s2) => { s2.start = e.target.value; }));
+  $('stEnd').addEventListener('change', (e) => stSet((s2) => { s2.end = e.target.value; }));
+  $('stAddH').addEventListener('click', () => stSet((s2) => { s2.bloky[s2.bloky.length - 1].turn = s2.bloky[s2.bloky.length - 1].turn || 90; s2.bloky.push({ t: 'hrana', A: null, B: null, C: null, turn: 0 }); }));
+  $('stAddS').addEventListener('click', () => stSet((s2) => { s2.bloky.push({ t: 'schody', n: null, h: null, g: null, H: null, D: null, dir: 'nahoru', turn: 0 }); }));
 
   /* ---------- kotvy: rozvinutý pás ---------- */
   function renderKotvy() {

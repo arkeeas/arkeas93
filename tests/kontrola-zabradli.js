@@ -123,5 +123,19 @@ for (const pid of ["L", "schodypod"]) for (const postPitch of [600, 1500]) for (
   const pr = Z.PRESETS.find((p) => p.id === pid);
   run(Object.assign({ typ: sloupky ? "A" : "B", sloupky, preset: pid, segs: pr.segs, anchor: "bocni", side: "R", madlo: true, postPitch }, kotvy), true);
 }
+// d) stavba z bloků: trasa ze změřených bloků, kontrola měření
+{
+  const st = { on: true, start: "zed", end: "volny", deska: 180, bloky: [{ t: "schody", n: 12, h: 172, g: 280, H: 2064, turn: 90 }, { t: "hrana", A: 4480, B: 4484, turn: 90, C: 1414 }, { t: "hrana", A: 3000, B: 3004 }] };
+  const A = Z.analyze({ stavba: st, anchor: "bocni" });
+  const sg = A.cfg.segs.map((x) => [x.L, x.rise, x.turn].join("/")).join(" ");
+  if (sg !== "3080/1892/90 4482/0/90 3002/0/0") fail("stavba: trasa " + sg);
+  if (A.meas.missing.length || A.meas.remeasure.some((m) => m.lvl !== "info")) fail("stavba: změřená a sedící stavba hlásí " + JSON.stringify(A.meas));
+  const chyby = Z.analyze({ stavba: Object.assign({}, st, { deska: null, bloky: [{ t: "hrana", A: 3000, B: 3300, turn: 90, C: 1300 }, { t: "hrana", A: null, B: 2000 }] }), anchor: "bocni" });
+  const ks = chyby.meas.missing.map((m) => m.k).sort().join(",") + " | " + chyby.meas.remeasure.map((m) => m.k).sort().join(",");
+  if (ks !== "A,deska | A,C") fail("stavba: kontrola měření " + ks);
+  const { errs } = check({ stavba: st, anchor: "bocni" }); n++;
+  if (errs.length) fail("stavba: " + errs.slice(0, 3).join("; "));
+  else console.log("OK    stavba z bloků – trasa, kontrola měření, schody");
+}
 console.log((bad ? "\n" + bad + " chyb" : "\nvše v pořádku") + " (" + n + " konfigurací)");
 process.exit(bad ? 1 : 0);
