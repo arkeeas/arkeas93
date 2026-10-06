@@ -1,6 +1,6 @@
 <!doctype html><html lang="cs"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Zábradlí na míru</title>
-<link rel="stylesheet" href="modebar.css?v=20261005d">
+<link rel="stylesheet" href="modebar.css?v=20261006a">
 <div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="zabradli.html" aria-current="page">Zákazník</a><a href="interni.html">Dílna</a><a href="montaz.html">Testing</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap">
@@ -189,7 +189,7 @@
   .kstrip .rail { stroke: var(--ink); stroke-width: 3; } .kstrip .vt { stroke: var(--muted); stroke-dasharray: 3 3; }
   .kstrip .jt { stroke: var(--muted); stroke-width: 2; } .kstrip .cd { fill: var(--muted); opacity: .45; }
   .kstrip .an { fill: var(--accent); stroke: var(--surface); stroke-width: 2; cursor: grab; } .kstrip .an.sel { stroke: var(--ink); stroke-width: 3; }
-  .kstrip .an.fix { cursor: default; fill: var(--muted); }
+  .kstrip .an.fix { cursor: default; fill: var(--muted); } .kstrip .wall { fill: var(--ink); }
   .kstrip text { font: 11px/1 system-ui, sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
   .kstrip text.ok { fill: var(--ok-ink); } .kstrip text.warn { fill: var(--warn-ink); font-weight: 600; } .kstrip text.bad { fill: var(--bad-ink); font-weight: 700; }
   .kstrip .an-n { fill: #fff; font-size: 10px; font-weight: 700; pointer-events: none; }
@@ -282,9 +282,18 @@
 
       <div class="step">
         <h2><small>Krok 4</small>Kotvení</h2>
-        <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="anchors"></div>
+        <div class="grid g4" id="anchors"></div>
         <p class="sub-h" id="baseLab">Do čeho se kotví</p>
         <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))" id="bases"></div>
+        <div id="zedBox">
+          <p class="sub-h">Konec u zdi – přikotvit ke zdi plotnami na koncovém sloupku</p>
+          <div class="grid g2" id="zeds"></div>
+          <div class="grid g2" id="zedBases" style="margin-top:10px"></div>
+        </div>
+        <div id="padBox">
+          <p class="sub-h">Plotny na čele a na zdi</p>
+          <div class="grid g2" id="pads"></div>
+        </div>
         <div class="split" id="armBox">
           <label for="fac">Tloušťka fasády (zateplení + obklad) [mm]<input id="fac" type="number" inputmode="numeric"></label>
           <label for="arm">Délka kotevního ramene [mm]<input id="arm" type="number" inputmode="numeric"></label>
@@ -351,17 +360,17 @@
   </form>
 </div>
 
-<script src="lokal.js?v=20261005d"></script>
+<script src="lokal.js?v=20261006a"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261005d"></script>
-<script src="zabradli-core.js?v=20261005d"></script>
-<script src="zabradli-viewer.js?v=20261005d"></script>
+<script src="core.js?v=20261006a"></script>
+<script src="zabradli-core.js?v=20261006a"></script>
+<script src="zabradli-viewer.js?v=20261006a"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261005d') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261006a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -393,7 +402,8 @@
     el.innerHTML = cfg.segs.map((s, i) => '<div class="seg">' +
       '<span class="no">' + (i + 1) + '</span>' +
       '<label for="sL' + i + '">Délka [mm]<input id="sL' + i + '" data-i="' + i + '" data-k="L" type="number" inputmode="numeric" value="' + s.L + '"></label>' +
-      '<label for="sR' + i + '">Převýšení [mm]<input id="sR' + i + '" data-i="' + i + '" data-k="rise" type="number" inputmode="numeric" value="' + s.rise + '"></label>' +
+      '<label for="sR' + i + '">Převýšení [mm]<input id="sR' + i + '" data-i="' + i + '" data-k="rise" type="number" inputmode="numeric" value="' + s.rise + '">' +
+      (s.rise ? '<span style="display:flex;gap:4px;align-items:center;margin-top:4px" title="Počet výšek schodů od prvního schodu po podestu – podle něj umístíme patky / plotny">schodů <input id="sN' + i + '" data-i="' + i + '" data-k="steps" type="number" inputmode="numeric" min="2" max="40" placeholder="?" value="' + (s.steps || '') + '" style="width:64px' + (!s.steps && (cfg.anchor === 'patka' || cfg.anchor === 'celo') ? ';border-color:var(--bad);background:var(--bad-bg)' : '') + '"></span>' : '') + '</label>' +
       '<label class="turn" for="sT' + i + '">Na konci<select id="sT' + i + '" data-i="' + i + '" data-k="turn"' + (i === cfg.segs.length - 1 ? ' disabled' : '') + '>' + turnSel(s.turn, s.custom, i === cfg.segs.length - 1) + '</select>' +
       (s.custom ? '<span style="display:flex;gap:4px;align-items:center;margin-top:4px">úhel rohu <input id="sA' + i + '" data-i="' + i + '" data-k="ang" type="number" min="60" max="179" step="0.5" value="' + inner(s.turn) + '" style="width:72px">°</span>' : '') + '</label>' +
       '<button type="button" class="del" data-del="' + i + '" aria-label="Odebrat úsek ' + (i + 1) + '"' + (cfg.segs.length < 2 ? ' disabled' : '') + '>×</button></div>').join('');
@@ -401,6 +411,7 @@
       const segs = cfg.segs.map((s) => Object.assign({}, s)), i = Number(x.dataset.i);
       if (x.dataset.k === 'turn') Object.assign(segs[i], turnFrom(x.value, segs[i]));
       else if (x.dataset.k === 'ang') segs[i].turn = Math.sign(segs[i].turn || 1) * (180 - Math.min(179, Math.max(60, Number(x.value) || 90)));
+      else if (x.dataset.k === 'steps') { if (x.value.trim() === '') delete segs[i].steps; else segs[i].steps = Number(x.value); }
       else segs[i][x.dataset.k] = Number(x.value);
       set({ segs });
     }));
@@ -455,16 +466,31 @@
     $('lockBox').className = 'box lock' + (A.locks.ok ? ' on' : '');
     $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
 
-    const pOK = Zb.patkaAllowed(cfg);
-    group($('anchors'), Zb.ANCHOR, (a) => optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', a.id === 'patka' && !pOK, a.id === 'patka' && !pOK ? (!cfg.sloupky ? 'Patky se dávají pod sloupky – bez sloupků se kotví z boku.' : 'Patky jen na rovné podlaze – na schodišti kotvíme z boku.') : ''), (id) => set({ anchor: id }));
+    const pOK = Zb.patkaAllowed(cfg), stairs = cfg.segs.some((s) => s.rise);
+    group($('anchors'), Zb.ANCHOR, (a) => { const dis = (a.id === 'patka' || a.id === 'celo') && !pOK; return optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', dis, dis ? 'Kotví se pod sloupky – zapněte sloupky v kroku 1. Bez sloupků se kotví z boku.' : ''); }, (id) => set({ anchor: id }));
     const bez = cfg.anchor === 'bez';
     $('baseLab').hidden = bez; $('bases').hidden = bez;
     group($('bases'), Zb.BASE, (b) => optBtn(b.id, b.id === cfg.base, b.lab, b.sub), (id) => set({ base: id }));
     $('armBox').hidden = cfg.anchor !== 'bocni';
     if (document.activeElement !== $('fac')) $('fac').value = cfg.facade;
     if (document.activeElement !== $('arm')) $('arm').value = cfg.arm;
-    $('anchorNote').textContent = cfg.anchor === 'bocni' ? 'Rameno vede od rámu skrz zateplení k čelu nosné desky, tam se plotna 120×120 přikotví dvěma závitovými tyčemi M12. Rameno = fasáda + mezera k rámu (obvykle +50 mm).'
-      : cfg.anchor === 'patka' ? 'Pod každým sloupkem patka 100×120×8 mm se dvěma kotvami M12.' : 'Dodáme jen zábradlí, kotvení si navrhnete a provedete sami.';
+    // konce ke zdi: ve stavbě jen ten konec, který je u zdi
+    const stOn2 = !!(cfg.stavba && cfg.stavba.on), endOK = (k) => !stOn2 || cfg.stavba[k] === 'zed';
+    $('zedBox').hidden = bez;
+    group($('zeds'), [{ id: 'start', l: 'Začátek ke zdi' }, { id: 'end', l: 'Konec ke zdi' }], (o) => optBtn(o.id, !!cfg.zed[o.id], o.l, cfg.zed[o.id] ? '2 plotny 120×100 na koncovém sloupku' : 'konec volně', '', !endOK(o.id), !endOK(o.id) ? 'Ve stavbě (krok 2) je tento konec volný – nastavte ho na „u zdi“.' : ''),
+      (id) => set({ zed: Object.assign({}, cfg.zed, { [id]: !cfg.zed[id] }) }));
+    const anyZed = cfg.zed.start || cfg.zed.end;
+    $('zedBases').hidden = !anyZed;
+    group($('zedBases'), Zb.WALL_BASE, (b) => optBtn(b.id, b.id === cfg.zedBase, b.lab, b.sub), (id) => set({ zedBase: id }));
+    const padOK = Zb.padAllowed(cfg);
+    $('padBox').hidden = !padOK;
+    group($('pads'), [{ id: 'n', l: 'Plotna přímo na stavbu', s: 'bez podložky' }, { id: 'y', l: 'S tepelně oddělující podložkou', s: Zb.PAD_T + ' mm pod každou plotnu · omezí tepelný most' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.podlozka, o.l, o.s), (id) => set({ podlozka: id === 'y' }));
+    const nCelo = A.parts.filter((m) => m.role === 'celo').length;
+    $('anchorNote').textContent = (cfg.anchor === 'bocni' ? 'Rameno vede od rámu skrz zateplení k čelu nosné desky, tam se plotna 120×120 přikotví dvěma závitovými tyčemi M12. Rameno = fasáda + mezera k rámu (obvykle +50 mm).'
+      : cfg.anchor === 'patka' ? 'Pod sloupky patky 100×120×8 mm se dvěma kotvami M12.' + (stairs ? ' Na schodišti stojí sloupky uprostřed stupňů a pod spodním rámem mají nožku k patce; u hrany podesty je patka 160 mm dlouhá, aby kotva nebyla u hrany.' + (Zb.stepsMissing(cfg).length ? ' Zadejte u schodiště počet schodů.' : '') : '')
+      : cfg.anchor === 'celo' ? 'Sloupky jdou dolů přes hranu podlahy, na boku mají plotnu 120×100×10 do čela nosné desky (' + nCelo + '×, 2 kotvy M12). Jen bez zateplení – přes zateplení zvolte kotvení z boku. U rohů a zlomů je kotevní sloupek ' + Zb.CELO_CORNER + ' mm od rohu.' + (stairs ? ' Na schodišti jde plotna pod stupně' + (Zb.stepsMissing(cfg).length ? ' – zadejte počet schodů.' : '.') : '')
+      : 'Dodáme jen zábradlí, kotvení si navrhnete a provedete sami.') +
+      (anyZed && !bez ? ' Konec u zdi: na koncovém sloupku 2 plotny 120×100×10, mezera ke zdi 20 mm vyrovnáte podložkami' + (cfg.podlozka ? ' (je v ní tepelně oddělující podložka)' : '') + '.' : '');
     renderKotvy();
 
     group($('fins'), Zb.FIN, (f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.sub + '</span></button>', (id) => set({ fin: id }));
@@ -540,7 +566,7 @@
         }
         return h;
       }).join('');
-      $('stDeskaRow').innerHTML = cfg.anchor === 'bocni' ? mrow('stDeska', 'deska', st.deska, 'data-k="deska"') : '';
+      $('stDeskaRow').innerHTML = cfg.anchor === 'bocni' || cfg.anchor === 'celo' ? mrow('stDeska', 'deska', st.deska, 'data-k="deska"') : '';
       document.querySelectorAll('#stavbaBox [data-k]').forEach((x) => { if (x.tagName === 'BUTTON') return; x.addEventListener('change', () => stSet((s2) => {
         const v = x.value === '' ? null : (x.dataset.k === 'dir' ? x.value : Number(x.value)), bb = x.dataset.b == null ? null : s2.bloky[Number(x.dataset.b)];
         if (!bb) s2[x.dataset.k] = v;
@@ -593,8 +619,11 @@
     const s0 = T(P[0]); g += '<circle cx="' + s0[0] + '" cy="' + s0[1] + '" r="6" fill="var(--ink)"></circle><text x="' + (Number(s0[0]) + 8) + '" y="' + (Number(s0[1]) - 8) + '">začátek</text></svg>';
     $('stPlan').innerHTML = g;
   }
-  $('stStart').addEventListener('change', (e) => stSet((s2) => { s2.start = e.target.value; }));
-  $('stEnd').addEventListener('change', (e) => stSet((s2) => { s2.end = e.target.value; }));
+  // konec u zdi ve stavbě rovnou přikotví ke zdi (v kroku 4 jde vypnout)
+  ['start', 'end'].forEach((k) => $(k === 'start' ? 'stStart' : 'stEnd').addEventListener('change', (e) => {
+    const st = JSON.parse(JSON.stringify(cfg.stavba)); st[k] = e.target.value;
+    set({ stavba: st, zed: Object.assign({}, cfg.zed, { [k]: e.target.value === 'zed' }), kotvyPos: null });
+  }));
   $('stAddH').addEventListener('click', () => stSet((s2) => { s2.bloky[s2.bloky.length - 1].turn = s2.bloky[s2.bloky.length - 1].turn || 90; s2.bloky.push({ t: 'hrana', A: null, B: null, C: null, turn: 0 }); }));
   $('stAddS').addEventListener('click', () => stSet((s2) => { s2.bloky.push({ t: 'schody', n: null, h: null, g: null, H: null, D: null, dir: 'nahoru', turn: 0 }); }));
 
@@ -614,17 +643,19 @@
     (an.joints || []).forEach((j) => { g += '<line class="jt" x1="' + X(j) + '" x2="' + X(j) + '" y1="32" y2="48"></line>'; });
     if (mov) an.cand.forEach((c) => { g += '<circle class="cd" cx="' + X(c) + '" cy="40" r="1.6"></circle>'; });
     const lab = (x, y, t, cls) => '<text x="' + x + '" y="' + y + '" text-anchor="middle" class="' + cls + '">' + t + '</text>';
-    if (u.length) {
-      g += lab((KX0 + X(u[0])) / 2, 76, nf(Math.round(k.ends[0])), k.endLvl[0]);
-      g += lab((X(u[u.length - 1]) + KX1) / 2, 76, nf(Math.round(k.ends[1])), k.endLvl[1]);
-      k.gaps.forEach((gp, i) => { if (X(u[i + 1]) - X(u[i]) > 30 || k.lvl[i] !== 'ok') g += lab((X(u[i]) + X(u[i + 1])) / 2, i % 2 && X(u[i + 1]) - X(u[i]) < 44 ? 88 : 76, nf(Math.round(gp)), k.lvl[i]); });
+    const kp = k.pts && k.pts.length ? k.pts : u;          // kotvy + konce přikotvené ke zdi
+    if (kp.length) {
+      if (k.ends[0] > 0.5) g += lab((KX0 + X(kp[0])) / 2, 76, nf(Math.round(k.ends[0])), k.endLvl[0]);
+      if (k.ends[1] > 0.5) g += lab((X(kp[kp.length - 1]) + KX1) / 2, 76, nf(Math.round(k.ends[1])), k.endLvl[1]);
+      k.gaps.forEach((gp, i) => { if (X(kp[i + 1]) - X(kp[i]) > 30 || k.lvl[i] !== 'ok') g += lab((X(kp[i]) + X(kp[i + 1])) / 2, i % 2 && X(kp[i + 1]) - X(kp[i]) < 44 ? 88 : 76, nf(Math.round(gp)), k.lvl[i]); });
     }
+    (an.fixed || []).forEach((fx) => { g += '<rect class="wall" x="' + (X(fx) - (fx > 0 ? 0 : 6)) + '" y="26" width="6" height="28"><title>přikotveno ke zdi</title></rect>'; });
     u.forEach((sv, i) => { g += '<circle class="an' + (mov ? '' : ' fix') + (i === ui.ksel ? ' sel' : '') + '" data-i="' + i + '" cx="' + X(sv) + '" cy="40" r="8"></circle>'; });
     g += '<text x="' + KX0 + '" y="62">0</text><text x="' + KX1 + '" y="62" text-anchor="end">' + nf(Math.round(T)) + ' mm</text></svg>';
     const el = $('kStrip'); el.innerHTML = g;
     $('kNote').textContent = mov
       ? 'Kotvu chyťte a táhněte – přichytí se do nejbližší mezery mezi špruše (tečky), nikdy do rohu, styku pole ani na špruši. Čísla pod pásem jsou mezery v mm: oranžová = nad doporučenou hodnotou, červená = nad maximem (poptávku nepustí).'
-      : 'Patky jsou pod sloupky – posouvají se roztečí sloupků v kroku 1.';
+      : (cfg.anchor === 'celo' ? 'Plotny přes čelo jsou pod sloupky (mimo rohy a zlomy)' : 'Patky jsou pod sloupky') + ' – posouvají se roztečí sloupků v kroku 1.' + ((an.fixed || []).length ? ' Tmavý pruh na konci = přikotveno ke zdi.' : '');
     ['kRoz', 'kSel', 'kAdd', 'kDel', 'kReset'].forEach((id) => { $(id).disabled = !mov; });
     if (document.activeElement !== $('kRoz')) $('kRoz').value = cfg.kotvyRoztec == null ? '' : cfg.kotvyRoztec;
     $('kSel').disabled = !mov || ui.ksel == null; $('kDel').disabled = !mov || ui.ksel == null || u.length < 2;

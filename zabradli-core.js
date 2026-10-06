@@ -168,9 +168,20 @@
   ];
   const ANCHOR = [
     { id: 'bocni', lab: 'Z boku', sub: 'do čela desky, i přes zateplení' },
-    { id: 'patka', lab: 'Shora', sub: 'patky pod sloupky na podlahu' },
+    { id: 'patka', lab: 'Shora', sub: 'patky pod sloupky na podlahu i na stupně' },
+    { id: 'celo', lab: 'Sloupky přes čelo', sub: 'sloupek dolů přes hranu, plotna do čela' },
     { id: 'bez', lab: 'Bez kotev', sub: 'kotvení řeším sám' }
   ];
+  const WALL_BASE = [
+    { id: 'zdivo', lab: 'Zeď – zdivo', sub: 'chemická kotva se sítkem' },
+    { id: 'beton', lab: 'Zeď – beton', sub: 'chemická kotva M12' }
+  ];
+  /* kotvení – pevné rozměry (mm) */
+  const PAD_T = 10;                              // tepelně oddělující podložka pod plotnu (na čele a na zdi)
+  const PATKA_STAIR_GAP = 40;                    // na schodišti: spodní rám nad čarou hran stupňů (patky stojí na stupních)
+  const CELO_CORNER = 450;                       // sloupky přes čelo: kotevní sloupek u rohu / zlomu (do rohu z boku kotvit nejde)
+  const CELO_PLATE = { w: 120, l: 100, t: 10, drop: 25 };   // plotna na boku sloupku; horní hrana 25 mm pod podlahou / stupněm
+  const ZED_PLATE = { w: 120, l: 100, t: 10 };   // plotna ke zdi na koncovém sloupku (mezera ke zdi 20 = plotna 10 + podložka / vyrovnání 10)
   const BASE = [
     { id: 'beton', lab: 'Beton', sub: 'chemická kotva M12' },
     { id: 'zdivo', lab: 'Zdivo', sub: 'chemická kotva se sítkem' },
@@ -197,12 +208,14 @@
     typ: 'B', segs: PRESETS[4].segs.map((s) => Object.assign({ turn: 0 }, s)), vyska: 1000, side: 'L',
     rail: null, bar: null, join: 'tupo', overTop: null, overBot: null,       // null = výchozí podle typu
     sloupky: null, postPitch: 1000, madlo: true, anchor: 'bocni', base: 'beton', facade: 200, arm: 250, kotvyRoztec: null, kotvyPos: null,
+    zed: { start: false, end: false }, zedBase: 'zdivo', podlozka: false,
     fin: 'znpu', services: { zamereni: true, kotveni: false, montaz: false }, qty: 1
   };
   const DEFAULT_RATES = {
     kg: 42, rez: 35, svar: 90, drazka: 15, zinek: 28, lak: 180, prasek: 280, madlo: 1150, priprava: 1500, marze: 35,
     kotva: { beton: 190, zdivo: 260, ocel: 90 }, zamereni: 1500, kotveni: 1200, montazM: 950, montazKotva: 150, slotClear: 0.5,
-    zamekSpruse: 45,                             // vyřezání zámečku na konci špruše (pila to neumí) – Kč/ks, orientačně
+    zamekSpruse: 45,
+    podlozka: 220,                               // tepelně oddělující podložka pod plotnu – Kč/ks, orientačně                             // vyřezání zámečku na konci špruše (pila to neumí) – Kč/ks, orientačně
     // kotvy – meze nastavuje dílna (zatím výchozí odhad, NE statický výpočet): mezera mezi kotvami a přesah konce za poslední kotvu [mm]
     kotvaMax: 1500, kotvaDop: 1200, kotvaKonecMax: 600, kotvaKonecDop: 400,
     // řezný plán – nastavuje dílna (výchozí odhad): délka tyče, prořez pily, řez a nevyužitelný konec tyče na K2 (upínač) [mm]
@@ -239,7 +252,12 @@
     o.join = c.join === 'zamek' ? 'zamek' : 'tupo';
     o.madlo = c.madlo !== false;                 // true = dřevěné madlo navrch, false = horní rám je madlo
     o.anchor = pick(ANCHOR, c.anchor, 'bocni');
-    if (o.anchor === 'patka' && (o.typ === 'B' || o.segs.some((s) => s.rise !== 0))) o.anchor = 'bocni';
+    if ((o.anchor === 'patka' || o.anchor === 'celo') && !o.sloupky) o.anchor = 'bocni';      // patky i čelo jsou pod sloupky
+    // konce přikotvené ke zdi; podle stavby jen tam, kde zábradlí opravdu končí u zdi
+    const zd = c.zed || {}, stOn = o.stavba && o.stavba.on;
+    o.zed = { start: !!zd.start && (!stOn || o.stavba.start === 'zed'), end: !!zd.end && (!stOn || o.stavba.end === 'zed') };
+    o.zedBase = pick(WALL_BASE, c.zedBase, 'zdivo');
+    o.podlozka = !!c.podlozka;
     // přesah špruší: nahoru jen bez dřevěného madla (to leží na horním rámu), dolů jen když spodní rám není na podlaze
     const ov = overAllowed(o);
     o.overTop = ov.top ? Math.round(c.overTop == null ? 0 : num(c.overTop, 0, OVER_MAX, 0)) : 0;
@@ -255,7 +273,12 @@
     o.qty = Math.round(num(c.qty, 1, 20, 1));
     return o;
   }
-  const patkaAllowed = (cfg) => cfg.sloupky && cfg.segs.every((s) => s.rise === 0);
+  const patkaAllowed = (cfg) => !!cfg.sloupky;       // patky i sloupky přes čelo – jen se sloupky (i na schodišti)
+  const wallAllowed = (cfg) => cfg.anchor !== 'bez';
+  const padAllowed = (cfg) => cfg.anchor === 'bocni' || cfg.anchor === 'celo' || (wallAllowed(cfg) && (cfg.zed.start || cfg.zed.end));
+  /* úseky schodiště, u kterých chybí počet schodů – patky stojí na stupních / plotna jde pod stupně, bez schodů je neumístíme */
+  const stepsMissing = (cfg) => (cfg.anchor === 'patka' || cfg.anchor === 'celo') ? cfg.segs.map((s, i) => (s.rise && !s.steps ? i : -1)).filter((i) => i >= 0) : [];
+  const stepsOf = (s) => (s.rise ? s.steps || Math.max(2, Math.round(Math.abs(s.rise) / 175) + 1) : null);
   /* ======================================================================
      STAVBA Z BLOKŮ – zákazník poskládá, jak to u něj vypadá, a změří ji. Z bloků se spočítá trasa zábradlí.
      Každý rozměr se měří dvakrát jinou cestou, aby šla chyba chytit:
@@ -326,18 +349,19 @@
         }
       }
     });
-    if (cfg.anchor === 'bocni') {
+    if (cfg.anchor === 'bocni' || cfg.anchor === 'celo') {
       if (st.deska == null) missing.push({ i: -1, k: 'deska', t: 'Tloušťka nosné desky (čelo betonu bez zateplení) – do ní jdou kotvy' });
       else if (st.deska < 150) remeasure.push({ i: -1, k: 'deska', t: 'Deska ' + st.deska + ' mm je tenká – kotva M12 potřebuje aspoň 150 mm betonu. Přidejte pomoc s kotvením, nebo zvolte kotvení shora.' });
+      else if (cfg.anchor === 'celo' && st.deska < 200 && cfg.segs.some((s) => s.rise)) remeasure.push({ i: -1, k: 'deska', lvl: 'info', t: 'U schodiště se plotna dává pod stupně – ověřte, že je pod nimi aspoň 150 mm betonu.' });
     }
     return { missing, remeasure, on: true };
   }
 
   function overAllowed(cfg) {
-    const top = !cfg.madlo, bot = cfg.typ === 'B' || cfg.anchor === 'bocni';
+    const top = !cfg.madlo, bot = cfg.typ === 'B' || cfg.anchor === 'bocni' || cfg.anchor === 'celo';
     return { top, bot,
       whyTop: top ? '' : 'Nahoru jen bez dřevěného madla – madlo leží na horním rámu.',
-      whyBot: bot ? '' : 'Dolů jen při kotvení z boku – jinak je spodní rám u podlahy a špruše by do ní narazila.' };
+      whyBot: bot ? '' : 'Dolů jen při kotvení z boku nebo přes čelo – jinak je spodní rám u podlahy a špruše by do ní narazila.' };
   }
 
   /* trasa: body čáry podlahy (začátek v počátku, první úsek ve směru +X) */
@@ -431,7 +455,8 @@
     tube: 40, wall: 2, rail_spacing: 1000, bar_w: 35, bar_t: 5, pitch_flat: 111, pitch_slope: 118, min_end_gap: 60,
     post_max_flat: 1000, post_max_slope: 1350, slope_tol: 1, handrail: false, handrail_w: 60, handrail_h: 40, locks: false, slot_clear: 0.5, joint: null, tab_w: 0, over_top: 0, over_bot: 0,
     anchor: 'bez', side: 1, arm_len: 250, plate_t: 10, plate: 120, rod_len: 150, rod_spacing: 70,
-    patka: { w: 100, l: 120, t: 8 }
+    patka: { w: 100, l: 120, t: 8 }, patka_long: 160,
+    floor_off: null, seg_steps: null, celo_corner: CELO_CORNER, pad: 0, zed: null
   };
   function layoutA(path, kw) {
     const P = Object.assign({}, STD_A, kw || {});
@@ -477,7 +502,6 @@
     }));
 
     // koncové sloupky (plná výška, pokos s madly)
-    const anchorPts = [];
     [[true, 0], [false, segs.length - 1]].forEach(([atStart, k]) => {
       const s = segs[k], v = atStart ? s.p0 : s.p1, out = atStart ? mul(s.d, -1) : s.d;
       const top = endPlane(k, atStart, 0), bot = endPlane(k, atStart, 1), hz = hproj(out), pw = unit(cross(Z, hz));
@@ -485,17 +509,54 @@
         cut0: { p: bot.p, n: mul(bot.n, -1) }, cut1: { p: top.p, n: mul(top.n, -1) }, holes: [] };
       m.L = extent(m.p0, Z, pw, hz, a, a, m.cut0, m.cut1); m.a1 = cutAngle(Z, bot.n); m.a2 = cutAngle(Z, top.n);
       members.push(m);
-      anchorPts.push({ pt: v, hz: hproj(s.d), end: atStart ? -1 : 1, seg: k });
     });
 
     // sloupky mezi madly: rohy / zlomy + mezilehlé
     const postPos = [];
     for (let k = 1; k < segs.length; k++) postPos.push({ pt: segs[k].p0, hz: hproj(segs[k].d), label: 'rohový sloupek', corner: k, s: segs[k].s0 });
+    const nSteps = (k) => (P.seg_steps && P.seg_steps[k]) || 0;
+    /* rozdělení úseku sloupky (zlomky délky 0…1):
+         běžně rovnoměrně po nejvýš mx,
+         patky na schodišti – sloupky doprostřed stupňů (patka musí celá stát na stupni),
+         sloupky přes čelo – u každého rohu / zlomu navíc kotevní sloupek CELO_CORNER od něj (do rohu se z boku kotvit nedá). */
+    function segFracs(k) {
+      const s = segs[k], L = s.L, mx = s.sloped ? P.post_max_slope : P.post_max_flat;
+      const even = (a, b) => { const n = Math.max(1, Math.ceil((b - a) / mx - 1e-6)), out = []; for (let j = 1; j < n; j++) out.push(a + (b - a) * j / n); return out; };
+      if (P.anchor === 'celo') {
+        const off = P.celo_corner / Math.cos(s.slope / DEG), sv = k > 0, ev = k < segs.length - 1;
+        const a0 = sv ? off : 0, a1 = ev ? L - off : L;
+        let pts;
+        if (!sv && !ev) pts = even(0, L);
+        else if (a1 - a0 >= 300) pts = (sv ? [a0] : []).concat(even(a0, a1), ev ? [a1] : []);
+        else pts = L >= 600 ? [L / 2] : [];
+        return [0].concat(pts.map((x) => x / L), [1]);
+      }
+      const nt = nSteps(k) - 1;
+      if (P.anchor === 'patka' && s.sloped && nt >= 1) {
+        const snap = (nfi) => {
+          const out = [0]; let last = -1;
+          for (let j = 1; j < nfi; j++) {
+            const t = j / nfi, hi = nt - 1 - (nfi - 1 - j);
+            let best = last + 1;
+            for (let i = last + 1; i <= hi; i++) if (Math.abs((i + 0.5) / nt - t) < Math.abs((best + 0.5) / nt - t)) best = i;
+            out.push((best + 0.5) / nt); last = best;
+          }
+          return out.concat([1]);
+        };
+        let fr = null;
+        for (let nfi = Math.max(1, Math.ceil(L / mx - 1e-6)); nfi <= nt + 1; nfi++) {
+          fr = snap(nfi);
+          let mxd = 0; for (let i = 1; i < fr.length; i++) mxd = Math.max(mxd, (fr[i] - fr[i - 1]) * L);
+          if (mxd <= mx + 1e-6) break;
+        }
+        return fr;
+      }
+      return [0].concat(even(0, L).map((x) => x / L), [1]);
+    }
     segs.forEach((s, k) => {
-      const seglen = len(sub(s.p1, s.p0)), mx = s.sloped ? P.post_max_slope : P.post_max_flat;
-      const nfi = Math.max(1, Math.ceil(seglen / mx - 1e-6));
-      for (let j = 1; j < nfi; j++) postPos.push({ pt: add(s.p0, mul(sub(s.p1, s.p0), j / nfi)), hz: hproj(s.d), label: 'sloupek', seg: k, s: s.s0 + seglen * j / nfi });
-      for (let j = 0; j < nfi; j++) fields.push({ k, t0: j / nfi, t1: (j + 1) / nfi });
+      const fr = segFracs(k);
+      for (let j = 1; j < fr.length - 1; j++) postPos.push({ pt: add(s.p0, mul(sub(s.p1, s.p0), fr[j])), hz: hproj(s.d), label: 'sloupek', seg: k, s: s.s0 + s.L * fr[j], x: s.L * fr[j] });
+      for (let j = 0; j < fr.length - 1; j++) fields.push({ k, t0: fr[j], t1: fr[j + 1] });
     });
     const zon = (pl, xy) => pl.p[2] - (pl.n[0] * (xy[0] - pl.p[0]) + pl.n[1] * (xy[1] - pl.p[1])) / pl.n[2];
     postPos.forEach((pp) => {
@@ -529,7 +590,6 @@
       const m = { kind: 'tube', role: 'post', name: pp.label + (ang ? ' šikmina' : mixed ? ' ve zlomu' : ''), prof, p0: [pt[0], pt[1], zb0], d: Z, e1: pw, e2: hz, h1: a, h2: a, t: T,
         cut0, cut1, holes: [], L, a1: ang, a2: ang };
       members.push(m);
-      anchorPts.push({ pt, hz, seg: adj[0].i });
     });
 
     // výplň: pásovina, v každém poli vystředěná
@@ -573,12 +633,51 @@
     const side = P.side;
     const postS = postPos.map((pp) => pp.s);
     const segAtS = (sv) => { for (let k = 0; k < segs.length; k++) if (sv < segs[k].s0 + segs[k].L - 1e-6) return k; return segs.length - 1; };
+    const zed = P.zed || { start: false, end: false };
     let anch = { total, cand: [], used: [], groups: [], verts: segs.slice(1).map((x) => x.s0), posts: postS, movable: false, kind: P.anchor,
-      corners: segs.slice(1).filter((x, i) => dot(hproj(segs[i].d), hproj(x.d)) < 0.999).map((x) => x.s0) };
+      corners: segs.slice(1).filter((x, i) => dot(hproj(segs[i].d), hproj(x.d)) < 0.999).map((x) => x.s0), fixed: [] };
+    const fOff = P.floor_off != null ? P.floor_off : H + a;            // osa horního madla nad čarou podlahy / hran stupňů
+    /* podlaha pod bodem úseku k (x = délka od začátku úseku po sklonu): rovina, nebo stupeň (výška nižší z obou hran) */
+    const treadZ = (k, x) => {
+      const s = segs[k], z0 = s.p0[2] - fOff, rise = s.p1[2] - s.p0[2];
+      if (!s.sloped) return z0;
+      const nt = Math.max(1, nSteps(k) - 1), i = Math.max(0, Math.min(nt - 1, Math.floor(x / s.L * nt + 1e-9)));
+      return z0 + (rise * i + Math.min(0, rise)) / nt;
+    };
+    const lowerPl = (k) => ({ p: sub(sub(segs[k].p0, mul(Z, H)), mul(segs[k].up, a)), n: segs[k].up });   // spodní líc spodního rámu
+    // body sloupků: koncové (end ±1) a mezi madly (roh = corner, jinak seg + x)
+    const ends = [[true, 0], [false, segs.length - 1]].map(([atStart, k]) => {
+      const s = segs[k];
+      return { pt: atStart ? s.p0 : s.p1, hz: hproj(s.d), end: atStart ? -1 : 1, seg: k, x: atStart ? 0 : s.L, s: atStart ? 0 : total };
+    });
+    const pts0 = ends.concat(postPos).map((ap) => Object.assign({ pw: unit(cross(Z, ap.hz)) }, ap));
+    /* nožka pod spodním rámem: svislý jekl od zadané výšky nahoru k spodnímu líci rámu (u zlomu / rohu vodorovně pod nižším rámem) */
+    function stub(ap, zBot, nm) {
+      const ks = ap.corner != null ? [ap.corner - 1, ap.corner] : [ap.seg];
+      const pls = ks.map(lowerPl);
+      const crn = []; [-a, a].forEach((sw) => [-a, a].forEach((su) => crn.push(add(add(ap.pt, mul(ap.pw, sw)), mul(ap.hz, su)))));
+      let top = pls[0];
+      if (pls.length > 1 && Math.abs(dot(pls[0].n, pls[1].n) - 1) > 1e-9) top = { p: [ap.pt[0], ap.pt[1], Math.min.apply(null, crn.map((c) => Math.min.apply(null, pls.map((pl) => zon(pl, c)))))], n: Z };
+      if (zon(top, ap.pt) - zBot < 0.5) return;
+      const bot = { p: [ap.pt[0], ap.pt[1], zBot], n: Z };
+      const m = { kind: 'tube', role: 'stub', name: nm, prof, p0: [ap.pt[0], ap.pt[1], zBot], d: Z, e1: ap.pw, e2: ap.hz, h1: a, h2: a, t: T, cut0: bot, cut1: top, holes: [], a1: 0, a2: cutAngle(Z, top.n) };
+      m.L = extent(m.p0, Z, ap.pw, ap.hz, a, a, bot, top);
+      anchors.push(m);
+    }
+    const rodsDown = (o, ey, t, z0) => [40, -40].forEach((y) => anchors.push({ kind: 'rod', role: 'rod', o: add(add(o, mul(ey, y)), mul(Z, t + 20)), dir: mul(Z, -1), r: 6, L: P.rod_len - 30 + t + 20 }));
+    /* svislá plotna na boku dílu: o = střed líce dílu, ex podél, ez do stavby; za ní podložka; 2 kotvy ve směru ez */
+    function sidePlate(role, name, o, ex, ez, pl, holes, wall) {
+      const ey = unit(cross(ez, ex));
+      anchors.push({ kind: 'plate', role, name, prof: 'plech ' + pl.t + ' mm', o, ex, ey, ez, w: pl.w, l: pl.l, t: pl.t, holes });
+      if (P.pad) anchors.push({ kind: 'pad', role: 'pad', name: 'tepelně oddělující podložka', prof: 'podložka ' + P.pad + ' mm', o: add(o, mul(ez, pl.t)), ex, ey, ez, w: pl.w, l: pl.l, t: P.pad, holes });
+      holes.forEach((h) => anchors.push({ kind: 'rod', role: 'rod', wall: !!wall, o: add(add(sub(o, mul(ez, 30)), mul(ex, h[0])), mul(ey, h[1])), dir: ez, r: 6, L: P.rod_len + 30 + pl.t + P.pad + 10 }));
+    }
+
     if (P.anchor === 'bocni') {
       // povolená místa: konce (pod koncovým sloupkem), sloupky a středy mezer mezi špruše
       const cand = [0, total].concat(postS, gapS).map((x) => Math.round(x * 10) / 10).filter((x, i, arr) => arr.indexOf(x) === i).sort((x, y) => x - y);
-      const used = P.anchor_s ? snapAnchors(cand, P.anchor_s) : P.anchor_pitch ? autoAnchors(cand, total, P.anchor_pitch) : snapAnchors(cand, [0, total].concat(postS));
+      const def = [0, total].filter((x) => !(x === 0 ? zed.start : zed.end)).concat(postS);   // konec u zdi drží plotna ke zdi
+      const used = P.anchor_s ? snapAnchors(cand, P.anchor_s) : P.anchor_pitch ? autoAnchors(cand, total, P.anchor_pitch) : snapAnchors(cand, def);
       anch = Object.assign(anch, { cand, used, movable: true });
       used.forEach((sv) => {
         const k = segAtS(sv), s = segs[k], hz = hproj(s.d), win = mul(unit(cross(Z, hz)), side);
@@ -589,29 +688,89 @@
         armSet(anchors, add(c, mul(win, a)), win, hz, P, s);
       });
     } else if (P.anchor === 'patka') {
-      anch.used = [0, total].concat(postS).sort((x, y) => x - y);     // patky jen pod sloupky – posouvají se roztečí sloupků
-      anchorPts.forEach((ap) => {
-        const pk = P.patka;
-        let c = sub(ap.pt, mul(Z, H + a));
-        if (ap.end) c = sub(c, mul(ap.hz, ap.end * (pk.w / 2 - a)));
-        const ex = ap.hz, ey = unit(cross(Z, ex));
-        const o = sub(c, mul(Z, pk.t));
-        anchors.push({ kind: 'plate', role: 'patka', name: 'kotevní patka', prof: 'plech ' + pk.t + ' mm', o, ex, ey, ez: Z, w: pk.w, l: pk.l, t: pk.t, holes: [[0, 40, 7], [0, -40, 7]] });
-        [40, -40].forEach((y) => anchors.push({ kind: 'rod', role: 'rod', o: add(add(o, mul(ey, y)), mul(Z, pk.t + 20)), dir: mul(Z, -1), r: 6, L: P.rod_len - 30 + pk.t + 20 }));
+      /* patka 100×120×8 pod sloupkem. Na schodišti stojí na stupni: sloupky jsou uprostřed stupňů, pod spodním rámem nožka.
+         Sloupek na hraně stupně / podesty (zlom, konec): patka 160 mm jen na tu stranu, kde je podlaha ve stejné výšce –
+         kotva je pak 60 mm od hrany. Kde podlaha není na žádné straně, patka se nedá. */
+      const pk = P.patka, used = [];
+      pts0.forEach((ap0) => {
+        let ap = ap0;
+        // zlom rovina / schodiště: spodní rámy tu mají dva různé spodní líce – nožka s patkou jde kousek vedle,
+        // pod rám na rovné straně (60 mm od zlomu, kotva tak není u hrany podesty). Bez rovné strany se nekotví.
+        if (ap.corner != null && (segs[ap.corner - 1].sloped || segs[ap.corner].sloped)) {
+          const kf = !segs[ap.corner].sloped ? ap.corner : !segs[ap.corner - 1].sloped ? ap.corner - 1 : -1;
+          if (kf < 0) return;
+          const dir = mul(hproj(segs[kf].d), kf === ap.corner ? 1 : -1), off = pk.w / 2 + 10;
+          ap = { pt: add(ap.pt, mul(dir, off)), hz: hproj(segs[kf].d), pw: unit(cross(Z, hproj(segs[kf].d))), seg: kf, x: kf === ap.corner ? off : segs[kf].L - off, s: ap.s + (kf === ap.corner ? off : -off), mid: true };
+        }
+        const zf = ap.corner == null && ap.end == null ? treadZ(ap.seg, ap.x) : ap.pt[2] - fOff;
+        let dir = ap.hz, off = 0, w = pk.w;
+        if (ap.corner != null || ap.end != null) {
+          const side2 = (k, away) => { const s = segs[k], up = s.d[2] * away; return { dir: mul(hproj(s.d), away), good: !s.sloped || up > 0, stair: s.sloped }; };
+          let sides;
+          if (ap.corner != null) sides = [side2(ap.corner, 1), side2(ap.corner - 1, -1)];
+          else {
+            const inw = side2(ap.seg, -ap.end), s = segs[ap.seg];
+            sides = [inw, { dir: mul(inw.dir, -1), good: s.sloped && inw.stair && !inw.good, stair: true, out: true }];
+          }
+          if (ap.corner != null && sides[0].good && sides[1].good) { dir = ap.hz; }
+          else if (ap.end != null && sides[0].good && !sides[0].stair) { dir = sides[0].dir; off = pk.w / 2 - a; }   // rovina: lícuje s koncem
+          else {
+            const g = sides.find((x) => x.good);
+            if (!g) return;
+            dir = g.dir; w = P.patka_long; off = w / 2 - a;
+          }
+        }
+        const ex = unit(dir), ey = unit(cross(Z, ex)), c = add([ap.pt[0], ap.pt[1], zf], mul(ex, off));
+        anchors.push({ kind: 'plate', role: 'patka', name: 'kotevní patka', prof: 'plech ' + pk.t + ' mm', o: c, ex, ey, ez: Z, w, l: pk.l, t: pk.t, holes: [[0, 40, 7], [0, -40, 7]] });
+        rodsDown(c, ey, pk.t);
+        stub(ap, zf + pk.t, 'nožka sloupku na patku');
+        used.push(ap.s);
       });
+      anch.used = used.sort((x, y) => x - y);
+    } else if (P.anchor === 'celo') {
+      /* sloupek přetažený přes čelo: pod spodním rámem nožka, na jejím boku do stavby plotna 120×100×10 se 2 kotvami.
+         Horní hrana plotny 25 mm pod podlahou; na schodišti pod nejnižším stupněm v délce plotny. Rohy a zlomy se nekotví. */
+      const pl = CELO_PLATE, used = [];
+      pts0.forEach((ap) => {
+        if (ap.corner != null) return;
+        const k = ap.seg, s = segs[k], win = mul(ap.pw, side);
+        const off = ap.end != null ? -ap.end * (pl.w / 2 - a) : 0;            // u konce lícuje s koncem sloupku
+        const xc = ap.x + off / Math.cos(s.slope / DEG);
+        let zf = Infinity;
+        const hw2 = pl.w / 2 / Math.cos(s.slope / DEG);                      // půlka plotny po sklonu
+        for (let x = xc - hw2; x <= xc + hw2 + 1e-6; x += 5) zf = Math.min(zf, treadZ(k, Math.max(0, Math.min(s.L, x))));
+        const zc = zf - pl.drop - pl.l / 2;
+        const o = add(add([ap.pt[0], ap.pt[1], zc], mul(ap.hz, off)), mul(win, a));
+        sidePlate('celo', 'plotna na čelo', o, ap.hz, win, pl, [[40, 0, 7], [-40, 0, 7]]);
+        stub(ap, zc - pl.l / 2, 'nožka sloupku přes čelo');
+        used.push(ap.s);
+      });
+      anch.used = used.sort((x, y) => x - y);
     }
+    // konec ke zdi: na koncovém sloupku 2 plotny (u horního a spodního rámu), mezera ke zdi 20 mm
+    if (P.anchor !== 'bez') ends.forEach((ap) => {
+      if (!(ap.end < 0 ? zed.start : zed.end)) return;
+      const out = mul(ap.hz, ap.end), pw = unit(cross(Z, out)), zf = ap.pt[2] - fOff;
+      const zTop = ap.pt[2] - 100, zBot = Math.max(ap.pt[2] - H + 100, zf + 150);
+      const zs = zTop - zBot >= 150 ? [zTop, zBot] : [(zTop + zBot) / 2];
+      zs.forEach((z) => sidePlate('zed', 'plotna ke zdi', add([ap.pt[0], ap.pt[1], z], mul(out, a)), pw, out, ZED_PLATE, [[40, 0, 7], [-40, 0, 7]], true));
+      anch.fixed.push(ap.s);
+    });
     return { P, segs, members: members.concat(anchors), fields, barInfo, locks: joint !== 'tupo', joint, anch };
   }
 
   /* kotevní sada: rameno z jeklu 40×20×3, plotna P10 120×120, 2× závitová tyč M12 */
+  /* s podložkou (P.pad) je rameno o tloušťku podložky kratší – plotna i podložka se vejdou do zadané délky ramene */
   function armSet(out, base, win, hz, P, seg) {
-    const L = P.arm_len - P.plate_t, ah = 20, av = 10, at = 3;
+    const pad = P.pad || 0, L = P.arm_len - P.plate_t - pad, ah = 20, av = 10, at = 3;
     const m = { kind: 'tube', role: 'arm', name: 'kotevní rameno', prof: 'jekl 40×20×3', p0: base, d: win, e1: hz, e2: Z, h1: ah, h2: av, t: at,
       cut0: { p: base, n: win }, cut1: { p: add(base, mul(win, L)), n: win }, holes: [], L, a1: 0, a2: 0 };
     out.push(m);
     const o = add(base, mul(win, L));
-    out.push({ kind: 'plate', role: 'plotna', name: 'kotevní plotna', prof: 'plech ' + P.plate_t + ' mm', o, ex: hz, ey: Z, ez: win, w: P.plate, l: P.plate, t: P.plate_t, holes: [[0, P.rod_spacing / 2, 7], [0, -P.rod_spacing / 2, 7]] });
-    [-1, 1].forEach((sg) => out.push({ kind: 'rod', role: 'rod', o: add(sub(o, mul(win, 30)), mul(Z, sg * P.rod_spacing / 2)), dir: win, r: 6, L: P.rod_len + 30 + P.plate_t + 10 }));
+    const holes = [[0, P.rod_spacing / 2, 7], [0, -P.rod_spacing / 2, 7]];
+    out.push({ kind: 'plate', role: 'plotna', name: 'kotevní plotna', prof: 'plech ' + P.plate_t + ' mm', o, ex: hz, ey: Z, ez: win, w: P.plate, l: P.plate, t: P.plate_t, holes });
+    if (pad) out.push({ kind: 'pad', role: 'pad', name: 'tepelně oddělující podložka', prof: 'podložka ' + pad + ' mm', o: add(o, mul(win, P.plate_t)), ex: hz, ey: Z, ez: win, w: P.plate, l: P.plate, t: pad, holes });
+    [-1, 1].forEach((sg) => out.push({ kind: 'rod', role: 'rod', o: add(sub(o, mul(win, 30)), mul(Z, sg * P.rod_spacing / 2)), dir: win, r: 6, L: P.rod_len + 30 + P.plate_t + pad + 10 }));
   }
 
   /* ======================================================================
@@ -621,7 +780,8 @@
     rail_w: 40, rail_h: 20, rail_t: 3, bar_w: 40, bar_t: 10, handrail: true, handrail_top: 1000, handrail_w: 60, handrail_h: 40,
     bottom_rail_z: -100, overhang: 150, pitch_max: 116, field_max: 1500, joint_gap: 10, joint_min_corner: 300,
     insert_w: 30, insert_h: 10, insert_t: 2, insert_len: 200, arm_len: 250, arms_per_field: 2, plate: 120, plate_t: 10,
-    rod_len: 150, rod_spacing: 70, omit_corner: 1, end_post: true, side: 1, anchor: 'bocni', bar_joint: 'tupo', tab_w: 0, over_top: 0, slot_clear: 0.5
+    rod_len: 150, rod_spacing: 70, omit_corner: 1, end_post: true, side: 1, anchor: 'bocni', bar_joint: 'tupo', tab_w: 0, over_top: 0, slot_clear: 0.5,
+    pad: 0, zed: null
   };
   function layoutB(path, kw) {
     const P = Object.assign({}, STD_B, kw || {});
@@ -738,7 +898,7 @@
 
     // kotevní ramena (uprostřed mezery mezi špruše, 2 na pole, u rohu se nejbližší vynechá)
     const anchors = [];
-    let anch = { total, cand: [], used: [], groups: fields.map((f) => ({ s0: f.s0, s1: f.s1 })), verts, joints, corners: planCorners, posts: [], movable: false, kind: P.anchor };
+    let anch = { total, cand: [], used: [], groups: fields.map((f) => ({ s0: f.s0, s1: f.s1 })), verts, joints, corners: planCorners, posts: [], movable: false, kind: P.anchor, fixed: [] };
     if (P.anchor === 'bocni') {
       // povolená místa: středy mezer mezi špruše, mimo rohy (rameno + 60 mm) a styky polí (60 mm)
       const cand = [];
@@ -772,6 +932,20 @@
         armSet(anchors, add(add(p, mul(Z, zb)), mul(s.win, hw)), s.win, s.hz, P, s);
       });
     }
+    // konec ke zdi: na koncovém sloupku 2 plotny 120×100×10, mezera ke zdi 20 mm (plotna + podložka / vyrovnání)
+    const zed = P.zed || {};
+    if (P.anchor !== 'bez' && P.end_post) [true, false].forEach((atStart) => {
+      if (!(atStart ? zed.start : zed.end)) return;
+      const s = atStart ? segs[0] : segs[segs.length - 1], V = atStart ? s.p0 : s.p1, ohz = hproj(atStart ? mul(s.d, -1) : s.d), pl = ZED_PLATE, pad = P.pad || 0;
+      const ex = s.wg, ey = unit(cross(ohz, ex)), zTop = zt - 100, zBot = Math.max(zb + 100, 150);
+      (zTop - zBot >= 150 ? [zTop, zBot] : [(zTop + zBot) / 2]).forEach((z) => {
+        const o = add(add(V, mul(Z, z)), mul(ohz, pd)), holes = [[40, 0, 7], [-40, 0, 7]];
+        anchors.push({ kind: 'plate', role: 'zed', name: 'plotna ke zdi', prof: 'plech ' + pl.t + ' mm', o, ex, ey, ez: ohz, w: pl.w, l: pl.l, t: pl.t, holes });
+        if (pad) anchors.push({ kind: 'pad', role: 'pad', name: 'tepelně oddělující podložka', prof: 'podložka ' + pad + ' mm', o: add(o, mul(ohz, pl.t)), ex, ey, ez: ohz, w: pl.w, l: pl.l, t: pad, holes });
+        holes.forEach((h) => anchors.push({ kind: 'rod', role: 'rod', wall: true, o: add(add(sub(o, mul(ohz, 30)), mul(ex, h[0])), mul(ey, h[1])), dir: ohz, r: 6, L: P.rod_len + 30 + pl.t + pad + 10 }));
+      });
+      anch.fixed.push(atStart ? 0 : total);
+    });
 
     // špruše + přesahy (spoj podle šířky špruše proti rovné části stěny rámu – viz barSet)
     const railAt = (lev, sv) => members.find((m) => m.role === 'rail' && m.lev === lev && m.sA - 1e-6 <= sv && sv <= m.sB + 1e-6);
@@ -837,7 +1011,7 @@
   }
   function memberSolid(m) {
     if (m.kind === 'bar' && (m.tab0 || m.tab1)) return tabBarSolid(m);
-    if (m.kind === 'plate') return extrudeSolid(rect2(m.w, m.l), m.holes.map((h) => circle(h[0], h[1], h[2], 16)), m.o, m.ex, m.ey, m.ez, m.t);
+    if (m.kind === 'plate' || m.kind === 'pad') return extrudeSolid(rect2(m.w, m.l), m.holes.map((h) => circle(h[0], h[1], h[2], 16)), m.o, m.ex, m.ey, m.ez, m.t);
     if (m.kind === 'rod') { const e1 = unit(cross(m.dir, Math.abs(m.dir[2]) < 0.9 ? Z : [1, 0, 0])), e2 = cross(m.dir, e1); return extrudeSolid(circle(0, 0, m.r, 12), [], m.o, e1, e2, m.dir, m.L); }
     return prismSolid(m);
   }
@@ -845,11 +1019,11 @@
   function toLocal(m) {
     const s = m.solid || memberSolid(m);
     let o, ax;
-    if (m.kind === 'plate') { o = m.o; ax = [m.ex, m.ey, m.ez]; } else { o = m.p0; ax = [m.d, m.e1, m.e2]; }
+    if (m.kind === 'plate' || m.kind === 'pad') { o = m.o; ax = [m.ex, m.ey, m.ez]; } else { o = m.p0; ax = [m.d, m.e1, m.e2]; }
     if (dot(cross(ax[0], ax[1]), ax[2]) < 0) ax = [ax[0], ax[1], mul(ax[2], -1)];   // pravotočivá soustava – jinak by díl vyšel zrcadlově
     let loc = s.verts.map((v) => { const q = sub(v, o); return [dot(q, ax[0]), dot(q, ax[1]), dot(q, ax[2])]; });
     const x0 = Math.min.apply(null, loc.map((p) => p[0]));
-    if (m.kind !== 'plate') loc = loc.map((p) => [p[0] - x0, p[1], p[2]]);
+    if (m.kind !== 'plate' && m.kind !== 'pad') loc = loc.map((p) => [p[0] - x0, p[1], p[2]]);
     const faces = s.faces.map((f) => ({ outer: f.outer, inner: f.inner, n: [dot(f.n, ax[0]), dot(f.n, ax[1]), dot(f.n, ax[2])] }));
     return { verts: loc, faces };
   }
@@ -872,9 +1046,11 @@
 
   /* ---------- kontext (deska, schodiště, fasáda) jen pro náhled ---------- */
   function context(cfg, pts, lay) {
+    const ctxWall = [];
     const out = [], side = cfg.side === 'R' ? -1 : 1, isB = cfg.typ === 'B';
     const hw = isB ? lay.P.rail_w / 2 : lay.P.tube / 2;
-    const edge = cfg.anchor === 'patka' || (cfg.typ === 'A' && cfg.anchor === 'bez') ? -70 : hw + cfg.arm;
+    const pad = cfg.podlozka && padAllowed(cfg) ? PAD_T : 0;
+    const edge = cfg.anchor === 'patka' || (cfg.typ === 'A' && cfg.anchor === 'bez') ? -70 : cfg.anchor === 'celo' ? hw + CELO_PLATE.t + pad : hw + cfg.arm;
     const flat = pts.every((p) => Math.abs(p[2] - pts[0][2]) < 1e-6) && pts.length > 2;
     const winOf = (i) => mul(unit(cross(Z, hproj(sub(pts[i + 1], pts[i])))), side);
     if (flat) {
@@ -908,7 +1084,15 @@
       } else if (!flat) out.push({ solid: strip(edge, edge + 1400, -220, 0), color: '#CFCAC0', alpha: 1, tag: 'deska' });
       if (cfg.anchor === 'bocni' && cfg.facade > 0) out.push({ solid: strip(edge - cfg.facade, edge, -260, 30), color: '#E9E1CF', alpha: 0.55, tag: 'fasada' });
     }
-    return out;
+    // zeď u konce přikotveného ke zdi (líc zdi 20 mm za koncovým sloupkem)
+    if (wallAllowed(cfg)) [[cfg.zed.start, 0, 1], [cfg.zed.end, pts.length - 1, pts.length - 2]].forEach(([on, i, j]) => {
+      if (!on) return;
+      const V = pts[i], out = hproj(sub(V, pts[j])), win = mul(unit(cross(Z, out)), side), pe = isB ? lay.P.rail_h / 2 : hw;
+      const P8 = [];
+      [-250, 2500].forEach((z) => [[pe + WALL_GAP, -400], [pe + WALL_GAP + 250, -400], [pe + WALL_GAP + 250, 1600], [pe + WALL_GAP, 1600]].forEach(([u, w]) => P8.push(add(add(add(V, mul(out, u)), mul(win, w)), [0, 0, z]))));
+      ctxWall.push({ solid: hexa(P8), color: '#D9D3C7', alpha: 0.6, tag: 'zed' });
+    });
+    return out.concat(ctxWall);
   }
 
   /* ---------- celá konfigurace -> díly, kusovník, cena ---------- */
@@ -936,12 +1120,14 @@
     const cfg = normalize(cfgIn), pts = routePoints(cfg.segs), side = cfg.side === 'R' ? -1 : 1;
     const jt = jointInfo(cfg), pr = jt.rail, br = jt.bar;
     const common = { bar_w: br.w, bar_t: br.t, tab_w: jt.tw, over_top: cfg.overTop, anchor: cfg.anchor, side, arm_len: cfg.arm, slot_clear: DEFAULT_RATES.slotClear,
-      anchor_s: cfg.kotvyPos, anchor_pitch: cfg.kotvyRoztec };
+      anchor_s: cfg.kotvyPos, anchor_pitch: cfg.kotvyRoztec, pad: cfg.podlozka && padAllowed(cfg) ? PAD_T : 0, zed: cfg.zed };
     let lay;
     if (cfg.typ === 'A') {
-      const a = pr.w / 2, zt = cfg.vyska - a - (cfg.madlo ? STD_A.handrail_h : 0);
-      const zbAxis = cfg.anchor === 'bocni' ? -100 : cfg.anchor === 'patka' ? STD_A.patka.t + a : a;
+      const a = pr.w / 2, zt = cfg.vyska - a - (cfg.madlo ? STD_A.handrail_h : 0), stairs = cfg.segs.some((s) => s.rise);
+      // spodní rám: z boku pod podlahou, na patkách (na schodišti s mezerou nad hranami stupňů), jinak na čáře podlahy
+      const zbAxis = cfg.anchor === 'bocni' ? -100 : cfg.anchor === 'patka' ? (stairs ? PATKA_STAIR_GAP : STD_A.patka.t) + a : a;
       lay = layoutA(pts.map((p) => add(p, [0, 0, zt])), Object.assign({ tube: pr.w, wall: pr.t, rail_spacing: zt - zbAxis, joint: jt.mode, over_bot: cfg.overBot,
+        floor_off: zt, seg_steps: cfg.segs.map(stepsOf),
         pitch_flat: 106 + br.t, pitch_slope: 113 + br.t, post_max_flat: cfg.postPitch, post_max_slope: cfg.postPitch * 1.35, handrail: cfg.madlo }, common));
     } else {
       lay = layoutB(pts, Object.assign({ rail_w: pr.w, rail_h: pr.h, rail_t: pr.t, insert_w: pr.ins[0], insert_h: pr.ins[1], insert_t: pr.ins[2],
@@ -951,10 +1137,12 @@
     return { cfg, pts, lay, locks: jt, context: context(cfg, pts, lay) };
   }
 
-  const ROLE_ORDER = ['rail', 'end_post', 'post', 'insert', 'arm', 'bar', 'over', 'overtop', 'patka', 'plotna', 'handrail'];
+  const ROLE_ORDER = ['rail', 'end_post', 'post', 'stub', 'insert', 'arm', 'bar', 'over', 'overtop', 'patka', 'plotna', 'celo', 'zed', 'handrail'];
+  const hwName = (base) => (base === 'ocel' ? 'šroub M12 + matice, podložka' : 'závitová tyč M12 + ' + (base === 'zdivo' ? 'chemická kotva se sítkem' : 'chemická kotva') + ', matice, podložka');
   function analyze(cfgIn, ratesIn) {
     const R = rates0(ratesIn), B = build(cfgIn), cfg = B.cfg, lay = B.lay;
-    const parts = lay.members.filter((m) => m.kind !== 'rod');
+    const parts = lay.members.filter((m) => m.kind !== 'rod' && m.kind !== 'pad');
+    const pads = lay.members.filter((m) => m.kind === 'pad');
     const groups = new Map();
     parts.forEach((m) => {
       const k = m.kind === 'plate' ? m.role + '|' + m.w + 'x' + m.l + 'x' + m.t + '|' + m.holes.length : shapeKey(m);
@@ -987,18 +1175,26 @@
         stroj: tube ? 'K2' : 'pila', file: poz + '_' + pr + '_L' + Math.round(L) + '_' + q + 'ks.step', part: m });
       if (tube && L > 6000) problems.push(poz + ' ' + name + ': délka ' + nf(L) + ' mm je přes tyč 6 m – potřeba styk.');
     });
-    const rods = lay.members.filter((m) => m.kind === 'rod').length;
-    const base = BASE.find((b) => b.id === cfg.base);
-    if (rods) rows.push({ poz: 'Z' + String(++n).padStart(2, '0'), kind: 'hw', role: 'hw', name: cfg.base === 'ocel' ? 'šroub M12 + matice, podložka' : 'závitová tyč M12 + ' + (cfg.base === 'zdivo' ? 'chemická kotva se sítkem' : 'chemická kotva') + ', matice, podložka', prof: 'nakupovaný díl', len: '', L: 0, cut: '', feat: base.lab, q: rods, stroj: '', file: '' });
-    const anchorsN = parts.filter((m) => m.role === 'arm' || m.role === 'patka').length;
+    const rodsWall = lay.members.filter((m) => m.kind === 'rod' && m.wall).length, rodsMain = lay.members.filter((m) => m.kind === 'rod' && !m.wall).length, rods = rodsMain + rodsWall;
+    const base = BASE.find((b) => b.id === cfg.base), wbase = WALL_BASE.find((b) => b.id === cfg.zedBase);
+    if (rodsMain) rows.push({ poz: 'Z' + String(++n).padStart(2, '0'), kind: 'hw', role: 'hw', name: hwName(cfg.base), prof: 'nakupovaný díl', len: '', L: 0, cut: '', feat: base.lab, q: rodsMain, stroj: '', file: '' });
+    if (rodsWall) rows.push({ poz: 'Z' + String(++n).padStart(2, '0'), kind: 'hw', role: 'hw', name: hwName(cfg.zedBase) + ' – do zdi', prof: 'nakupovaný díl', len: '', L: 0, cut: '', feat: wbase.lab, q: rodsWall, stroj: '', file: '' });
+    const padG = new Map();
+    pads.forEach((m) => { const k = m.w + ' × ' + m.l + ' × ' + m.t; if (!padG.has(k)) padG.set(k, []); padG.get(k).push(m); });
+    padG.forEach((g, k) => {
+      const poz = 'Z' + String(++n).padStart(2, '0');
+      g.forEach((m) => { m.poz = poz; });
+      rows.push({ poz, kind: 'hw', role: 'pad', name: 'tepelně oddělující podložka ' + k + ' mm, 2 otvory Ø14', prof: 'nakupovaný díl', len: '', L: 0, cut: '', feat: 'pod plotnu', q: g.length, stroj: '', file: '' });
+    });
+    const anchorsN = parts.filter((m) => ['arm', 'patka', 'celo', 'zed'].indexOf(m.role) >= 0).length;
 
     // svary (odhad pro cenu)
     const cnt = (r) => parts.filter((m) => m.role === r).length;
-    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + cnt('bar') * 2 + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka');
+    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + cnt('bar') * 2 + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed');
     const cutsN = rows.filter((r) => r.kind === 'tube' || r.kind === 'bar' || r.kind === 'plate').reduce((a, r) => a + r.q, 0);
     const fin = cfg.fin;
     const finCost = (fin === 'zn' ? kg * R.zinek : fin === 'znpu' ? kg * R.zinek + area * R.lak : fin === 'prasek' ? area * R.prasek : kg * R.zinek + area * R.prasek);
-    const cost = kg * R.kg + cutsN * R.rez + welds * R.svar + slots * R.drazka + tabs * R.zamekSpruse + finCost + woodM * R.madlo + rods * (R.kotva[cfg.base] || 0) + R.priprava;
+    const cost = kg * R.kg + cutsN * R.rez + welds * R.svar + slots * R.drazka + tabs * R.zamekSpruse + finCost + woodM * R.madlo + rodsMain * (R.kotva[cfg.base] || 0) + rodsWall * (R.kotva[cfg.zedBase] || 0) + pads.length * R.podlozka + R.priprava;
     const price = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
     const lenM = cfg.segs.reduce((a, s) => a + Math.hypot(s.L, s.rise), 0) / 1000;
     const svc = [];
@@ -1021,6 +1217,15 @@
     if (cfg.segs.some((s) => Math.abs(s.rise) / s.L > Math.tan(42 / DEG))) warns.push({ lvl: 'warn', t: 'Sklon úseku přes 42° – ověřte rozměry schodiště, nejlépe zaměřením.' });
     if (cfg.anchor === 'bocni' && cfg.arm < cfg.facade + 30) warns.push({ lvl: 'bad', t: 'Rameno kotvy (' + cfg.arm + ' mm) je kratší než fasáda + 30 mm – plotna by nedosedla na nosnou desku.' });
     if (cfg.anchor === 'bez') warns.push({ lvl: 'info', t: 'Bez kotev: zábradlí dodáme bez kotevních prvků, kotvení a jeho únosnost zajišťujete sami.' });
+    const sm = stepsMissing(cfg);
+    if (sm.length) warns.push({ lvl: 'bad', t: (cfg.anchor === 'patka' ? 'Patky na schodišti stojí na stupních' : 'Plotny na schodišti jdou pod stupně') + ' – zadejte počet schodů u úseku ' + sm.map((i) => i + 1).join(', ') + '.' });
+    if ((cfg.anchor === 'patka' || cfg.anchor === 'celo') && !(cfg.stavba && cfg.stavba.on)) cfg.segs.forEach((s, i) => {
+      if (!s.rise || !s.steps) return;
+      const g = s.L / (s.steps - 1), h = Math.abs(s.rise) / (s.steps - 1);
+      if (g < 220 || g > 350 || h < 140 || h > 210) warns.push({ lvl: 'bad', t: 'Úsek ' + (i + 1) + ': z délky, převýšení a ' + s.steps + ' schodů vychází schod ' + nf(h) + ' × ' + nf(g) + ' mm (výška × hloubka) – to je neobvyklé. Zkontrolujte počet schodů: počítají se výšky od prvního schodu po podestu.' });
+    });
+    if (cfg.anchor === 'patka' && cfg.segs.some((s) => s.rise)) warns.push({ lvl: 'info', t: 'Na schodišti stojí patky uprostřed stupňů, pod spodním rámem jsou nožky. Poloha stupňů je ze zadaných rozměrů – doporučujeme zaměření.' });
+    if (cfg.anchor === 'celo') warns.push({ lvl: 'info', t: 'Sloupky přes čelo se kotví do betonu bez zateplení. U rohů a zlomů je kotevní sloupek ' + CELO_CORNER + ' mm od rohu – do rohu z boku kotvit nejde.' });
     if (cfg.anchor !== 'bez' && !cfg.services.kotveni && !cfg.services.montaz) warns.push({ lvl: 'info', t: 'Kotvy jsou navržené pro běžný podklad (' + base.lab.toLowerCase() + '). Pokud si podkladem nejste jistí, přidejte pomoc s kotvením.' });
     problems.forEach((p) => warns.push({ lvl: 'warn', t: p }));
     const meas = stavbaCheck(cfg);
@@ -1028,7 +1233,7 @@
     meas.remeasure.forEach((m) => warns.push({ lvl: m.lvl || 'warn', t: m.t }));
     const kotvy = anchorCheck(lay.anch, R, cfg);
     kotvy.msgs.forEach((m) => warns.push(m));
-    return { cfg, R, build: B, lay, rows, parts, kg, area, tubeM, barM, woodM, slots, tabs, kotvy, meas, welds, rods, anchorsN, lenM, price, svc, svcPrice, total, vatOf: vat, warns, problems, locks: B.locks };
+    return { cfg, R, build: B, lay, rows, parts, pads, rodsWall, kg, area, tubeM, barM, woodM, slots, tabs, kotvy, meas, welds, rods, anchorsN, lenM, price, svc, svcPrice, total, vatOf: vat, warns, problems, locks: B.locks };
   }
 
   /* ---------- řezný plán: kusy na tyče (první vhodná, od nejdelšího) ----------
@@ -1063,9 +1268,11 @@
 
   /* kontrola rozmístění kotev: červeně (nejde poptat) nad maximum dílny, oranžově nad doporučenou hodnotu */
   function anchorCheck(an, R, cfg) {
-    const out = { gaps: [], ends: [0, 0], lvl: [], endLvl: ['ok', 'ok'], msgs: [], groups: [] };
+    const out = { gaps: [], ends: [0, 0], lvl: [], endLvl: ['ok', 'ok'], msgs: [], groups: [], pts: [] };
     if (!an || cfg.anchor === 'bez') return out;
-    const u = an.used, T = an.total, nf0 = (x) => nf(Math.round(x));
+    // kotevní body = kotvy + konce přikotvené ke zdi (pevné)
+    const fx = an.fixed || [], u = an.used.concat(fx).filter((x, i, arr) => arr.indexOf(x) === i).sort((x, y) => x - y), T = an.total, nf0 = (x) => nf(Math.round(x));
+    out.pts = u;
     const L = (x, dop, max) => (x > max + 1e-6 ? 'bad' : x > dop + 1e-6 ? 'warn' : 'ok');
     if (!u.length) { out.msgs.push({ lvl: 'bad', t: 'Zábradlí nemá žádnou kotvu.' }); return out; }
     for (let i = 0; i < u.length - 1; i++) out.gaps.push(u[i + 1] - u[i]);
@@ -1082,7 +1289,7 @@
     if (le !== 'ok') out.msgs.push({ lvl: le, t: 'Konec zábradlí přečnívá ' + nf0(em) + ' mm za krajní kotvu – ' + (le === 'bad' ? 'povoleno nejvýš ' + nf0(R.kotvaKonecMax) + ' mm.' : 'doporučujeme nejvýš ' + nf0(R.kotvaKonecDop) + ' mm.') });
     const none = [], one = [];
     (an.groups || []).forEach((g, i) => {
-      const n = u.filter((x) => g.s0 < x && x < g.s1).length, corner = (an.verts || []).some((v) => g.s0 < v && v < g.s1);
+      const n = an.used.filter((x) => g.s0 < x && x < g.s1).length + fx.filter((x) => g.s0 - 1e-6 <= x && x <= g.s1 + 1e-6).length, corner = (an.verts || []).some((v) => g.s0 < v && v < g.s1);
       out.groups.push(n);
       if (!n) none.push(i + 1); else if (n < 2 && !corner) one.push(i + 1);
     });
@@ -1096,13 +1303,14 @@
     cfg = normalize(cfg);
     const T = TYPES.find((t) => t.id === cfg.typ), lenM = cfg.segs.reduce((a, s) => a + Math.hypot(s.L, s.rise), 0) / 1000;
     const shape = cfg.segs.length === 1 ? (cfg.segs[0].rise ? 'schodiště' : 'rovné') : cfg.segs.length + ' úseky' + (cfg.segs.some((s) => s.rise) ? ' se schodištěm' : '');
-    const an = cfg.anchor === 'bez' ? 'bez kotev' : (cfg.anchor === 'patka' ? 'kotvení shora' : 'kotvení z boku') + ' – ' + BASE.find((b) => b.id === cfg.base).lab.toLowerCase();
+    const zd = cfg.zed.start || cfg.zed.end ? ', ' + (cfg.zed.start && cfg.zed.end ? 'oba konce' : cfg.zed.start ? 'začátek' : 'konec') + ' ke zdi (' + WALL_BASE.find((b) => b.id === cfg.zedBase).lab.replace('Zeď – ', '') + ')' : '';
+    const an = cfg.anchor === 'bez' ? 'bez kotev' : ({ patka: 'kotvení shora', celo: 'sloupky přes čelo', bocni: 'kotvení z boku' }[cfg.anchor]) + ' – ' + BASE.find((b) => b.id === cfg.base).lab.toLowerCase() + zd + (cfg.podlozka && padAllowed(cfg) ? ', tepelně oddělující podložky' : '');
     const ms = cfg.stavba && cfg.stavba.on ? stavbaCheck(cfg) : null;
     return 'Zábradlí ' + (cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')' +
       (cfg.overTop || cfg.overBot ? ', přesah ' + [cfg.overTop ? 'nahoře ' + cfg.overTop : '', cfg.overBot ? 'dole ' + cfg.overBot : ''].filter(Boolean).join(' / ') + ' mm' : '') + (cfg.madlo ? ', dřevěné madlo' : ', bez dřevěného madla') + ', ' + an + ', ' + FIN.find((f) => f.id === cfg.fin).lab.toLowerCase() +
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261005d', TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261006a', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);

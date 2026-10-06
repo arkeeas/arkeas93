@@ -103,10 +103,11 @@
       const mats = {
         steel: new THREE.MeshStandardMaterial({ color: st[0], metalness: st[1], roughness: st[2] }),
         wood: new THREE.MeshStandardMaterial({ color: '#B98252', metalness: 0, roughness: 0.7 }),
-        hw: new THREE.MeshStandardMaterial({ color: '#8E9196', metalness: 0.8, roughness: 0.3 })
+        hw: new THREE.MeshStandardMaterial({ color: '#8E9196', metalness: 0.8, roughness: 0.3 }),
+        pad: new THREE.MeshStandardMaterial({ color: '#7A6A55', metalness: 0, roughness: 0.9 })
       };
-      const by = { steel: [], wood: [], hw: [] };
-      A.lay.members.forEach((m) => by[m.kind === 'wood' ? 'wood' : m.kind === 'rod' ? 'hw' : 'steel'].push(m.solid));
+      const by = { steel: [], wood: [], hw: [], pad: [] };
+      A.lay.members.forEach((m) => by[m.kind === 'wood' ? 'wood' : m.kind === 'rod' ? 'hw' : m.kind === 'pad' ? 'pad' : 'steel'].push(m.solid));
       Object.keys(by).forEach((k) => { if (!by[k].length) return; const mesh = new THREE.Mesh(geo(by[k]), mats[k]); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); });
       const b = bounds(A, state.ctx);
       if (state.ctx) A.build.context.forEach((c) => {
@@ -139,7 +140,7 @@
 
   function bodies2d(A, ctx) {
     const col = (STEEL[A.cfg.fin] || STEEL.zn)[0];
-    const out = A.lay.members.map((m) => ({ verts: m.solid.verts, faces: m.solid.faces, color: m.kind === 'wood' ? '#B98252' : m.kind === 'rod' ? '#8E9196' : col }));
+    const out = A.lay.members.map((m) => ({ verts: m.solid.verts, faces: m.solid.faces, color: m.kind === 'wood' ? '#B98252' : m.kind === 'rod' ? '#8E9196' : m.kind === 'pad' ? '#7A6A55' : col }));
     if (ctx) A.build.context.forEach((c) => out.push({ verts: c.solid.verts, faces: c.solid.faces, color: c.color, alpha: c.alpha < 1 ? c.alpha : 0 }));
     return out;
   }

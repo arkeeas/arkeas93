@@ -42,7 +42,7 @@ const fail = (t) => { bad++; console.log("CHYBA " + t); };
 /* 3. matice konfigurací */
 function check(cfg) {
   const A = Z.analyze(cfg), errs = [];
-  A.parts.concat(A.lay.members.filter((m) => m.kind === "rod")).forEach((m, i) => {
+  A.lay.members.forEach((m, i) => {
     if (!G.checkClosed(m.solid.verts, m.solid.faces)) errs.push((m.poz || "") + " " + (m.name || m.role) + ": těleso není uzavřené");
   });
   A.rows.filter((r) => r.part).forEach((r) => {
@@ -110,7 +110,56 @@ function check(cfg) {
     const arms = A.parts.filter((m) => m.role === "arm").length;
     if (arms !== an.used.length) errs.push("ramen " + arms + ", kotev " + an.used.length);
   }
+  kotveni(A, errs);
   return { A, errs };
+}
+/* kotvení: patky stojí na podlaze / stupni (žádný schod do nich nezasahuje, kotva ≥ 50 mm od hrany),
+   plotna přes čelo celá pod podlahou / stupni, nožky dosedají na plotny, ke každé plotně 2 kotvy, podložky jen pod plotnami na čele / zdi */
+function kotveni(A, errs) {
+  const c = A.cfg, lay = A.lay, mem = lay.members, segs = lay.segs, R = Z.routePoints(c.segs);
+  const floors = (p) => {                                           // výšky podlahy pod bodem půdorysu (všechny úseky, které ho obsahují)
+    const out = [];
+    c.segs.forEach((sg, k) => {
+      const a = R[k], b = R[k + 1], dx = b[0] - a[0], dy = b[1] - a[1], Lh = Math.hypot(dx, dy);
+      const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / Lh, q = Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / Lh;
+      if (t < -1e-6 || t > Lh + 1e-6 || q > 100) return;
+      if (!sg.rise) { out.push(a[2]); return; }
+      const nt = (sg.steps || Math.max(2, Math.round(Math.abs(sg.rise) / 175) + 1)) - 1, i = Math.max(0, Math.min(nt - 1, Math.floor(t / Lh * nt + 1e-9)));
+      out.push(a[2] + (sg.rise * i + Math.min(0, sg.rise)) / nt);
+    });
+    return out;
+  };
+  const plates = mem.filter((m) => m.kind === "plate"), rods = mem.filter((m) => m.kind === "rod"), pads = mem.filter((m) => m.kind === "pad");
+  if (rods.length !== 2 * plates.length) errs.push("kotev " + rods.length + " na " + plates.length + " ploten");
+  const vertical = plates.filter((m) => ["plotna", "celo", "zed"].includes(m.role)).length;
+  if (pads.length !== (c.podlozka && Z.padAllowed(c) ? vertical : 0)) errs.push("podložek " + pads.length + ", ploten na čele / zdi " + vertical);
+  const stubs = mem.filter((m) => m.role === "stub");
+  plates.filter((m) => m.role === "patka").forEach((m) => {
+    const zf = m.o[2];
+    for (let u = -m.w / 2; u <= m.w / 2 + 1e-6; u += 5) {
+      const f = floors(V.add(m.o, V.mul(m.ex, u)));
+      if (f.length && Math.max(...f) > zf + 0.5) { errs.push("patka zasahuje do schodu (" + Math.round(Math.max(...f) - zf) + " mm)"); return; }
+    }
+    // za koncem trasy podlahu neznáme – na rovině ji bereme jako pokračující (patka na konci lícuje s koncovým sloupkem)
+    // na konci schodiště nahoře (hrana podesty) podesta za koncem pokračuje ve stejné výšce
+    const flatEnd = [[0, 0, -1], [R.length - 1, c.segs.length - 1, 1]].some(([i, k, sg]) => (!c.segs[k].rise || c.segs[k].rise * sg > 0) && Math.hypot(m.o[0] - R[i][0], m.o[1] - R[i][1]) < 200);
+    for (const u of [-50, 0, 50]) { const f = floors(V.add(m.o, V.mul(m.ex, u))); if (!(f.some((z) => Math.abs(z - zf) < 0.5) || (!f.length && flatEnd))) { errs.push("kotva patky není 50 mm od hrany podlahy / stupně"); return; } }
+    if (c.segs.some((sg) => sg.rise) && !stubs.some((st) => Math.abs(st.p0[2] - (zf + m.t)) < 0.01 && Math.hypot(st.p0[0] - m.o[0], st.p0[1] - m.o[1]) < m.w / 2)) errs.push("patka bez nožky");
+  });
+  plates.filter((m) => m.role === "celo").forEach((m) => {
+    const top = m.o[2] + m.l / 2;
+    for (let u = -m.w / 2; u <= m.w / 2 + 1e-6; u += 5) { const f = floors(V.add(m.o, V.mul(m.ex, u))); if (f.length && top > Math.min(...f) - 24.99) { errs.push("plotna přes čelo není pod podlahou / stupni"); return; } }
+    if (!stubs.some((st) => Math.abs(st.p0[2] - (m.o[2] - m.l / 2)) < 0.01 && Math.hypot(st.p0[0] - m.o[0], st.p0[1] - m.o[1]) < m.w / 2 + 25)) errs.push("plotna přes čelo bez nožky");
+  });
+  if (c.anchor !== "bez") {
+    const zw = plates.filter((m) => m.role === "zed").length, ends = (c.zed.start ? 1 : 0) + (c.zed.end ? 1 : 0);
+    if (zw < ends || zw > 2 * ends) errs.push("ploten ke zdi " + zw + " na " + ends + " konce u zdi");
+    if (ends && A.kotvy.pts.length && ((c.zed.start && A.kotvy.ends[0] > 1e-6) || (c.zed.end && A.kotvy.ends[1] > 1e-6))) errs.push("konec u zdi se nepočítá jako ukotvený");
+  }
+  if (c.anchor === "patka" || c.anchor === "celo") {
+    const used = A.lay.anch.used, want = plates.filter((m) => m.role === c.anchor).length;
+    if (used.length !== want) errs.push("kotev v pásu " + used.length + ", ploten " + want);
+  }
 }
 let n = 0;
 const run = (cfg, quiet) => {
@@ -139,6 +188,23 @@ for (const pid of ["L", "schodypod"]) for (const postPitch of [600, 1500]) for (
 // e) vlastní úhly rohů (vnitřní úhel 60–179°), široká i úzká špruše
 for (const turn of [30, 75, 120, -60, -120]) for (const sloupky of [true, false]) for (const bar of ["20x5", "60x10"])
   run({ typ: sloupky ? "A" : "B", sloupky, preset: "uhel" + turn, segs: [{ L: 3000, rise: 0, turn, custom: true }, { L: 2500, rise: 0, turn: -turn / 2, custom: true }, { L: 2000, rise: 0 }], anchor: "bocni", side: "L", madlo: true, bar }, true);
+// f) kotvení shora / přes čelo (i na schodišti), konce ke zdi, podložky – se sloupky i bez
+for (const pr of Z.PRESETS) for (const anchor of ["patka", "celo", "bocni"]) for (const side of ["L", "R"]) for (const zed of [{}, { start: true }, { start: true, end: true }]) for (const podlozka of [false, true]) for (const sloupky of anchor === "bocni" ? [true, false] : [true]) {
+  const segs = pr.segs.map((x) => Object.assign({}, x, x.rise ? { steps: 11 } : {}));
+  run({ typ: sloupky ? "A" : "B", sloupky, preset: pr.id + " zeď " + JSON.stringify(zed) + (podlozka ? " podložka" : ""), segs, anchor, side, zed, podlozka, madlo: true, postPitch: 1000 }, true);
+}
+// g) schodiště dolů, rozteč sloupků, úzké stupně
+for (const anchor of ["patka", "celo"]) for (const postPitch of [600, 1500]) for (const steps of [8, 13])
+  run({ typ: "A", sloupky: true, preset: "dolu" + steps, segs: [{ L: 1500, rise: 0, turn: -90 }, { L: 2400, rise: -1500, steps, turn: 90 }, { L: 1200, rise: 0 }], anchor, side: "L", madlo: false, postPitch, zed: { end: true } }, true);
+{
+  const A = Z.analyze({ sloupky: true, anchor: "patka", segs: [{ L: 3000, rise: 1800 }] });
+  if (!A.warns.some((w) => w.lvl === "bad" && /počet schodů/.test(w.t))) fail("patky na schodišti bez počtu schodů nehlásí chybu");
+  const B = Z.analyze({ sloupky: true, anchor: "patka", segs: [{ L: 3000, rise: 1800, steps: 11 }] });
+  if (B.warns.some((w) => w.lvl === "bad")) fail("patky na schodišti s počtem schodů hlásí chybu: " + B.warns.filter((w) => w.lvl === "bad").map((w) => w.t).join("; "));
+  const C = Z.analyze({ sloupky: false, anchor: "celo" });
+  if (C.cfg.anchor !== "bocni") fail("přes čelo bez sloupků má spadnout na kotvení z boku");
+  console.log("OK    kotvení shora a přes čelo – počet schodů, jen se sloupky");
+}
 // d) stavba z bloků: trasa ze změřených bloků, kontrola měření
 {
   const st = { on: true, start: "zed", end: "volny", deska: 180, bloky: [{ t: "schody", n: 12, h: 172, g: 280, H: 2064, turn: 90 }, { t: "hrana", A: 4480, B: 4484, turn: 90, C: 1414 }, { t: "hrana", A: 3000, B: 3004 }] };
@@ -149,6 +215,12 @@ for (const turn of [30, 75, 120, -60, -120]) for (const sloupky of [true, false]
   const chyby = Z.analyze({ stavba: Object.assign({}, st, { deska: null, bloky: [{ t: "hrana", A: 3000, B: 3300, turn: 90, C: 1300 }, { t: "hrana", A: null, B: 2000 }] }), anchor: "bocni" });
   const ks = chyby.meas.missing.map((m) => m.k).sort().join(",") + " | " + chyby.meas.remeasure.map((m) => m.k).sort().join(",");
   if (ks !== "A,deska | A,C") fail("stavba: kontrola měření " + ks);
+  for (const anchor of ["patka", "celo"]) {                    // stavba se schody, začátek u zdi – patky / čelo, plotny ke zdi
+    const r = check({ stavba: st, anchor, sloupky: true, zed: { start: true, end: true }, podlozka: true }); n++;
+    if (r.errs.length) fail("stavba " + anchor + ": " + r.errs.slice(0, 3).join("; "));
+    if (r.A.cfg.zed.end) fail("stavba: volný konec se nesmí kotvit ke zdi");
+    if (r.A.warns.some((w) => w.lvl === "bad")) fail("stavba " + anchor + ": " + r.A.warns.filter((w) => w.lvl === "bad").map((w) => w.t).join("; "));
+  }
   const { errs } = check({ stavba: st, anchor: "bocni" }); n++;
   if (errs.length) fail("stavba: " + errs.slice(0, 3).join("; "));
   else console.log("OK    stavba z bloků – trasa, kontrola měření, schody");
