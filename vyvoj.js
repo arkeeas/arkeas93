@@ -18,6 +18,11 @@
      cfg.plS – tvar ploten ('obd' obdélník / 'x' kříž X se 4 otvory), cfg.rjp – profil jeklu rámečku 10×10 až 40×40 ('auto' = 40×20).
    Starší poptávky s modely PZ2 (zámky + příčné) a PZ3 (spojovák + šikmé) se převedou (LEGACY).
 
+   Model Kosočtverec (KS): 2 boky na koncích stolu, každý je obdélník rozdělený na 4 rohové trojúhelníky
+   a kosočtverec uprostřed (vrcholy ve středech stran). Všechny tvary jsou duté rámečky z pásoviny postavené
+   na hranu (hloubka ksD, tloušťka ksT), mezi tvary je mezera ksG a přes každou mezeru vedou 2 závitové
+   tyče (ksM) s maticemi z obou stran obou stěn. Deska leží na horních pásech horních trojúhelníků.
+
    Model Pavouk (PV): hvězdicová podnož jen z jeklů – 4 ramena dolů na zem a 4 nahoru k desce. Rameno dolů
    a rameno nahoru na opačné straně leží v jedné přímce (ve svislých rovinách tvoří X). Na každé straně se rameno
    nahoru a dolů potkají jako „>“ s pokosem ve středu výšky, sousední strany na sebe dosednou rovnými řezy
@@ -226,6 +231,7 @@
 
   /* ====================== modely ====================== */
   const MODELS = [
+    { id: 'KS', lab: 'Kosočtverec', desc: 'Boky z trojúhelníků a kosočtverce z pásoviny, spojené závitovými tyčemi s maticemi', icon: 'M6 6 H58 M12 6 H28 L12 22 Z M52 6 H36 L52 22 Z M12 42 H28 L12 26 Z M52 42 H36 L52 26 Z M32 10 L48 24 L32 38 L16 24 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, ks: true },
     { id: 'PV', lab: 'Pavouk', desc: 'Hvězdicová podnož jen z jeklů – 4 ramena k zemi a 4 k desce, sbíhají se uprostřed', icon: 'M6 6 H58 M12 42 L52 6 M52 42 L12 6 M28 18 H36 V30 H28 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, pav: true },
     { id: 'PZ', lab: 'Pohozenec', desc: '4 nohy do # kolem středu – spojení noh a horní část si zvolíte', icon: 'M6 6 H58 M10 42 L54 6 M54 42 L10 6 M28 6 L32 42 M36 6 L32 42', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true }
   ];
@@ -302,7 +308,7 @@
     let studL = 0;
     const hw = [], steps = [], warns = [];
     let cost = 0;
-    const BAR_T = cfg.top === 'ramj' ? rjOf(cfg).t : cfg.barT;   // co svírá hlava šroubu
+    const BAR_T = cfg.model === 'KS' ? cfg.ksT : cfg.top === 'ramj' ? rjOf(cfg).t : cfg.barT;   // co svírá hlava šroubu
     const screwL = (d, max) => SCREW_L.filter((l) => l <= Math.min(BAR_T + td - 6, max)).pop() || SCREW_L[0];
     if (M.id === 'vrut') {
       const d = td < 22 ? 5 : 6, L = screwL(d, BAR_T + 35), n = nHole + nOval, emb = L - BAR_T;
@@ -329,7 +335,7 @@
       if (td < (M.minTd || 0)) warns.push('Deska ' + td + ' mm je na závitové vložky tenká (potřeba aspoň ' + M.minTd + ' mm) – vložka by mohla prorazit líc desky.');
     } else if (M.id === 'spony') {
       const L = screwL(6, BAR_T + 30);
-      hw.push({ name: 'Vrut do dřeva 6×' + L + ' půlkulatá hlava TX (pevný bod)', q: nHole }, { name: 'Ocelová stolová spona Z (přes hranu pásoviny 5 mm)', q: nSpot }, { name: 'Vrut do dřeva 4×16 (ke sponě)', q: nSpot });
+      hw.push({ name: 'Vrut do dřeva 6×' + L + ' půlkulatá hlava TX (pevný bod)', q: nHole }, { name: 'Ocelová stolová spona Z (přes hranu pásoviny ' + BAR_T + ' mm)', q: nSpot }, { name: 'Vrut do dřeva 4×16 (ke sponě)', q: nSpot });
       cost += nHole * 3 + nSpot * (8 + 1);
       steps.push('Podnož položte na rub desky a vystřeďte. Středový otvor každé pásoviny přišroubujte vrutem 6×' + L + ' (předvrtat Ø3,5 mm, hloubka ' + (L - BAR_T + 2) + ' mm).',
         'Spony rozmístěte střídavě z obou stran pásovin (' + nSpot + ' ks), jazýček pod hranou pásoviny, a přišroubujte vruty 4×16.',
@@ -356,6 +362,9 @@
     return { M, hw: hw.filter((x) => x.q > 0), steps, warns, cost, studs, studL };
   }
   const SIZES = [30, 40, 50];
+  /* Kosočtverec: závitové tyče (d, matice: výška h a otvor klíče sw, otvor v pásu Ø hole), nejmenší mezera */
+  const KS_ROD = { M12: { d: 12, h: 10, sw: 18, hole: 13, gmin: 30 }, M16: { d: 16, h: 13, sw: 24, hole: 17.5, gmin: 34 }, M20: { d: 20, h: 16, sw: 30, hole: 22, gmin: 40 } };
+  const KS_GAP = [30, 40, 50, 60];
   const BAR_TS = [2, 3, 4, 5], BAR_STD = [20, 25, 30, 35, 40, 45, 50], PL_L = [80, 100, 120, 150, 180, 200, 250];
   // šířky, které může vynutit geometrie (střední příčná pásovina musí vyplnit mezeru mezi špičkami C a D)
   const BAR_ALL = BAR_STD.concat([60, 70, 80, 100]), DESK_EDGE = 20;
@@ -370,7 +379,12 @@
     c = c || {};
     const o = P.normalize(Object.assign({}, c, { model: 'U' }));
     const lg = LEGACY[c.model] || {};
-    o.model = c.model === 'PV' ? 'PV' : 'PZ';
+    o.model = c.model === 'PV' || c.model === 'KS' ? c.model : 'PZ';
+    o.ksD = [60, 80, 100].indexOf(Number(c.ksD)) >= 0 ? Number(c.ksD) : 80;
+    o.ksT = [8, 10, 12].indexOf(Number(c.ksT)) >= 0 ? Number(c.ksT) : 10;
+    o.ksM = KS_ROD[c.ksM] ? c.ksM : 'M16';
+    o.ksG = KS_GAP.indexOf(Number(c.ksG)) >= 0 ? Number(c.ksG) : 40;
+    while (o.ksG < KS_ROD[o.ksM].gmin) o.ksG = KS_GAP.find((g) => g > o.ksG);
     o.pvLay = c.pvLay === 'plus' ? 'plus' : 'diag';
     o.join = 'weld';
     o.joint = JOINTS.some((m) => m.id === c.joint) ? c.joint : lg.joint || 'spojovak';
@@ -534,11 +548,172 @@
     return RJ.find((r) => r.id === '40x20');
   };
 
+  /* těleso podél libovolné osy: n-úhelník o poloměru r (válec n=12, šestihran n=6) */
+  function cylAlong(o, d, r, L, n) {
+    const e1 = vunit(Math.abs(d[0]) < 0.9 ? vcross(d, [1, 0, 0]) : vcross(d, [0, 1, 0])), e2 = vcross(d, e1);
+    const ring = (base) => { const out = []; for (let k = 0; k < n; k++) { const a = 2 * Math.PI * k / n + Math.PI / n; out.push(vadd(base, vadd(vmul(e1, r * Math.cos(a)), vmul(e2, r * Math.sin(a))))); } return out; };
+    const bot = ring(o), top = ring(vadd(o, vmul(d, L)));
+    const polys = [new Poly(bot.slice().reverse()), new Poly(top)];
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; polys.push(new Poly([bot[i], bot[j], top[j], top[i]].map((x) => x.slice()))); }
+    const sol = new Solid(polys);
+    if (sol.volume() < 0) sol.polys.forEach((q) => q.flip());
+    return sol;
+  }
+  // konvexní mnohoúhelník (y, z) protažený ve směru X
+  function extrudeX(pts, x0, x1) {
+    const bot = pts.map((q) => [x0, q[0], q[1]]), top = pts.map((q) => [x1, q[0], q[1]]);
+    const polys = [new Poly(bot.slice().reverse()), new Poly(top)];
+    for (let i = 0; i < pts.length; i++) { const j = (i + 1) % pts.length; polys.push(new Poly([bot[i], bot[j], top[j], top[i]].map((x) => x.slice()))); }
+    const sol = new Solid(polys);
+    if (sol.volume() < 0) sol.polys.forEach((q) => q.flip());
+    return sol;
+  }
+  // posun hran konvexního mnohoúhelníku (proti směru hodinových ručiček) dovnitř o ds[i]
+  function offsetPoly(P, ds) {
+    const n = P.length, lines = P.map((a, i) => {
+      const b = P[(i + 1) % n], e = [b[0] - a[0], b[1] - a[1]], l = Math.hypot(e[0], e[1]), u = [e[0] / l, e[1] / l], nI = [-u[1], u[0]];
+      return { p: [a[0] + nI[0] * ds[i], a[1] + nI[1] * ds[i]], u };
+    });
+    return lines.map((L2, i) => {
+      const L1 = lines[(i - 1 + n) % n], den = L1.u[0] * L2.u[1] - L1.u[1] * L2.u[0];
+      const t = ((L2.p[0] - L1.p[0]) * L2.u[1] - (L2.p[1] - L1.p[1]) * L2.u[0]) / den;
+      return [L1.p[0] + L1.u[0] * t, L1.p[1] + L1.u[1] * t];
+    });
+  }
+
+  function layoutKS(cfg) {
+    const D = cfg.ksD, tb = cfg.ksT, g = cfg.ksG, Htop = cfg.H - cfg.td, zc = Htop / 2;
+    const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L, DW = cfg.dmode === 'own' ? cfg.dW : cfg.W;
+    const a = Math.round(clamp(DW - 2 * Math.max(50, 0.07 * DW), 300, 1000) / 2);
+    const xS = Math.round(Math.max(DL / 2 - Math.max(100, 0.1 * DL) - D / 2, a));
+    return { D, tb, g, Htop, zc, a, xS, ks: true, xA: xS, yC: a, s: D, h: D / 2, t: tb, c: 0, legs: null };
+  }
+
+  function buildKS(cfg) {
+    const G = layoutKS(cfg), { D, tb, g, Htop, zc, a, xS } = G, R = KS_ROD[cfg.ksM];
+    const parts = [], plateBoxes = [], plates = [], notes = [], hwBodies = [], bars = [];
+    // tvary v rovině boku (y, z), proti směru hodinových ručiček
+    const Bm = [0, 0], Rr = [a, zc], T = [0, Htop], Lv = [-a, zc];
+    const rh = [Bm, Rr, T, Lv];
+    const dOut = offsetPoly(rh, [g / 2, g / 2, g / 2, g / 2]), dIn = offsetPoly(dOut, [tb, tb, tb, tb]);
+    const tri = [
+      { id: 'BR', name: 'Trojúhelník dolní', P: [Bm, [a, 0], Rr], k: 0 },
+      { id: 'TR', name: 'Trojúhelník horní', P: [Rr, [a, Htop], T], k: 1 },
+      { id: 'TL', name: 'Trojúhelník horní', P: [T, [-a, Htop], Lv], k: 2 },
+      { id: 'BL', name: 'Trojúhelník dolní', P: [Lv, [-a, 0], Bm], k: 3 }
+    ].map((tr) => { const out = offsetPoly(tr.P, [0, 0, g / 2]); return Object.assign(tr, { out, inn: offsetPoly(out, [tb, tb, tb]) }); });
+    const shapes = tri.concat([{ id: 'DM', name: 'Kosočtverec', out: dOut, inn: dIn }]);
+    const near = (v, w) => Math.abs(v - w) < 0.01;
+    shapes.forEach((sh) => { sh.holes = sh.out.map(() => []); sh.top = sh.out.findIndex((q, i) => near(q[1], Htop) && near(sh.out[(i + 1) % sh.out.length][1], Htop)); });   // otvory po hranách: [u od začátku hrany, poloměr, ovál?]
+    // závitové tyče: přes každou mezeru 2 kusy (30 % a 70 % hrany kosočtverce)
+    const rods = [];
+    tri.forEach((tr) => {
+      const k = tr.k, A0 = dOut[k], A1 = dOut[(k + 1) % 4], e = [A1[0] - A0[0], A1[1] - A0[1]], le = Math.hypot(e[0], e[1]), u = [e[0] / le, e[1] / le], n = [u[1], -u[0]];
+      const H0 = tr.out[2], H1 = tr.out[0], eh = [H1[0] - H0[0], H1[1] - H0[1]], lh = Math.hypot(eh[0], eh[1]), uh = [eh[0] / lh, eh[1] / lh];
+      [0.3, 0.7].forEach((f) => {
+        const p = [A0[0] + e[0] * f, A0[1] + e[1] * f], q = [p[0] + n[0] * g, p[1] + n[1] * g];
+        rods.push({ p, n });
+        shapes[4].holes[k].push([f * le, R.hole / 2]);
+        tr.holes[2].push([(q[0] - H0[0]) * uh[0] + (q[1] - H0[1]) * uh[1], R.hole / 2]);
+      });
+    });
+    const Lr = Math.ceil((g + 2 * tb + 2 * (R.h + 8)) / 10) * 10;
+    // horní pásy horních trojúhelníků nesou desku: otvory podle uchycení (pásovina v rovině desky)
+    const frames = [-xS, xS];
+    frames.forEach((xc, fi) => tri.filter((tr) => tr.id[0] === 'T').forEach((tr) => {
+      const s0 = tr.out[tr.top], s1 = tr.out[(tr.top + 1) % 3], y0 = s0[0], y1 = s1[0], dy = Math.sign(y1 - y0), Ls = Math.abs(y1 - y0);
+      const plan = barPlan([xc, (y0 + y1) / 2], [0, dy], Ls, D, [], cfg.mount);
+      plan.t = tb;
+      bars.push({ id: 'H' + fi + tr.id, name: 'Horní pás', plan, tr: tr.id, xc });
+    }));
+    // tělesa
+    frames.forEach((xc, fi) => {
+      const x0 = xc - D / 2, x1 = xc + D / 2;
+      const rodCuts = rods.map((r) => cylAlong([xc, r.p[0] - r.n[0] * (tb + 2), r.p[1] - r.n[1] * (tb + 2)], [0, r.n[0], r.n[1]], R.hole / 2, g + 2 * tb + 4, 16));
+      shapes.forEach((sh) => {
+        let sol = extrudeX(sh.out, x0, x1).subtract(extrudeX(sh.inn, x0 - 1, x1 + 1));
+        rodCuts.forEach((c) => { sol = sol.subtract(c); });
+        bars.filter((b) => b.xc === xc && b.tr === sh.id).forEach((b) => {
+          const pl = b.plan, nn = [-pl.d[1], pl.d[0]], P2 = (u, v) => [pl.c[0] + pl.d[0] * u + nn[0] * v, pl.c[1] + pl.d[1] * u + nn[1] * v];
+          pl.holes.forEach(([k2, u, r, ol, v]) => { const pts = (k2 === 'oval' ? stadium(u, 0, ol || 40, r, 8) : circle(u, v || 0, r, 20)).map(([x, y]) => P2(x, y)); sol = sol.subtract(extrude(pts, Htop - tb - 1, Htop + 1)); });
+        });
+        const br = toBrep(sol);
+        br.paint = 'fin'; br.ins = [-Math.sign(xc), 0, 0]; br.label = (sh.id === 'DM' ? 'Kosočtverec' : sh.name + (sh.id[1] === 'R' ? ' pravý' : ' levý')) + ' – bok ' + (fi ? 'B' : 'A');
+        plateBoxes.push(br);
+      });
+      // tyče a matice (nakupované díly – jen do náhledu a sestavy)
+      rods.forEach((r) => {
+        const n3 = [0, r.n[0], r.n[1]], o = [xc, r.p[0], r.p[1]], at = (d) => vadd(o, vmul(n3, d));
+        hwBodies.push(toBrep(cylAlong(at(-(tb + R.h + 8)), n3, R.d / 2, Lr, 12)));
+        [-(tb + R.h), 0, g - R.h, g + tb].forEach((d0) => hwBodies.push(toBrep(cylAlong(at(d0), n3, R.sw / Math.sqrt(3), R.h, 6))));
+      });
+    });
+    // pásy (kusovník, DXF): délka po vnější hraně, otvory na ose pásu
+    shapes.forEach((sh) => sh.out.forEach((A0, i) => {
+      const A1 = sh.out[(i + 1) % sh.out.length], L = Math.round(Math.hypot(A1[0] - A0[0], A1[1] - A0[1]) * 10) / 10;
+      const holes = sh.holes[i].map(([u, r]) => [u, D / 2, r]);
+      let ovals;
+      const top = i === sh.top, B1 = sh.out[(i + 1) % sh.out.length];
+      if (top) {   // horní pás – otvory pro uchycení desky (u od začátku hrany = od rohu boku)
+        const pl = bars.find((b) => b.tr === sh.id).plan;
+        pl.holes.filter((x) => x[0] !== 'oval').forEach(([, u, r, , v]) => holes.push([u + pl.L / 2, D / 2 + (v || 0), r]));
+        ovals = pl.holes.filter((x) => x[0] === 'oval').map(([, u, w, ol]) => [u + pl.L / 2, D / 2, ol || 40, w]);
+      }
+      const nm = (sh.id === 'DM' ? 'Kosočtverec – pás' : (near(A0[0], B1[0]) && !near(A0[1], B1[1]) ? 'Trojúhelník' : sh.name) + ' – ' + (top ? 'horní pás (pod deskou)' : near(A0[1], 0) && near(B1[1], 0) ? 'pás na zemi' : near(A0[0], B1[0]) ? 'svislý pás' : 'šikmý pás')) + ' (na hranu)';
+      plates.push({ name: nm, w: L, l: D, t: tb, q: 2, holes, ovals, kind: undefined });
+    }));
+    const kit = mountKit(cfg, bars);
+    kit.studs.forEach(([x, y]) => { const st = toBrep(extrude(circle(x, y, 4, 12), Htop, Htop + kit.studL)); hwBodies.push(st); });
+    const nr = rods.length * 2;
+    const hw = kit.hw.concat([
+      { name: 'Závitová tyč ' + cfg.ksM + ' × ' + Lr + ' mm', q: nr },
+      { name: 'Matice ' + cfg.ksM + ' DIN 934', q: nr * 4 },
+      { name: 'Podložka ' + cfg.ksM + ' DIN 125', q: nr * 4 }
+    ]);
+    const extraCost = nr * (Lr * 0.06 + 4 * 3 + 4 * 1);
+    let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
+    plateBoxes.forEach((b) => b.verts.forEach((q) => { mnx = Math.min(mnx, q[0]); mxx = Math.max(mxx, q[0]); mny = Math.min(mny, q[1]); mxy = Math.max(mxy, q[1]); }));
+    const Lf = Math.round(2 * Math.max(-mnx, mxx)), Wf = Math.round(2 * Math.max(-mny, mxy));
+    return { cfg, parts, plates, plateBoxes, hwBodies, boltPts: [], hw, kit, extraCost, dims: { Lf, Wf, Hf: Htop }, bolted: false, G, notes, bars, weldJoints: 2 * (4 * 3 + 4) };
+  }
+
+  /* zjednodušený audit Kosočtverce: tyče v ohybu přes mezeru (přenášejí veškeré zatížení mezi tvary),
+     vyklonění boku z roviny a převržení */
+  function auditKS(cfg, B) {
+    const G = B.G, R = KS_ROD[cfg.ksM], dc = 0.84 * R.d, Wr = Math.PI * dc * dc * dc / 32, arm = G.g / 2 + 4;
+    const Vrod = SIG_ALLOW * Wr / arm;                       // N na tyč
+    const capN = 2 * 4 * Vrod;                               // 2 boky × (2 horní mezery × 2 tyče)
+    const sP = 500 * arm / Wr;                               // bodová síla 1000 N na jeden horní trojúhelník = 2 tyče
+    const I = 2 * G.tb * Math.pow(G.D, 3) / 12 * 0.5, sway = 200 * Math.pow(G.Htop, 3) / (3 * 210000 * I);
+    const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L, DW = cfg.dmode === 'own' ? cfg.dW : cfg.W;
+    const hull = P.convexHull([[-G.xS - G.D / 2, -G.a], [G.xS + G.D / 2, -G.a], [G.xS + G.D / 2, G.a], [-G.xS - G.D / 2, G.a]]);
+    const Vf = cfg.L >= 1600 ? 400 : cfg.L < 800 ? 200 : 300, kgSteel = massOf(B), deskKg = 15 * DL * DW / 1e6, Wt = (kgSteel + deskKg) * 9.81;
+    const probe = P.deskOutline(cfg.shape, DL, DW).map((q) => { const r2 = Math.hypot(q[0], q[1]); return [q[0] * (1 - 50 / r2), q[1] * (1 - 50 / r2)]; });
+    let stab = Infinity;
+    for (let k = 0; k < hull.length; k++) {
+      const a = hull[k], b = hull[(k + 1) % hull.length], ex = [b[0] - a[0], b[1] - a[1]], le = Math.hypot(ex[0], ex[1]), nO = [ex[1] / le, -ex[0] / le];
+      const dist = (q) => (q[0] - a[0]) * nO[0] + (q[1] - a[1]) * nO[1], cgArm = -dist([0, 0]);
+      probe.forEach((q) => { const d = dist(q); if (d > 0) stab = Math.min(stab, (Wt * cgArm) / (Vf * d)); });
+    }
+    const lv = (x, ok, warn, lower) => lower ? (x >= ok ? 'ok' : x >= warn ? 'warn' : 'bad') : (x <= ok ? 'ok' : x <= warn ? 'warn' : 'bad');
+    const checks = [
+      { id: 'pt', lab: 'Bodová síla 1000 N na horní trojúhelník (tyče v ohybu)', val: sP, unit: 'MPa', lvl: lv(sP, SIG_ALLOW, 235), hint: 'tyč ' + cfg.ksM + ' přes mezeru ' + G.g + ' mm' },
+      { id: 'weld', lab: 'Svary v rozích tvarů', val: 1000 / (0.7 * G.tb * G.D), unit: 'MPa', lvl: 'ok', hint: 'koutový svar a = 0,7 t po hloubce pásu' },
+      { id: 'cap', lab: 'Nosnost rovnoměrně', val: Math.min(999, Math.floor(capN / 9.81 / 1.5 / 10) * 10), unit: 'kg', lvl: lv(capN / 9.81 / 1.5, 150, 80, true), hint: 'ohyb tyčí přes mezeru, rezerva 1,5' },
+      { id: 'sway', lab: 'Vyklonění boku z roviny při 400 N', val: sway, unit: 'mm', lvl: lv(sway, 5, 10), hint: 'bok jako konzola od desky' },
+      { id: 'stab', lab: 'Stabilita proti převržení', val: stab === Infinity ? 99 : Math.min(99, stab), unit: '× rezerva', lvl: lv(stab, 1.5, 1.0, true), hint: Vf + ' N 50 mm od hrany desky' }
+    ];
+    const fab = B.notes.map((t) => ({ lvl: 'warn', t }));
+    const lvls = checks.map((c) => c.lvl).concat(fab.map((f) => f.lvl));
+    return { cfg, checks, fab, overall: lvls.indexOf('bad') >= 0 ? 'bad' : lvls.indexOf('warn') >= 0 ? 'warn' : 'ok', singular: false, capKg: capN / 9.81 / 1.5, sway, dz1: 0, stab, graph: null };
+  }
+
   const cache = new Map();
   function build(cfgIn) {
     const cfg = normalize(cfgIn);
-    const key = [cfg.model, cfg.pvLay, cfg.joint, cfg.top, cfg.L, cfg.W, cfg.H, cfg.td, cfg.size, cfg.t, cfg.mount, cfg.barT, cfg.barW, cfg.barL, cfg.plL, cfg.plS, cfg.rjp, cfg.shape, cfg.dmode, cfg.dL, cfg.dW].join('|');
+    const key = [cfg.model, cfg.pvLay, cfg.ksD, cfg.ksT, cfg.ksM, cfg.ksG, cfg.joint, cfg.top, cfg.L, cfg.W, cfg.H, cfg.td, cfg.size, cfg.t, cfg.mount, cfg.barT, cfg.barW, cfg.barL, cfg.plL, cfg.plS, cfg.rjp, cfg.shape, cfg.dmode, cfg.dL, cfg.dW].join('|');
     if (cache.has(key)) return Object.assign({}, cache.get(key), { cfg });
+    if (cfg.model === 'KS') { const outKS = buildKS(cfg); if (cache.size > 40) cache.clear(); cache.set(key, outKS); return outKS; }
     const RJp = cfg.top === 'ramj' ? rjOf(cfg) : null, BAR_T = cfg.barT;
     const G = layoutFor(cfg), { s, h, t, Htop, c, legs } = G, Hc = Htop - (RJp ? RJp.h : BAR_T), pav = !!G.pav;
     const parts = [], plateBoxes = [], plates = [], notes = [];
@@ -794,6 +969,7 @@
   }
 
   function audit(cfgIn, ratesIn) {
+    if (normalize(cfgIn).model === 'KS') { const c2 = normalize(cfgIn); return auditKS(c2, build(c2)); }
     const cfg = normalize(cfgIn), R = P.rates0(ratesIn), g = graph(cfg), n = g.nodes.length, N = 6 * n, sec = P.sectionOf(cfg.size, cfg.t);
     const F1 = new Float64Array(N); g.tops.forEach((i) => { F1[6 * i + 2] = -1500 / g.tops.length; });
     const loadsP = g.tops.map((i) => { const F = new Float64Array(N); F[6 * i + 2] = -1000; return F; });
@@ -869,7 +1045,7 @@
     B.plates.forEach((p) => {
       const sig = JSON.stringify([p.w, p.l, p.t, p.holes, p.ovals, p.poly].map((x) => x === undefined ? null : x), (k, v) => typeof v === 'number' ? Math.round(v * 10) / 10 : v);
       const same = pl.find((x) => x.sig === sig);
-      if (same) same.p.q += 1; else pl.push({ sig, p: Object.assign({}, p) });
+      if (same) same.p.q += p.q || 1; else pl.push({ sig, p: Object.assign({}, p) });
     });
     B.plateBoxes.forEach((b) => { kg += P.volume(b) * 7.85e-6; });
     pl.forEach(({ p }) => {
@@ -881,7 +1057,7 @@
     B.hw.forEach((x) => { n++; rows.push({ poz: 'P' + String(n).padStart(2, '0'), name: x.name, kind: 'hw', prof: 'nakupovaný díl', len: '', cut: '', feat: '', q: x.q, stroj: '', file: '' }); });
     const welds = B.weldJoints, surf = tubeM * 4 * s / 1000 + B.plates.reduce((a, p) => a + 2 * p.w * p.l / 1e6, 0);
     const markup = 1 + R.marze / 100;
-    const cost = kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava + B.kit.cost;
+    const cost = kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava + B.kit.cost + (B.extraCost || 0);
     const price = Math.round(cost * markup / 10) * 10, vat = Math.round(price * 1.21 / 10) * 10;
     let au = null; try { au = audit(cfg, R); } catch (e) { au = null; }
     const load = au ? Math.min(500, Math.floor(au.capKg / 10) * 10) : 0;
@@ -909,12 +1085,13 @@
   function describe(cfg) {
     const M = MODELS.find((m) => m.id === cfg.model) || MODELS[0], F = P.FIN.find((f) => f.id === cfg.fin), S = P.SHAPES.find((x) => x.id === cfg.shape);
     const desk = cfg.shape === 'circle' ? 'Ø ' + P.nf(cfg.L) : P.nf(cfg.L) + ' × ' + P.nf(cfg.W);
+    if (M.ks) return M.lab + ' (umělecká, pás ' + cfg.ksD + '×' + cfg.ksT + ', tyče ' + cfg.ksM + ', mezera ' + cfg.ksG + ' mm), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, svařované tvary, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
     const J = JOINTS.find((x) => x.id === cfg.joint), T = topsFor(cfg.model, cfg.pvLay).find((x) => x.id === cfg.top);
     return M.lab + ' (umělecká, ' + (M.pav ? 'nohy: ' + PV_LAYS.find((x) => x.id === cfg.pvLay).lab.toLowerCase() + ', ' : 'nohy: ' + J.lab.toLowerCase() + ', ') + 'nahoře: ' + T.lab + '), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', svařovaná, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
   }
 
-  const API = { MODELS, MOUNTS, JOINTS, TOPS, PV_LAYS, topsFor, BAR_TS, BAR_STD, PL_L, RJ, rjOf, mountOk, owns, normalize, build, analyze, audit, describe, layout, csg: { Solid, box, prism, extrude, toBrep } };
+  const API = { MODELS, MOUNTS, JOINTS, TOPS, PV_LAYS, KS_ROD, KS_GAP, topsFor, BAR_TS, BAR_STD, PL_L, RJ, rjOf, mountOk, owns, normalize, build, analyze, audit, describe, layout, csg: { Solid, box, prism, extrude, toBrep } };
   P.register(API);
   // stejné rozhraní jako Podnoze, jen s vlastními modely (pro stránku Umělecké)
-  root.Vyvoj = Object.assign({}, P, { MODELS, MOUNTS, JOINTS, TOPS, PV_LAYS, topsFor, BAR_TS, BAR_STD, PL_L, RJ, rjOf, mountOk, SIZES, DEFAULT_CFG: Object.assign({}, P.DEFAULT_CFG, { model: 'PZ' }), normalize, build, analyze, audit, describe, ext: API });
+  root.Vyvoj = Object.assign({}, P, { MODELS, MOUNTS, JOINTS, TOPS, PV_LAYS, KS_ROD, KS_GAP, topsFor, BAR_TS, BAR_STD, PL_L, RJ, rjOf, mountOk, SIZES, DEFAULT_CFG: Object.assign({}, P.DEFAULT_CFG, { model: 'PZ' }), normalize, build, analyze, audit, describe, ext: API });
 })(typeof window !== 'undefined' ? window : globalThis);

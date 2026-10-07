@@ -247,7 +247,7 @@
         files.push({ name: dir + 'dily/C2/' + r.file, data: dxf(r.plate) });
       }
     });
-    const bodies = A.build.parts.map((p) => p.solid).concat(A.build.plateBoxes);
+    const bodies = A.build.parts.map((p) => p.solid).concat(A.build.plateBoxes, A.build.hwBodies || []);
     bodies.forEach((b, i) => { if (!checkClosed(b.verts, b.faces)) problems.push('sestava: těleso ' + (i + 1) + ' není uzavřené'); });
     files.push({ name: dir + num + '_sestava.step', data: stepFile(num + '_sestava', bodies) });
     files.push({ name: dir + num + '_kusovnik.pdf', data: pdfFromCanvases([kusovnikPage(order, A)]) });

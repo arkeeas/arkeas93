@@ -191,7 +191,7 @@
         <div class="grid g2" id="lays"></div>
         <h3 class="subh" id="jointsHead">Spojení noh</h3>
         <div class="grid g2" id="joints"></div>
-        <h3 class="subh">Horní část – na čem leží deska</h3>
+        <h3 class="subh" id="topsHead">Horní část – na čem leží deska</h3>
         <div class="grid g3" id="tops"></div>
         <div id="topDims"></div>
       </div>
@@ -288,10 +288,10 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261005d"></script>
-<script src="vyvoj.js?v=20261007i"></script>
+<script src="core.js?v=20261007j"></script>
+<script src="vyvoj.js?v=20261007j"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="viewer.js?v=20261005d"></script>
+<script src="viewer.js?v=20261007j"></script>
 <script>
 (function () {
   const K = Vyvoj, $ = (id) => document.getElementById(id);
@@ -346,6 +346,9 @@
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
     $('jointsHead').hidden = $('joints').hidden = !!M.pav;
     $('laysHead').hidden = $('lays').hidden = !M.pav;
+    if (M.ks) $('jointsHead').hidden = $('joints').hidden = true;
+    $('topsHead').textContent = M.ks ? 'Tvary a spoje' : 'Horní část – na čem leží deska';
+    $('tops').hidden = !!M.ks;
     group($('lays'), K.PV_LAYS, (o) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.pvLay) + '">' + svg(o.id === 'plus' ? 'M4 24 H60 M32 10 V38' : 'M8 8 L56 40 M56 8 L8 40') + '<span class="t">' + o.lab + '</span><span class="p">' + esc(o.p) + '</span></button>', (id) => set({ pvLay: id }));
     group($('joints'), K.JOINTS, (o) => card(o, o.id === cfg.joint), (id) => set({ joint: id }));
     group($('tops'), K.topsFor(cfg.model, cfg.pvLay), (o) => card(o, o.id === cfg.top), (id) => set({ top: id }));
@@ -353,7 +356,13 @@
     const pillRow = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + esc(lab) + '">' +
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
-    if (cfg.top === 'ramj') {
+    if (M.ks) {
+      dims = pillRow('Hloubka pásu (šířka boku)', 'ksD', [60, 80, 100].map((v) => [v, v + ' mm'])) +
+        pillRow('Tloušťka pásu', 'ksT', [8, 10, 12].map((v) => [v, v + ' mm'])) +
+        pillRow('Závitové tyče', 'ksM', Object.keys(K.KS_ROD).map((v) => [v, v])) +
+        pillRow('Mezera mezi tvary', 'ksG', K.KS_GAP.map((v) => [v, v + ' mm'])) +
+        '<p class="note" style="margin:8px 0 0">Každý bok: 4 trojúhelníky a kosočtverec z pásoviny na hranu, přes každou mezeru 2 tyče ' + cfg.ksM + ' s maticemi z obou stran obou stěn. Deska leží na horních pásech.' + (cfg.ksG < K.KS_ROD[cfg.ksM].gmin + 0 ? '' : '') + '</p>';
+    } else if (cfg.top === 'ramj') {
       const au = K.rjOf(Object.assign({}, cfg, { rjp: 'auto' }));
       dims = pillRow('Profil jeklu rámečku', 'rjp', [['auto', 'Auto (' + au.w + '×' + au.h + ')']].concat(K.RJ.map((r) => [r.id, r.w + '×' + r.h])));
       if (K.rjOf(cfg).w < 25) dims += '<p class="note" style="margin:8px 0 0">Do jeklu užšího než 25 mm se nevejde montážní otvor pro šroubovák – deska se k němu jen přilepí' + (K.rjOf(cfg).w >= 16 ? ' nebo uchytí vlepenými svorníky' : '') + '.</p>';
@@ -367,7 +376,7 @@
     }
     const used = A.rows.filter((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && (r.part.poz === 'RL' || r.part.poz === 'RK')));
     $('topDims').innerHTML = dims + (used.length ? '<p class="note" style="margin:8px 0 0">Použito: ' + used.map((r) => r.q + '× ' + esc(r.prof) + ' ' + esc(r.len) + ' mm').join(', ') + ' · deska zůstane přesahovat aspoň 20 mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
-    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: b.dataset.k === 'rjp' || b.dataset.k === 'plS' ? b.dataset.v : Number(b.dataset.v) })));
+    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: ['rjp', 'plS', 'ksM'].indexOf(b.dataset.k) >= 0 ? b.dataset.v : Number(b.dataset.v) })));
     const bl = $('barLn');
     if (bl) { if (cfg.barL) bl.value = cfg.barL; bl.addEventListener('change', (e) => set({ barL: Number(e.target.value) || 0 })); }
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';

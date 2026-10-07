@@ -266,7 +266,9 @@
         B.plateBoxes.forEach((b, i) => {
           const pl = B.plates[i] || {};
           const row = A.rows.find((r) => r.plate && Math.abs(r.plate.w - pl.w) < 0.6 && Math.abs(r.plate.l - pl.l) < 0.6 && r.plate.t === pl.t);
-          items.push(mkItem('p' + i, 'plate', pl.name || 'Plech', row ? row.poz : '', row ? row.poz : 'PL' + i, [b], null));
+          const itp = mkItem('p' + i, 'plate', b.label || pl.name || 'Plech', row ? row.poz : '', row ? row.poz : 'PL' + i, [b], null);
+          if (b.ins) itp.ins = b.ins;   // díl si nese vlastní směr nasazení (Kosočtverec: tvary se zasouvají kolmo k boku)
+          items.push(itp);
         });
       }
     }
@@ -386,7 +388,7 @@
     const N = [];
     pl.forEach((j) => contacts(M, i, j).forEach((n) => { if (!N.some((c) => c.j === j && dot(c.n, n) > 0.995)) N.push({ n, j }); }));
     const r = sub(it.c, M.center), rad = [r[0], r[1], 0];
-    const pref = unit(add(mul(up, -1), len(rad) > 1 ? mul(unit(rad), -0.8) : [0, 0, 0]));
+    const pref = it.ins ? unit(it.ins) : unit(add(mul(up, -1), len(rad) > 1 ? mul(unit(rad), -0.8) : [0, 0, 0]));
     let res;
     if (!tabC.length && !N.length) res = { dir: pref, tabs: false, conflict: false, guided: false, why: [], cands: [pref] };
     else {
