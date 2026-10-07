@@ -252,6 +252,11 @@
     files.push({ name: dir + num + '_sestava.step', data: stepFile(num + '_sestava', bodies) });
     files.push({ name: dir + num + '_kusovnik.pdf', data: pdfFromCanvases([kusovnikPage(order, A)]) });
     files.push({ name: dir + num + '_doklad_o_zaplaceni.pdf', data: pdfFromCanvases([dokladPage(order, A)]) });
+    if (A.mount) {   // umělecké podnože: postup uchycení k desce pro truhláře
+      const k = A.mount, t = ['Uchycení podnože k desce – ' + k.M.lab, K.describe(A.cfg), '', 'Postup:']
+        .concat(k.steps.map((x, i) => (i + 1) + '. ' + x), ['', 'Přibaleno (na 1 podnož):'], k.hw.map((h) => '- ' + h.q + '× ' + h.name), k.warns.length ? ['', 'Pozor:'].concat(k.warns.map((w) => '- ' + w)) : []);
+      files.push({ name: dir + num + '_pro_truhlare.txt', data: '\ufeff' + t.join('\r\n') + '\r\n' });
+    }
     return { filename: dir.slice(0, -1) + '.zip', bytes: zip(files), files: files.map((f) => f.name), problems, analysis: A };
   }
 

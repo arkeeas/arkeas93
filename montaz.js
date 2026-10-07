@@ -35,7 +35,7 @@
   function saveCfg() {
     src = isWip(cfg.model) ? 'wip' : 'std';
     store.set('montaz-src', src);
-    store.set(src === 'wip' ? 'podnoz-cfg-wip' : 'podnoz-cfg', cfg);   // stejné nastavení jako záložka Zákazník / In progress
+    store.set(src === 'wip' ? 'podnoz-cfg-wip' : 'podnoz-cfg', cfg);   // stejné nastavení jako záložka Zákazník / Umělecké
   }
 
   let A = null, M = null, seq = [], stepOf = {}, seqKey = '';
