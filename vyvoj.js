@@ -14,7 +14,8 @@
      'plotny' = 4 plotny na špičkách.
    - cfg.barT / cfg.barW – tloušťka 2–5 mm a šířka 20–50 mm pásovin a ploten (0 = automaticky),
      cfg.barL – délka pásovin (0 = automaticky), cfg.plL – délka ploten (0 = automaticky). Pásoviny i plotny
-     se vždy zkrátí tak, aby nepřečuhovaly přes desku (okraj 20 mm), ale zakryjí špičky noh, cfg.rjp – profil jeklu rámečku ('auto' = nejužší, který zakryje špičky).
+     se vždy zkrátí tak, aby nepřečuhovaly přes desku (okraj 20 mm), ale zakryjí špičky noh.
+     cfg.plS – tvar ploten ('obd' obdélník / 'x' kříž X se 4 otvory), cfg.rjp – profil jeklu rámečku 10×10 až 40×40 ('auto' = 40×20).
    Starší poptávky s modely PZ2 (zámky + příčné) a PZ3 (spojovák + šikmé) se převedou (LEGACY).
 
    Uchycení k desce (cfg.mount, volí truhlář): mění otvory v pásovinách a spojovací materiál – viz MOUNTS. */
@@ -234,8 +235,8 @@
     { id: 'diag', lab: '2 šikmé pásoviny', icon: 'M18 8 L58 24 M46 40 L6 24', p: 'Pásoviny spojují vždy dvě špičky noh – vzhled „vrtule“, méně materiálu.', c: 'Deska leží jen na 2 pásovinách, kraje desky víc přesahují.' },
     { id: 'kriz', lab: 'Kříž z pásovin', icon: 'M6 22 L58 26 M30 4 L34 44', p: 'Dvě pásoviny přes střed do kříže – deska je podepřená i uprostřed. Nejčastější volba pro kulaté a čtvercové desky.', c: 'Uprostřed se pásoviny stýkají, svar je pod deskou vidět zespodu.' },
     { id: 'ram', lab: 'Obvodový rámeček', icon: 'M8 8 H56 V40 H8 Z', p: 'Rámeček z pásoviny přes všechny 4 nohy – deska leží po celém obvodu. Pro kámen, sklo, keramiku a tenké desky, které se nesmí prohnout.', c: 'Nejvíc materiálu a svarů, rámeček je zboku vidět pod deskou.' },
-    { id: 'ramj', lab: 'Rámeček z jeklu', icon: 'M8 8 H56 V40 H8 Z M13 13 H51 V35 H13 Z', p: 'Rámeček z obdélníkového jeklu naležato – nejtužší, deska se neprohne ani při velkém přesahu. Klasika u jídelních stolů.', c: 'Nejtěžší a nejdražší varianta, zboku je pod deskou vidět lem jeklu.' },
-    { id: 'plotny', lab: '4 plotny na špičkách', icon: 'M50 18 H60 V26 H50 Z M4 22 H14 V30 H4 Z M28 36 H36 V44 H28 Z M28 4 H36 V12 H28 Z', p: 'Na každé noze jen malá plotna – pod deskou skoro nic není vidět, nejlehčí.', c: 'Deska drží jen ve 4 bodech, měla by být tužší (od 25 mm).' }
+    { id: 'ramj', lab: 'Rámeček z jeklu', icon: 'M8 8 H56 V40 H8 Z M13 13 H51 V35 H13 Z', p: 'Rámeček z jeklu 10×10 až 40×40 naležato – tužší než pásovina, deska leží po celém obvodu. Klasika u jídelních stolů.', c: 'Dražší, zboku je pod deskou vidět lem jeklu. Jekl užší než 25 mm jde jen lepit (nebo svorníky).' },
+    { id: 'plotny', lab: '4 plotny na špičkách', icon: 'M50 18 H60 V26 H50 Z M4 22 H14 V30 H4 Z M28 36 H36 V44 H28 Z M28 4 H36 V12 H28 Z', p: 'Na každé noze jen malá plotna – obdélník nebo X se 4 otvory. Pod deskou skoro nic není vidět, nejlehčí.', c: 'Deska drží jen ve 4 bodech, měla by být tužší (od 25 mm).' }
   ];
 
   /* Uchycení k desce. Otvory jsou v pásovinách: uprostřed pevný bod, dál k okrajům podle typu.
@@ -260,7 +261,8 @@
       p: 'Na pásovinách navařené závitové svorníky M8, které se vlepí do slepých děr v desce – zespodu žádné hlavy šroubů. Pro kámen, beton i dřevo.',
       c: 'Vrtá se přesně podle podnože, lepí se epoxidem nebo chemickou kotvou – nerozebíratelné.' }
   ];
-  const mountOk = (mount, top) => !(mount === 'spony' && (top === 'plotny' || top === 'ramj'));
+  const mountOk = (mount, top, jw) => !(mount === 'spony' && (top === 'plotny' || top === 'ramj')) &&
+    !(top === 'ramj' && jw < RJ_SCREW && mount !== 'lepeni' && mount !== 'svorniky') && !(top === 'ramj' && jw < 16 && mount === 'svorniky');
   const mountOf = (id) => MOUNTS.find((m) => m.id === id) || MOUNTS[0];
   const SCREW_L = [16, 20, 25, 30, 35, 40, 45, 50];
   const nf1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
@@ -309,7 +311,7 @@
         'Spony nedotahujte natvrdo proti pásovině – deska po nich musí moct klouzat.');
     } else if (M.id === 'svorniky') {
       studL = Math.max(10, Math.min(30, Math.floor((td - 10) / 5) * 5));
-      bars.forEach((b) => { b.plan.pts.forEach((u) => studs.push([b.plan.c[0] + b.plan.d[0] * u, b.plan.c[1] + b.plan.d[1] * u])); });
+      bars.forEach((b) => { const pl = b.plan, nn = [-pl.d[1], pl.d[0]]; pl.pts.forEach((q) => { const [u, v] = Array.isArray(q) ? q : [q, 0]; studs.push([pl.c[0] + pl.d[0] * u + nn[0] * v, pl.c[1] + pl.d[1] * u + nn[1] * v]); }); });
       hw.push({ name: 'Přivařovací svorník M8×' + studL + ' (navařit na pásovinu)', q: studs.length }, { name: 'Epoxid / chemická kotva, kartuše 300 ml', q: 1 });
       cost += studs.length * (6 + 12) + 280;
       steps.push('Podnož položte na rub desky, vystřeďte a obkreslete obrys pásovin, středy svorníků označte.',
@@ -333,7 +335,9 @@
   // šířky, které může vynutit geometrie (střední příčná pásovina musí vyplnit mezeru mezi špičkami C a D)
   const BAR_ALL = BAR_STD.concat([60, 70, 80, 100]), DESK_EDGE = 20;
   /* jekly rámečku naležato: w = šířka (vodorovně), h = výška, t = stěna */
-  const RJ = [{ id: '40x20', w: 40, h: 20, t: 2 }, { id: '50x30', w: 50, h: 30, t: 2 }, { id: '60x40', w: 60, h: 40, t: 3 }, { id: '80x40', w: 80, h: 40, t: 3 }, { id: '100x40', w: 100, h: 40, t: 3 }];
+  const RJ = [[10, 10, 1], [15, 15, 1.5], [20, 10, 1.5], [20, 20, 2], [25, 25, 2], [30, 15, 2], [30, 20, 2], [30, 30, 2], [35, 35, 2], [40, 20, 2], [40, 30, 2], [40, 40, 2]]
+    .map(([w, h, t]) => ({ id: w + 'x' + h, w, h, t }));
+  const RJ_SCREW = 25;   // užší jekl: montážní otvor ve spodní stěně se nevejde – jen lepení nebo svorníky
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const inside = (pt, Q) => { let c = false; for (let i = 0, j = Q.length - 1; i < Q.length; j = i++) { const [x1, y1] = Q[i], [x2, y2] = Q[j]; if ((y1 > pt[1]) !== (y2 > pt[1]) && pt[0] < (x2 - x1) * (pt[1] - y1) / (y2 - y1) + x1) c = !c; } return c; };   // bod v mnohoúhelníku (2D)
 
@@ -346,12 +350,14 @@
     o.joint = JOINTS.some((m) => m.id === c.joint) ? c.joint : lg.joint || 'spojovak';
     o.top = TOPS.some((m) => m.id === c.top) ? c.top : lg.top || 'diag';
     o.mount = MOUNTS.some((m) => m.id === c.mount) ? c.mount : 'vrut';
-    if (!mountOk(o.mount, o.top)) o.mount = 'vrut';
     o.barT = BAR_TS.indexOf(Number(c.barT)) >= 0 ? Number(c.barT) : 5;
     o.barW = BAR_STD.indexOf(Number(c.barW)) >= 0 ? Number(c.barW) : 0;
     o.plL = PL_L.indexOf(Number(c.plL)) >= 0 ? Number(c.plL) : 0;
     o.barL = Number(c.barL) > 0 ? Math.round(clamp(Number(c.barL), 100, 2400)) : 0;
     o.rjp = RJ.some((r) => r.id === c.rjp) ? c.rjp : 'auto';
+    o.plS = c.plS === 'x' ? 'x' : 'obd';
+    const jw = o.top === 'ramj' ? rjOf(o).w : 99;
+    if (!mountOk(o.mount, o.top, jw)) o.mount = ['vrut', 'svorniky', 'lepeni'].find((m) => mountOk(m, o.top, jw));
     if (SIZES.indexOf(o.size) < 0) { o.size = 40; o.t = 2; }
     o.L = Math.max(o.L, 900); o.W = o.shape === 'circle' ? o.L : Math.max(o.W, 600); o.H = Math.max(o.H, 550);
     return o;
@@ -437,6 +443,22 @@
     if (!M.none) pts.forEach((u) => holes.push(M.oval ? ['oval', u, M.oval, 24] : M.csk ? ['csk', u, M.hole] : ['hole', u, M.hole]));
     return { c: c2, d, L: Lp, w: wp, holes, spots: [], pts, mount: M.id, kind: 'plotna' };
   }
+  /* plotna X: ramena délky aL a šířky wp pod ±45° ke směru nohy, kulatý otvor 22 mm od konce každého ramene.
+     R = poloměr stopy jeklu, reach = kam až smí plotna od středu (deska). */
+  function plotnaX(c2, d, R, mount, wp, lWant, notes, reach) {
+    const M = mountOf(mount), b = wp / 2, aMin = Math.max(R + 8 + 12 + 22, b + 30), Lmin = Math.ceil(2 * aMin / 5) * 5;
+    const aMax = reach * Math.SQRT2 - b;
+    if (lWant && lWant < Lmin && notes) notes.push('Plotna X ' + lWant + ' mm je na stopu jeklu krátká – použita nejkratší možná délka ramene.');
+    let a = (lWant && lWant >= Lmin ? lWant : Lmin) / 2;
+    if (a > aMax) { if (notes && lWant) notes.push('Plotny X ' + lWant + ' mm by přečuhovaly přes desku – zkráceny.'); a = Math.max(aMin, Math.floor(aMax)); }
+    if (aMin > aMax && notes) notes.push('Plotny přečuhují přes desku – zvětšete desku nebo zmenšete podnož.');
+    const r45 = ([x, y]) => [(x - y) / Math.SQRT2, (x + y) / Math.SQRT2];
+    const plus = [[a, -b], [a, b], [b, b], [b, a], [-b, a], [-b, b], [-a, b], [-a, -b], [-b, -b], [-b, -a], [b, -a], [b, -b]];
+    const poly = plus.map(r45), ext = (a + b) / Math.SQRT2;
+    const pts = [[a - 22, 0], [0, a - 22], [-(a - 22), 0], [0, -(a - 22)]].map(r45), holes = [];
+    if (!M.none) pts.forEach(([u, v]) => holes.push([M.csk ? 'csk' : 'hole', u, M.hole, 0, v]));
+    return { c: c2, d, L: 2 * ext, w: 2 * ext, holes, spots: [], pts, poly, mount: M.id, kind: 'plotna', armL: Math.round(2 * a) };
+  }
   function barSolid(b, z0, z1) {
     const n = [-b.d[1], b.d[0]], P2 = (u, v) => [b.c[0] + b.d[0] * u + n[0] * v, b.c[1] + b.d[1] * u + n[1] * v];
     const outl = b.poly || [[-b.L / 2, -b.w / 2], [b.L / 2, -b.w / 2], [b.L / 2, b.w / 2], [-b.L / 2, b.w / 2]];
@@ -444,9 +466,9 @@
     const J = b.tube;   // jekl naležato: dutina průchozí pokosy, otvor v horní stěně, montážní otvor ve spodní
     if (J) s = s.subtract(extrude([P2(-b.L / 2 - 10, -b.w / 2 + J.t), P2(b.L / 2 + 10, -b.w / 2 + J.t), P2(b.L / 2 + 10, b.w / 2 - J.t), P2(-b.L / 2 - 10, b.w / 2 - J.t)], z0 + J.t, z1 - J.t));
     let cut = null;
-    const hole = (k, u, r, ol, za, zb) => { const pts = (k === 'oval' ? stadium(u, 0, ol || 40, r, 8) : circle(u, 0, r, 20)).map(([x, y]) => P2(x, y)); const e = extrude(pts, za, zb); cut = cut ? cut.union(e) : e; };
-    b.holes.forEach(([k, u, r, ol]) => {
-      if (!J) { hole(k, u, r, ol, z0 - 1, z1 + 1); return; }
+    const hole = (k, u, r, ol, za, zb, v) => { const pts = (k === 'oval' ? stadium(u, 0, ol || 40, r, 8) : circle(u, v || 0, r, 20)).map(([x, y]) => P2(x, y)); const e = extrude(pts, za, zb); cut = cut ? cut.union(e) : e; };
+    b.holes.forEach(([k, u, r, ol, v]) => {
+      if (!J) { hole(k, u, r, ol, z0 - 1, z1 + 1, v); return; }
       const half = k === 'oval' ? r / 2 : r;
       hole(k, u, r, ol, z1 - J.t - 1, z1 + 1);
       hole(k, u, k === 'oval' ? 2 * Math.max(half + 3, 7) : Math.max(half + 3, 7), ol, z0 - 1, z0 + J.t + 1);
@@ -456,24 +478,20 @@
   function barPlate(b, poz, name) {   // pro DXF: obdélník L × w, otvory v souřadnicích pásoviny
     const M = mountOf(b.mount), csk = b.holes.some((x) => x[0] === 'csk');
     const what = M.studs ? ' – navařit svorníky M8' : M.none ? ' – bez otvorů (lepení)' : csk ? ' – otvory Ø' + nf1(2 * M.hole) + ' zahloubit 90° na Ø' + nf1(M.csk) + ' zespodu' : '';
-    return { name: name + what, w: b.L, l: b.w, t: b.t, q: 1, holes: b.holes.filter((x) => x[0] !== 'oval').map(([, u, r]) => [u + b.L / 2, b.w / 2, r]),
+    return { name: name + what, w: b.L, l: b.w, t: b.t, q: 1, holes: b.holes.filter((x) => x[0] !== 'oval').map(([, u, r, , v]) => [u + b.L / 2, (v || 0) + b.w / 2, r]),
       ovals: b.holes.filter((x) => x[0] === 'oval').map(([, u, w, ol]) => [u + b.L / 2, b.w / 2, ol || 40, w]), poz, kind: b.kind,
       poly: b.poly ? b.poly.map(([u, v]) => [u + b.L / 2, v + b.w / 2]) : undefined };
   }
 
   const rjOf = (cfg) => {
     if (cfg.rjp !== 'auto') return RJ.find((r) => r.id === cfg.rjp);
-    // nejužší jekl, který zakryje špičky (šikmá stopa nohy je delší než profil)
-    const G = layout(Object.assign({}, cfg, { top: 'ram' })), Hc = G.Htop - 20;
-    const ac = (k, ax) => { const f = topFoot(G.legs[k][0], G.legs[k][1], G.h, Hc).map((p) => p[ax]); return Math.max(...f) - Math.min(...f); };
-    const need = Math.max(ac('A', 0), ac('C', 1)) - 6;
-    return RJ.find((r) => r.w >= need) || RJ[RJ.length - 1];
+    return RJ.find((r) => r.id === '40x20');
   };
 
   const cache = new Map();
   function build(cfgIn) {
     const cfg = normalize(cfgIn);
-    const key = [cfg.joint, cfg.top, cfg.L, cfg.W, cfg.H, cfg.td, cfg.size, cfg.t, cfg.mount, cfg.barT, cfg.barW, cfg.barL, cfg.plL, cfg.rjp, cfg.shape, cfg.dmode, cfg.dL, cfg.dW].join('|');
+    const key = [cfg.joint, cfg.top, cfg.L, cfg.W, cfg.H, cfg.td, cfg.size, cfg.t, cfg.mount, cfg.barT, cfg.barW, cfg.barL, cfg.plL, cfg.plS, cfg.rjp, cfg.shape, cfg.dmode, cfg.dL, cfg.dW].join('|');
     if (cache.has(key)) return Object.assign({}, cache.get(key), { cfg });
     const RJp = cfg.top === 'ramj' ? rjOf(cfg) : null, BAR_T = cfg.barT;
     const G = layout(cfg), { s, h, t, Htop, c, legs } = G, Hc = Htop - (RJp ? RJp.h : BAR_T);
@@ -598,7 +616,7 @@
       const across = (k, ax) => { const f = fpC(k)[2].map((p) => p[ax]); return Math.max(...f) - Math.min(...f); };
       const needR = Math.max(across('A', 0), across('C', 1)) - 6;
       const wr = RJp ? RJp.w : pickW(needR), w2 = wr / 2;
-      if (RJp && RJp.w < needR) notes.push('Jekl ' + RJp.w + ' mm je užší než špička nohy (' + Math.ceil(needR + 6) + ' mm) – špička bude pod rámečkem trochu vyčnívat.');
+      if (RJp && needR - RJp.w > 10) notes.push('Jekl ' + RJp.w + ' mm je užší než špička nohy (' + Math.ceil(needR + 6) + ' mm) – špička bude pod rámečkem zboku vyčnívat o ' + Math.round((needR + 6 - RJp.w) / 2) + ' mm.');
       [['D', [0, Y], [1, 0], X], ['C', [0, -Y], [-1, 0], X], ['A', [X, 0], [0, -1], Y], ['B', [-X, 0], [0, 1], Y]].forEach(([k, cc, d, half]) => {
         const Lo = 2 * half + wr, Li = 2 * half - wr;
         const f = fpC(k)[2].map((p) => (p[0] - cc[0]) * d[0] + (p[1] - cc[1]) * d[1]);
@@ -614,8 +632,12 @@
         d[0] /= dl; d[1] /= dl;
         const cc = [fp.reduce((a, p) => a + p[0], 0) / 4, fp.reduce((a, p) => a + p[1], 0) / 4];
         const us = fp.map((p) => (p[0] - cc[0]) * d[0] + (p[1] - cc[1]) * d[1]);
-        const wp = pickW(s + 10, 'Plotna');
-        bars.push({ id: 'P' + k, name: 'Plotna na špičce noh', plan: plotnaPlan(cc, d, Math.max(...us.map(Math.abs)), s, cfg.mount, wp, cfg.plL, notes, deskSpan(cc, d, wp)) });
+        const wp = pickW(cfg.plS === 'x' ? 40 : s + 10, 'Plotna');
+        if (cfg.plS === 'x') {
+          const R = Math.max(...fp.map((p) => Math.hypot(p[0] - cc[0], p[1] - cc[1]))), n = [-d[1], d[0]];
+          const reach = Math.min(...[d, n].map((dd) => { const sp = deskSpan(cc, dd, 1); return Math.min(-sp[0], sp[1]); }));
+          bars.push({ id: 'P' + k, name: 'Plotna X na špičce noh', plan: plotnaX(cc, d, R, cfg.mount, wp, cfg.plL, notes, reach) });
+        } else bars.push({ id: 'P' + k, name: 'Plotna na špičce noh', plan: plotnaPlan(cc, d, Math.max(...us.map(Math.abs)), s, cfg.mount, wp, cfg.plL, notes, deskSpan(cc, d, wp)) });
       });
     }
     bars.forEach((b) => { b.plan.t = BAR_T; });
