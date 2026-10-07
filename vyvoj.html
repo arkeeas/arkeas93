@@ -288,10 +288,10 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261007k"></script>
-<script src="vyvoj.js?v=20261007k"></script>
+<script src="core.js?v=20261007l"></script>
+<script src="vyvoj.js?v=20261007m"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="viewer.js?v=20261007k"></script>
+<script src="viewer.js?v=20261007l"></script>
 <script>
 (function () {
   const K = Vyvoj, $ = (id) => document.getElementById(id);
@@ -337,7 +337,8 @@
     const M = K.MODELS.find((m) => m.id === cfg.model), F = K.FIN.find((f) => f.id === cfg.fin), d = A.build.dims, circle = cfg.shape === 'circle';
     $('mName').textContent = M.lab;
     $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · ' + (M.ks ? (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pásovina ' + cfg.ksD + '×' + cfg.ksT) : 'jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t) + ' · ' + F.lab;
-    $('ohChip').textContent = 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
+    $('ohChip').textContent = M.vr ? 'Spodní rám vyčnívá za desku o ' + K.nf(cfg.vrO) + ' mm' : 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
+    $('td').min = M.vr ? 8 : 18;
 
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => set({ model: id }));
 
@@ -346,9 +347,9 @@
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
     $('jointsHead').hidden = $('joints').hidden = !!M.pav;
     $('laysHead').hidden = $('lays').hidden = !M.pav;
-    if (M.ks) $('jointsHead').hidden = $('joints').hidden = true;
-    $('topsHead').textContent = M.ks ? 'Tvary a spoje' : 'Horní část – na čem leží deska';
-    $('tops').hidden = !!M.ks;
+    if (M.ks || M.vr) $('jointsHead').hidden = $('joints').hidden = true;
+    $('topsHead').textContent = M.ks ? 'Tvary a spoje' : M.vr ? 'Rámy' : 'Horní část – na čem leží deska';
+    $('tops').hidden = !!(M.ks || M.vr);
     group($('lays'), K.PV_LAYS, (o) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.pvLay) + '">' + svg(o.id === 'plus' ? 'M4 24 H60 M32 10 V38' : 'M8 8 L56 40 M56 8 L8 40') + '<span class="t">' + o.lab + '</span><span class="p">' + esc(o.p) + '</span></button>', (id) => set({ pvLay: id }));
     group($('joints'), K.JOINTS, (o) => card(o, o.id === cfg.joint), (id) => set({ joint: id }));
     group($('tops'), K.topsFor(cfg.model, cfg.pvLay), (o) => card(o, o.id === cfg.top), (id) => set({ top: id }));
@@ -356,7 +357,11 @@
     const pillRow = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + esc(lab) + '">' +
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
-    if (M.ks) {
+    if (M.vr) {
+      dims = pillRow('Výška středního rámu', 'vrH', [45, 55, 65].map((v) => [v, v + ' %'])) +
+        pillRow('Přesah spodního rámu za desku', 'vrO', [100, 150, 200, 250].map((v) => [v, v + ' mm'])) +
+        '<p class="note" style="margin:8px 0 0">Horní rám nese desku (sklo nebo dřevo) a stojí na nohách na levém konci. Druhý rám je nižší, otočený a vyčnívá za desku o ' + cfg.vrO + ' mm. Rámy jsou k sobě svařené krátkými sloupky. Profil jeklu v Kroku 3.</p>';
+    } else if (M.ks) {
       dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
         (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
           : pillRow('Hloubka pásu (šířka boku)', 'ksD', [60, 80, 100].map((v) => [v, v + ' mm'])) + pillRow('Tloušťka pásu', 'ksT', [8, 10, 12].map((v) => [v, v + ' mm']))) +
