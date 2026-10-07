@@ -8,7 +8,9 @@
      nohy jsou do sebe zaseknuté; 'spojovak' = nohy se nedotýkají, v půlce výšky vodorovný plech 3 mm
      se 4 zuby do děr ve vnitřních stěnách jeklů.
    - cfg.top – na čem leží deska: 'pricne' = 3 příčné pásoviny (krajní v zápichu špiček A a B, střední
-     mezi špičkami C a D), 'diag' = 2 pásoviny D–A a C–B na špičkách, 'plotny' = 4 plotny na špičkách.
+     mezi špičkami C a D), 'diag' = 2 pásoviny D–A a C–B na špičkách, 'kriz' = kříž z pásovin A–B (celá)
+     a C–D (2 půlky dosedající na A–B), 'ram' = obvodový rámeček z pásoviny přes všechny 4 špičky (pokosy 45°),
+     'plotny' = 4 plotny na špičkách.
    Starší poptávky s modely PZ2 (zámky + příčné) a PZ3 (spojovák + šikmé) se převedou (LEGACY).
 
    Uchycení k desce (cfg.mount, volí truhlář): mění otvory v pásovinách a spojovací materiál – viz MOUNTS. */
@@ -226,7 +228,9 @@
   /* horní část – na čem leží deska (ikona = půdorys) */
   const TOPS = [
     { id: 'pricne', lab: '3 příčné pásoviny', icon: 'M14 8 V40 M32 8 V40 M50 8 V40', p: 'Krajní pásoviny zapuštěné v zápichu špiček, střední mezi nohama – deska leží na 3 liniích, nejtužší.', c: 'Pásoviny jsou zboku vidět pod deskou.' },
-    { id: 'diag', lab: '2 šikmé pásoviny', icon: 'M26 8 L56 22 M38 40 L8 26', p: 'Pásoviny spojují vždy dvě špičky noh – vzhled „vrtule“, méně materiálu.', c: 'Deska leží jen na 2 pásovinách, kraje desky víc přesahují.' },
+    { id: 'diag', lab: '2 šikmé pásoviny', icon: 'M18 8 L58 24 M46 40 L6 24', p: 'Pásoviny spojují vždy dvě špičky noh – vzhled „vrtule“, méně materiálu.', c: 'Deska leží jen na 2 pásovinách, kraje desky víc přesahují.' },
+    { id: 'kriz', lab: 'Kříž z pásovin', icon: 'M6 22 L58 26 M30 4 L34 44', p: 'Dvě pásoviny přes střed do kříže – deska je podepřená i uprostřed. Nejčastější volba pro kulaté a čtvercové desky.', c: 'Uprostřed se pásoviny stýkají, svar je pod deskou vidět zespodu.' },
+    { id: 'ram', lab: 'Obvodový rámeček', icon: 'M8 8 H56 V40 H8 Z', p: 'Rámeček z pásoviny přes všechny 4 nohy – deska leží po celém obvodu. Pro kámen, sklo, keramiku a tenké desky, které se nesmí prohnout.', c: 'Nejvíc materiálu a svarů, rámeček je zboku vidět pod deskou.' },
     { id: 'plotny', lab: '4 plotny na špičkách', icon: 'M50 18 H60 V26 H50 Z M4 22 H14 V30 H4 Z M28 36 H36 V44 H28 Z M28 4 H36 V12 H28 Z', p: 'Na každé noze jen malá plotna – pod deskou skoro nic není vidět, nejlehčí.', c: 'Deska drží jen ve 4 bodech, měla by být tužší (od 25 mm).' }
   ];
 
@@ -410,7 +414,8 @@
   }
   function barSolid(b, z0, z1) {
     const n = [-b.d[1], b.d[0]], P2 = (u, v) => [b.c[0] + b.d[0] * u + n[0] * v, b.c[1] + b.d[1] * u + n[1] * v];
-    let s = extrude([P2(-b.L / 2, -b.w / 2), P2(b.L / 2, -b.w / 2), P2(b.L / 2, b.w / 2), P2(-b.L / 2, b.w / 2)], z0, z1);
+    const outl = b.poly || [[-b.L / 2, -b.w / 2], [b.L / 2, -b.w / 2], [b.L / 2, b.w / 2], [-b.L / 2, b.w / 2]];
+    let s = extrude(outl.map(([u, v]) => P2(u, v)), z0, z1);
     let cut = null;
     b.holes.forEach(([k, u, r, ol]) => { const pts = (k === 'oval' ? stadium(u, 0, ol || 40, r, 8) : circle(u, 0, r, 20)).map(([x, y]) => P2(x, y)); const e = extrude(pts, z0 - 1, z1 + 1); cut = cut ? cut.union(e) : e; });
     return cut ? s.subtract(cut) : s;
@@ -419,7 +424,8 @@
     const M = mountOf(b.mount), csk = b.holes.some((x) => x[0] === 'csk');
     const what = M.studs ? ' – navařit svorníky M8' : M.none ? ' – bez otvorů (lepení)' : csk ? ' – otvory Ø' + nf1(2 * M.hole) + ' zahloubit 90° na Ø' + nf1(M.csk) + ' zespodu' : '';
     return { name: name + what, w: b.L, l: b.w, t: BAR_T, q: 1, holes: b.holes.filter((x) => x[0] !== 'oval').map(([, u, r]) => [u + b.L / 2, b.w / 2, r]),
-      ovals: b.holes.filter((x) => x[0] === 'oval').map(([, u, w, ol]) => [u + b.L / 2, b.w / 2, ol || 40, w]), poz, kind: b.kind };
+      ovals: b.holes.filter((x) => x[0] === 'oval').map(([, u, w, ol]) => [u + b.L / 2, b.w / 2, ol || 40, w]), poz, kind: b.kind,
+      poly: b.poly ? b.poly.map(([u, v]) => [u + b.L / 2, v + b.w / 2]) : undefined };
   }
 
   const cache = new Map();
@@ -468,17 +474,52 @@
         { id: 'P2', name: 'Pásovina střední (mezi C a D)', plan: barPlan([0, 0], [0, 1], Lb, G.barMid, [], cfg.mount) }
       ];
       if (G.gapNote) notes.push('Pozor: ' + G.gapNote + ' (' + G.barMid + ' mm).');
-    } else if (cfg.top === 'diag') {
-      // pásoviny D–A a C–B po špičkách
-      [['P1', 'D', 'A'], ['P2', 'C', 'B']].forEach(([id, k1, k2]) => {
+    } else if (cfg.top === 'diag' || cfg.top === 'kriz') {
+      // pásovina mezi dvěma špičkami: šířka tak, aby zakryla obě stopy jeklů
+      const tipBar = (k1, k2) => {
         const p1 = legs[k1][1], p2 = legs[k2][1], d0 = vunit([p2[0] - p1[0], p2[1] - p1[1], 0]), d = [d0[0], d0[1]], n = [-d[1], d[0]];
         const fp = topFoot(legs[k1][0], legs[k1][1], h, Hc).concat(topFoot(legs[k2][0], legs[k2][1], h, Hc));
         const us = fp.map((p) => (p[0] - p1[0]) * d[0] + (p[1] - p1[1]) * d[1]), vs = fp.map((p) => (p[0] - p1[0]) * n[0] + (p[1] - p1[1]) * n[1]);
         const u0 = Math.min(...us) - 10, u1 = Math.max(...us) + 10, v0 = Math.min(...vs), v1 = Math.max(...vs);
         const need = v1 - v0 - 6, wb = BAR_STD.find((x) => x >= need) || 100;
         const cc = [p1[0] + d[0] * (u0 + u1) / 2 + n[0] * (v0 + v1) / 2, p1[1] + d[1] * (u0 + u1) / 2 + n[1] * (v0 + v1) / 2];
-        const forb = [k1, k2].map((k) => { const q = topFoot(legs[k][0], legs[k][1], h, Hc).map((p) => (p[0] - cc[0]) * d[0] + (p[1] - cc[1]) * d[1]); return [Math.min(...q) - 8, Math.max(...q) + 8]; });
-        bars.push({ id, name: 'Pásovina ' + k1 + '–' + k2 + ' (na špičkách)', plan: barPlan(cc, d, Math.round(u1 - u0), wb, forb, cfg.mount) });
+        const forbOf = (k, c0) => { const q = topFoot(legs[k][0], legs[k][1], h, Hc).map((p) => (p[0] - c0[0]) * d[0] + (p[1] - c0[1]) * d[1]); return [Math.min(...q) - 8, Math.max(...q) + 8]; };
+        return { cc, d, n, L: Math.round(u1 - u0), wb, forbOf };
+      };
+      if (cfg.top === 'diag') {
+        [['P1', 'D', 'A'], ['P2', 'C', 'B']].forEach(([id, k1, k2]) => {
+          const T = tipBar(k1, k2);
+          bars.push({ id, name: 'Pásovina ' + k1 + '–' + k2 + ' (na špičkách)', plan: barPlan(T.cc, T.d, T.L, T.wb, [T.forbOf(k1, T.cc), T.forbOf(k2, T.cc)], cfg.mount) });
+        });
+      } else {
+        // kříž: B–A celá, D–C ze dvou půlek, konce zaříznuté rovnoběžně s hranou B–A (mezera 1 mm na svar)
+        const T1 = tipBar('B', 'A'), T2 = tipBar('D', 'C');
+        bars.push({ id: 'P1', name: 'Pásovina kříže B–A (celá)', plan: barPlan(T1.cc, T1.d, T1.L, T1.wb, [T1.forbOf('B', T1.cc), T1.forbOf('A', T1.cc), [-T2.wb / 2 - 8, T2.wb / 2 + 8]], cfg.mount) });
+        const a = T1.n[0] * (T2.cc[0] - T1.cc[0]) + T1.n[1] * (T2.cc[1] - T1.cc[1]), b = T1.n[0] * T2.d[0] + T1.n[1] * T2.d[1], e = T1.n[0] * T2.n[0] + T1.n[1] * T2.n[1];
+        const lim = T1.wb / 2 + 1, uAt = (sg, v) => (sg * lim - a - e * v) / b;   // u na D–C, kde je hrana B–A
+        const ends = [-T2.L / 2, T2.L / 2], w2 = T2.wb / 2;
+        [[ends[0], Math.sign(b) < 0 ? 1 : -1, 'D'], [ends[1], Math.sign(b) < 0 ? -1 : 1, 'C']].forEach(([uEnd, sg, k]) => {
+          const ua = uAt(sg, -w2), ub = uAt(sg, w2);   // řezná hrana u stykové strany
+          const lo = Math.min(uEnd, ua, ub), hi = Math.max(uEnd, ua, ub), mid = (lo + hi) / 2;
+          const cH = [T2.cc[0] + T2.d[0] * mid, T2.cc[1] + T2.d[1] * mid];
+          const poly = uEnd < 0 ? [[uEnd - mid, -w2], [ua - mid, -w2], [ub - mid, w2], [uEnd - mid, w2]] : [[ua - mid, -w2], [uEnd - mid, -w2], [uEnd - mid, w2], [ub - mid, w2]];
+          const plan = barPlan(cH, T2.d, hi - lo, T2.wb, [T2.forbOf(k, cH)], cfg.mount);
+          plan.poly = poly;
+          bars.push({ id: 'P' + k, name: 'Půlka kříže ' + k + ' (dosedá na B–A)', plan });
+        });
+      }
+    } else if (cfg.top === 'ram') {
+      // obvodový rámeček: osy stran jdou přes středy stop špiček (A vpravo, B vlevo, C dole, D nahoře), pokosy 45°
+      const fpC = (k) => { const f = topFoot(legs[k][0], legs[k][1], h, Hc); return [f.reduce((q, p) => q + p[0], 0) / 4, f.reduce((q, p) => q + p[1], 0) / 4, f]; };
+      const X = (fpC('A')[0] - fpC('B')[0]) / 2, Y = (fpC('D')[1] - fpC('C')[1]) / 2;
+      const across = (k, ax) => { const f = fpC(k)[2].map((p) => p[ax]); return Math.max(...f) - Math.min(...f); };
+      const wr = BAR_STD.find((x) => x >= Math.max(across('A', 0), across('C', 1)) - 6) || 100, w2 = wr / 2;
+      [['D', [0, Y], [1, 0], X], ['C', [0, -Y], [-1, 0], X], ['A', [X, 0], [0, -1], Y], ['B', [-X, 0], [0, 1], Y]].forEach(([k, cc, d, half]) => {
+        const Lo = 2 * half + wr, Li = 2 * half - wr;
+        const f = fpC(k)[2].map((p) => (p[0] - cc[0]) * d[0] + (p[1] - cc[1]) * d[1]);
+        const plan = barPlan(cc, d, Li, wr, [[Math.min(...f) - 8, Math.max(...f) + 8]], cfg.mount);
+        plan.L = Lo; plan.poly = [[-Li / 2, -w2], [Li / 2, -w2], [Lo / 2, w2], [-Lo / 2, w2]];
+        bars.push({ id: 'R' + k, name: 'Rámeček – strana ' + (d[0] ? 'dlouhá' : 'krátká') + ' (pokosy 45°)', plan });
       });
     } else {
       // plotna na každé špičce, podél vodorovného směru nohy
@@ -503,7 +544,7 @@
     const Lf = Math.round(2 * Math.max(-mnx, mxx)), Wf = Math.round(2 * Math.max(-mny, mxy));
     const kit = mountKit(cfg, bars);
     kit.studs.forEach(([x, y]) => { plateBoxes.push(toBrep(extrude(circle(x, y, 4, 12), Htop, Htop + kit.studL))); });
-    const welds = (pricne ? 8 : cfg.top === 'plotny' ? 4 : 4) + (zamky ? 4 : 4);
+    const welds = { pricne: 8, diag: 4, kriz: 6, ram: 8, plotny: 4 }[cfg.top] + 4;
     const out = { cfg, parts, plates, plateBoxes, boltPts: [], hw: kit.hw, kit, dims: { Lf, Wf, Hf: Htop }, bolted: false, G, notes, bars, weldJoints: welds };
     if (cache.size > 40) cache.clear();
     cache.set(key, out);
