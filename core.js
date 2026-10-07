@@ -930,7 +930,8 @@
     const fin = FIN.find((f) => f.id === A.cfg.fin);
     const col = A.cfg.fin === 'white' ? '#D8D8D4' : fin.sw === '#1E1F21' ? '#3A3C40' : fin.sw;
     return A.build.parts.map((p) => ({ verts: p.solid.verts, faces: p.solid.faces, color: col }))
-      .concat(A.build.plateBoxes.map((b) => ({ verts: b.verts, faces: b.faces, color: '#B8440F' })));
+      .concat(A.build.plateBoxes.map((b) => ({ verts: b.verts, faces: b.faces, color: b.paint === 'fin' ? col : '#B8440F' })))
+      .concat((A.build.hwBodies || []).map((b) => ({ verts: b.verts, faces: b.faces, color: '#8A8C90' })));
   }
 
 

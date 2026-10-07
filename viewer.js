@@ -137,6 +137,10 @@
       A.build.parts.forEach((mb) => { const mesh = new THREE.Mesh(triangles(mb.solid), steel); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); });
       const plateMat = new THREE.MeshStandardMaterial({ color: m[0], metalness: m[1], roughness: m[2] });
       A.build.plateBoxes.forEach((b) => { const mesh = new THREE.Mesh(triangles(b), plateMat); mesh.castShadow = true; group.add(mesh); });
+      if (A.build.hwBodies) {   // nakupované díly (závitové tyče, matice)
+        const hm = new THREE.MeshStandardMaterial({ color: '#4A4C50', metalness: 0.7, roughness: 0.45 });
+        A.build.hwBodies.forEach((b) => { const mesh = new THREE.Mesh(triangles(b), hm); mesh.castShadow = true; group.add(mesh); });
+      }
       if (A.build.boltPts.length) {
         const bm = new THREE.MeshStandardMaterial({ color: '#C9C4BA', metalness: 0.8, roughness: 0.3 });
         A.build.boltPts.forEach((p) => { const s = new THREE.Mesh(new THREE.SphereGeometry(Math.max(6, A.cfg.size * 0.22), 16, 12), bm); s.position.set(p[0], p[1], p[2]); group.add(s); });
