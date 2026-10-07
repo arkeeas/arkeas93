@@ -287,7 +287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261005d"></script>
-<script src="vyvoj.js?v=20261007d"></script>
+<script src="vyvoj.js?v=20261007e"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261005d"></script>
 <script>
@@ -355,11 +355,15 @@
       const what = cfg.top === 'plotny' ? 'ploten' : 'pásovin';
       dims = pillRow('Tloušťka ' + what, 'barT', K.BAR_TS.map((v) => [v, v + ' mm'])) +
         pillRow('Šířka ' + what, 'barW', [[0, 'Auto']].concat(K.BAR_STD.map((v) => [v, v]))) +
-        (cfg.top === 'plotny' ? pillRow('Délka ploten', 'plL', [[0, 'Auto']].concat(K.PL_L.map((v) => [v, v]))) : '');
+        (cfg.top === 'plotny' ? pillRow('Délka ploten', 'plL', [[0, 'Auto']].concat(K.PL_L.map((v) => [v, v])))
+          : cfg.top === 'ram' ? '' : '<div class="thk"><span>Délka pásovin</span><div class="pills"><button type="button" class="pill" data-k="barL" data-v="0" aria-pressed="' + !cfg.barL + '">Auto</button>' +
+            '<span class="num"><input id="barLn" type="number" inputmode="numeric" min="100" max="2400" step="10" aria-label="Délka pásovin v mm" placeholder="vlastní"> mm</span></div></div>');
     }
-    const used = A.rows.find((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && r.part.poz === 'RL'));
-    $('topDims').innerHTML = dims + (used ? '<p class="note" style="margin:8px 0 0">Použito: ' + esc(used.prof) + ', ' + esc(used.len) + ' mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
+    const used = A.rows.filter((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && (r.part.poz === 'RL' || r.part.poz === 'RK')));
+    $('topDims').innerHTML = dims + (used.length ? '<p class="note" style="margin:8px 0 0">Použito: ' + used.map((r) => r.q + '× ' + esc(r.prof) + ' ' + esc(r.len) + ' mm').join(', ') + ' · deska zůstane přesahovat aspoň 20 mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
     $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: b.dataset.k === 'rjp' ? b.dataset.v : Number(b.dataset.v) })));
+    const bl = $('barLn');
+    if (bl) { if (cfg.barL) bl.value = cfg.barL; bl.addEventListener('change', (e) => set({ barL: Number(e.target.value) || 0 })); }
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';
     $('wField').hidden = circle;
     ['L', 'W', 'H'].forEach((k) => { syncInput(k, cfg[k]); syncInput(k + 'n', cfg[k]); });
