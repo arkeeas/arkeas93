@@ -536,7 +536,8 @@
         const arm = (o, re) => o.part && re.test(o.part.name || ''), hub = M.items.some((o) => arm(o, /^Rameno /));
         if (arm(it, /^Rameno dolní/)) sc += 300;        // Pavouk: nejdřív ramena k zemi (svaří se k sobě),
         else if (arm(it, /^Rameno horní/)) sc += 150;   // pak ramena k desce, nakonec horní část
-        else if (!hub && it.kind === 'tube' && it.part && Math.abs(it.part.m.u[2]) < 0.05 && it.c[2] > M.Hf - 1.5 * M.s) sc += 45;   // horní rám nejdřív
+        else if (it.part && it.part.order) sc += it.part.order;   // díl si nese pořadí skládání (Vnořené rámy: odspodu)
+        else if (!hub && !M.items.some((q) => q.part && q.part.order) && it.kind === 'tube' && it.part && Math.abs(it.part.m.u[2]) < 0.05 && it.c[2] > M.Hf - 1.5 * M.s) sc += 45;   // horní rám nejdřív
         sc += it.seams.filter((sid) => { const sm = M.seams[sid]; return placed.has(sm.a === i ? sm.b : sm.a); }).length * 4;
         sc += it.c[2] / Math.max(1, M.size[2]) * 5;
         cand.push([sc, i]);

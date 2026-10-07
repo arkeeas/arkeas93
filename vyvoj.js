@@ -661,7 +661,9 @@
     const sig = [];
     pieces.forEach((pc) => {
       const u = vunit(vsub(pc.T, pc.F)), m = pc.vert ? { p1: pc.F, u, v: [1, 0, 0], w: [0, 1, 0], L: vlen(vsub(pc.T, pc.F)) } : frameOf(pc.F, pc.T);
-      const part = { name: pc.name, m, solid: toBrep(pc.sol), csg: pc.sol, ang: pc.ang, prof: 'jekl ' + s + '×' + s + '×' + t, feat: pc.name.indexOf('Horní rám') === 0 && pc.side === 'dlouhý' && !mountOf(cfg.mount).none ? 'otvory pro desku' : '' };
+      // pořadí skládání odspodu: spodní rámy, nohy a sloupky ke spodním, střední rám, sloupky k hornímu, horní rám
+      const order = /^Spodní/.test(pc.name) ? 400 : /^Noha|^Sloupek střední/.test(pc.name) ? 300 : /^Střední/.test(pc.name) ? 200 : /^Sloupek horní/.test(pc.name) ? 150 : 1;
+      const part = { name: pc.name, order, m, solid: toBrep(pc.sol), csg: pc.sol, ang: pc.ang, prof: 'jekl ' + s + '×' + s + '×' + t, feat: pc.name.indexOf('Horní rám') === 0 && pc.side === 'dlouhý' && !mountOf(cfg.mount).none ? 'otvory pro desku' : '' };
       const k = pc.name + '|' + Math.round(P.partLength(part)) + '|' + Math.round(P.volume(part.solid) / 50);
       let i = sig.indexOf(k); if (i < 0) { sig.push(k); i = sig.length - 1; }
       part.poz = 'V' + (i + 1);
