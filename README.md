@@ -3,10 +3,10 @@
 Konfigurátor ocelových podnoží stolů. Má dvě části, mezi kterými se přepíná záložkou nahoře:
 
 - **Zákazník** (`index.html`): výběr tvaru podnože, rozměry, profil jeklu, spoje, povrch a deska. Obsahuje 3D náhled, orientační nosnost, cenu a nezávaznou poptávku.
-- **In progress** (`vyvoj.html`, záložka vedle *Podnože*): rozpracované modely se stejným postupem jako podnože (tvar, rozměry, jekl, povrch, deska, 3D náhled, nosnost, cena, poptávka). Poptávky z ní se v dílně otevřou a stáhnou stejně.
+- **Umělecké** (`vyvoj.html`, záložka vedle *Podnože*): umělecké (zatím rozpracované) modely se stejným postupem jako podnože (tvar, rozměry, jekl, povrch, deska, 3D náhled, nosnost, cena, poptávka). Navíc **Krok 7 – Uchycení k desce**: truhlář si vybere ze 5 způsobů – *vruty do dřeva* (pevný bod Ø9 + ovály 40×9 pro dilataci masivu), *zapuštěné vruty* (Ø5,5 se zahloubením, čistý vzhled, pro DTD/MDF/překližku), *závitové vložky M6* (opakovaná montáž, deska od 22 mm), *stolové spony* (pevný bod + spony přes hranu pásoviny, pro masiv) a *lepení* (bez otvorů, pro kámen, sklo, HPL). Podle volby se změní otvory v pásovinách (3D, STEP, DXF), spojovací materiál v kusovníku, cena a postup *Pro truhláře* (vrták, hloubka podle tloušťky desky) – ten je i v ZIPu dílny jako `*_pro_truhlare.txt`. Poptávky z ní se v dílně otevřou a stáhnou stejně.
 - **Zábradlí** (`zabradli.html`, záložka v hlavním menu vedle *Podnože*): **jeden typ, který si zákazník poskládá** – sloupky ano/ne (s roztečí 600–1500 mm), madlo dřevěné / horní rám, profil rámu, špruše 20–60 mm se spojem podle šířky, přesah špruší nahoře a dole. Trasa po úsecích (délka, převýšení u schodiště, zatočení), výška, kotvení (z boku přes fasádu / shora patkami pod sloupky, i na schodišti / sloupky přes čelo s plotnou do čela desky / bez kotev) a podklad, konce přikotvené ke zdi, tepelně oddělující podložky pod plotny, povrch a služby (zaměření, pomoc s kotvením, montáž). **Kotvy** jde rozmístit roztečí, nebo je v rozvinutém pásu táhnout po jedné – přichytí se jen na povolené místo (mezera mezi špruše nebo sloupek, mimo roh a styk pole). Mezery hlídají meze z ceníku dílny: nad doporučenou varování, nad maximem nejde poptat. **Podle stavby** (Krok 2 → *Podle stavby*): zákazník poskládá bloky (rovná hrana, schodiště, rohy, konec volný / u zdi) a změří je – každý rozměr dvakrát jinou cestou (hrana A + kontrolní B z druhého konce, roh přes značky 1 m a úhlopříčku C – z ní se spočítá skutečný úhel a jde jedním klikem převzít, schody n × h proti převýšení H). U každé míry je **?** s obrázkem a návodem, pod tím půdorys a seznam *co změřit / co přeměřit*. Chybějící míra = nejde poptat, nesedící = varování; v dílně je u poptávky vidět, jestli rozměry sedí. 3D náhled se stavbou (i jednotlivé schody) a cena s rozpisem. Poptávka jde do stejné dílny jako podnože.
 - **Dílna** (`interni.html`): přijaté poptávky, objednávka a stažení podkladů (.zip), audit konstrukce všech tvarů a ceník.
-- **Testing** (`montaz.html`): stejná podnož jako u zákazníka (sdílí nastavení se záložkou Zákazník / In progress), ale pro dílnu:
+- **Testing** (`montaz.html`): stejná podnož jako u zákazníka (sdílí nastavení se záložkou Zákazník / Umělecké), ale pro dílnu:
   - *Rozložit* – posuvník rozloží podnož (každý díl odjede cestou, kterou se nasazuje), kliknutím vybereš díl, vysuneš ho zvlášť, ukážeš jen jeho navazující díly, nebo necháš podnož rozebrat po jednom. Zámky (oranžově) a drážky/otvory (žlutě) jsou zvýrazněné.
   - *Postup* – naklikáš pořadí skládání (nebo „Navrhnout pořadí“), krokuješ / přehráváš. Díl přijede ze směru, kterým ho jde fyzicky nasadit: zámky dávají směr přesně, dosedací plochy (pokosy, tupé spoje, výřezy) ho omezují – třeba spodní příčku mezi dvěma pokosy jde zasunout jen bokem. Když díl tímhle pořadím nejde nasadit (zámky proti dosedacím plochám, zaklíněný díl) nebo cestou na místo narazí do už položeného dílu, stránka to označí a řekne, který díl položit dřív. „Vzhůru nohama“ = rám leží na stole.
   - *Svářečka* – každý svar se vyhodnotí v kroku, kdy vzniká: ~50 směrů hořáku (kužel trysky + válec, rozměry nastavitelné, MIG/TIG) proti už položeným dílům a stolu. Zelená / oranžová / červená + příčina (ostrý úhel, stůl, konkrétní díl, který překáží). Kliknutím kamkoli ukáže volný kužel přístupu a hořák v nejlepším směru.
@@ -33,8 +33,8 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `core.js` | tvary podnoží, geometrie, výpočet nosnosti (EN 12521), cena, kusovník |
 | `gen.js` | výrobní podklady: STEP, DXF, PDF, ZIP |
 | `viewer.js`, `figure.js` | 3D náhled a postava pro měřítko |
-| `vyvoj.js` | rozpracované modely (In progress): vlastní booleovské jádro pro rovinná tělesa, Pohozenec – zámky a Pohozenec – spojovák |
-| `vyvoj.html` | stránka In progress |
+| `vyvoj.js` | umělecké modely (záložka Umělecké), uchycení k desce (`MOUNTS`): vlastní booleovské jádro pro rovinná tělesa, Pohozenec – zámky a Pohozenec – spojovák |
+| `vyvoj.html` | stránka Umělecké |
 | `montaz.html`, `montaz.js` | stránka Testing – rozložení, postup skládání, sonda svářečky |
 | `montaz-core.js` | jádro Testing bez 3D: díly, zámky, dosedací plochy a směry nasazení, kontrola cesty na místo, hledání svarů, přístup hořáku (běží i v Node) |
 | `zabradli.html` | stránka Zábradlí pro zákazníky |
@@ -68,14 +68,14 @@ Pro každý tvar: díly, zámky, svary, navržené pořadí (bez konfliktu nasaz
 ## Zapnutí odkazu (jednorázově)
 GitHub → **Settings → Pages** → *Deploy from a branch* → `main` / `(root)` → **Save**.
 
-## In progress – rozpracované modely
+## Umělecké – rozpracované modely
 
 | Model | Popis |
 |---|---|
 | **Pohozenec – zámky** (PZ2) | 4 nohy do „#“ kolem středu (A/B tvoří X zepředu, C/D X zboku). C a D mají v rozích výřezy na profil A a B (vůle 0,2 mm), A a B mají ve špičce zápich pro krajní pásovinu. Střední pásovina leží mezi špičkami C a D. |
 | **Pohozenec – spojovák** (PZ3) | Stejné nohy bez zámků, v půlce výšky vodorovný plech 3 mm se 4 zuby do děr ve vnitřních stěnách jeklů. Nahoře 2 pásoviny D–A a C–B na špičkách. |
 
-Rozteč patek a odsazení noh se dopočítá z rozměru stolu a profilu jeklu. Audit zatím u obou ukazuje nízkou stabilitu proti převržení na rozích obdélníkové desky (patky tvoří v půdorysu kosočtverec) – proto poptávku na stránce In progress neblokuje.
+Rozteč patek a odsazení noh se dopočítá z rozměru stolu a profilu jeklu. Audit zatím u obou ukazuje nízkou stabilitu proti převržení na rozích obdélníkové desky (patky tvoří v půdorysu kosočtverec) – proto poptávku na stránce Umělecké neblokuje.
 
 ### Kontrola zábradlí (Node.js 18+)
 ```bash
