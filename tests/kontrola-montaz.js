@@ -16,6 +16,7 @@ let bad = 0;
 const Vy = globalThis.Vyvoj || { JOINTS: [], TOPS: [] }, wipVars = [];
 Vy.JOINTS.forEach((j) => Vy.TOPS.forEach((tp) => wipVars.push({ joint: j.id, top: tp.id })));
 Vy.TOPS.forEach((tp) => wipVars.push({ joint: 'spojovak', top: tp.id, pvLay: 'plus' }));
+wipVars.push({ joint: 'spojovak', top: 'diag', ksMat: 'jekl' });
 for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const vv of m.wip ? wipVars : [null]) {
   const t0 = Date.now();
   const A = K.analyze(K.normalize(Object.assign({ model: m.id, L, W, H, join }, vv || {})), K.DEFAULT_RATES);
@@ -55,7 +56,7 @@ for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const v
   const ms = Date.now() - t0, msR = Date.now() - tr;
   if (conflicts.length) errs.push("konflikt nasazení v navrženém pořadí: " + conflicts.join(", "));
   if (blocked.length) errs.push("cestou narazí (navržené pořadí): " + blocked.join("; "));
-  console.log((errs.length ? "CHYBA " : "OK    ") + (m.lab + (join === "bolt" ? " (šroubovaná)" : "") + (vv ? " " + (vv.pvLay ? "plus" : vv.joint) + "/" + vv.top : "")).padEnd(32) +
+  console.log((errs.length ? "CHYBA " : "OK    ") + (m.lab + (join === "bolt" ? " (šroubovaná)" : "") + (vv ? " " + (vv.ksMat ? "jekl" : vv.pvLay ? "plus" : vv.joint) + "/" + vv.top : "")).padEnd(32) +
     " dílů " + String(M.items.length).padStart(2) + "  zámků " + String(M.tabLinks.length).padStart(2) + "  svarů " + String(M.seams.length).padStart(3) +
     "  přístup ok/omez/ne " + st.ok + "/" + st.tight + "/" + st.no + "  (" + ms + " ms, hořák " + msR + " ms)");
   const dirW = (d) => { const a = d.map(Math.abs), m = Math.max(...a); return m === a[2] ? (d[2] < 0 ? "shora" : "zespodu") : m === a[0] ? (d[0] < 0 ? "zprava" : "zleva") : (d[1] < 0 ? "zezadu" : "zepředu"); };

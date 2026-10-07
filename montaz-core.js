@@ -247,6 +247,7 @@
     B.parts.forEach((p, i) => {
       const it = mkItem('t' + i, 'tube', p.name, pozOf[p.poz] || '', p.poz, [p.solid], p);
       it.row = rowOf[p.poz] || null;
+      if (p.ins) it.ins = p.ins;   // vlastní směr nasazení (Kosočtverec z jeklu: kolmo k boku)
       it.bolted = !!(B.bolted && /^Spojka šroubovaná/.test(p.name));
       const TF = p.solid.tabFoot || {}, TD = p.solid.tabDir || {};
       [1, 2].forEach((e) => {

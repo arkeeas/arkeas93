@@ -288,10 +288,10 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261007j"></script>
-<script src="vyvoj.js?v=20261007j"></script>
+<script src="core.js?v=20261007k"></script>
+<script src="vyvoj.js?v=20261007k"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="viewer.js?v=20261007j"></script>
+<script src="viewer.js?v=20261007k"></script>
 <script>
 (function () {
   const K = Vyvoj, $ = (id) => document.getElementById(id);
@@ -336,7 +336,7 @@
     A = K.analyze(cfg, rates);
     const M = K.MODELS.find((m) => m.id === cfg.model), F = K.FIN.find((f) => f.id === cfg.fin), d = A.build.dims, circle = cfg.shape === 'circle';
     $('mName').textContent = M.lab;
-    $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ' · ' + F.lab;
+    $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · ' + (M.ks ? (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pásovina ' + cfg.ksD + '×' + cfg.ksT) : 'jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t) + ' · ' + F.lab;
     $('ohChip').textContent = 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
 
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => set({ model: id }));
@@ -357,11 +357,12 @@
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
     if (M.ks) {
-      dims = pillRow('Hloubka pásu (šířka boku)', 'ksD', [60, 80, 100].map((v) => [v, v + ' mm'])) +
-        pillRow('Tloušťka pásu', 'ksT', [8, 10, 12].map((v) => [v, v + ' mm'])) +
+      dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
+        (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
+          : pillRow('Hloubka pásu (šířka boku)', 'ksD', [60, 80, 100].map((v) => [v, v + ' mm'])) + pillRow('Tloušťka pásu', 'ksT', [8, 10, 12].map((v) => [v, v + ' mm']))) +
         pillRow('Závitové tyče', 'ksM', Object.keys(K.KS_ROD).map((v) => [v, v])) +
         pillRow('Mezera mezi tvary', 'ksG', K.KS_GAP.map((v) => [v, v + ' mm'])) +
-        '<p class="note" style="margin:8px 0 0">Každý bok: 4 trojúhelníky a kosočtverec z pásoviny na hranu, přes každou mezeru 2 tyče ' + cfg.ksM + ' s maticemi z obou stran obou stěn. Deska leží na horních pásech.' + (cfg.ksG < K.KS_ROD[cfg.ksM].gmin + 0 ? '' : '') + '</p>';
+        '<p class="note" style="margin:8px 0 0">Každý bok: 4 trojúhelníky a kosočtverec ' + (cfg.ksMat === 'jekl' ? 'svařené z jeklu s pokosy (horní jekly mají ve spodní stěně montážní otvory pro šroubovák)' : 'z pásoviny na hranu') + ', přes každou mezeru 2 tyče ' + cfg.ksM + ' s maticemi z obou stran obou stěn. Deska leží na horních pásech.' + (cfg.ksG < K.KS_ROD[cfg.ksM].gmin + 0 ? '' : '') + '</p>';
     } else if (cfg.top === 'ramj') {
       const au = K.rjOf(Object.assign({}, cfg, { rjp: 'auto' }));
       dims = pillRow('Profil jeklu rámečku', 'rjp', [['auto', 'Auto (' + au.w + '×' + au.h + ')']].concat(K.RJ.map((r) => [r.id, r.w + '×' + r.h])));
@@ -376,7 +377,7 @@
     }
     const used = A.rows.filter((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && (r.part.poz === 'RL' || r.part.poz === 'RK')));
     $('topDims').innerHTML = dims + (used.length ? '<p class="note" style="margin:8px 0 0">Použito: ' + used.map((r) => r.q + '× ' + esc(r.prof) + ' ' + esc(r.len) + ' mm').join(', ') + ' · deska zůstane přesahovat aspoň 20 mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
-    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: ['rjp', 'plS', 'ksM'].indexOf(b.dataset.k) >= 0 ? b.dataset.v : Number(b.dataset.v) })));
+    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: ['rjp', 'plS', 'ksM', 'ksMat', 'ksJ'].indexOf(b.dataset.k) >= 0 ? b.dataset.v : Number(b.dataset.v) })));
     const bl = $('barLn');
     if (bl) { if (cfg.barL) bl.value = cfg.barL; bl.addEventListener('change', (e) => set({ barL: Number(e.target.value) || 0 })); }
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';
