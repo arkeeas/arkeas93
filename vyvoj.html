@@ -287,7 +287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261005d"></script>
-<script src="vyvoj.js?v=20261007e"></script>
+<script src="vyvoj.js?v=20261007f"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261005d"></script>
 <script>
@@ -351,17 +351,18 @@
     if (cfg.top === 'ramj') {
       const au = K.rjOf(Object.assign({}, cfg, { rjp: 'auto' }));
       dims = pillRow('Profil jeklu rámečku', 'rjp', [['auto', 'Auto (' + au.w + '×' + au.h + ')']].concat(K.RJ.map((r) => [r.id, r.w + '×' + r.h])));
+      if (K.rjOf(cfg).w < 25) dims += '<p class="note" style="margin:8px 0 0">Do jeklu užšího než 25 mm se nevejde montážní otvor pro šroubovák – deska se k němu jen přilepí' + (K.rjOf(cfg).w >= 16 ? ' nebo uchytí vlepenými svorníky' : '') + '.</p>';
     } else {
       const what = cfg.top === 'plotny' ? 'ploten' : 'pásovin';
-      dims = pillRow('Tloušťka ' + what, 'barT', K.BAR_TS.map((v) => [v, v + ' mm'])) +
+      dims = (cfg.top === 'plotny' ? pillRow('Tvar ploten', 'plS', [['obd', 'Obdélník'], ['x', 'X (4 otvory)']]) : '') + pillRow('Tloušťka ' + what, 'barT', K.BAR_TS.map((v) => [v, v + ' mm'])) +
         pillRow('Šířka ' + what, 'barW', [[0, 'Auto']].concat(K.BAR_STD.map((v) => [v, v]))) +
-        (cfg.top === 'plotny' ? pillRow('Délka ploten', 'plL', [[0, 'Auto']].concat(K.PL_L.map((v) => [v, v])))
+        (cfg.top === 'plotny' ? pillRow(cfg.plS === 'x' ? 'Rozpětí plotny X' : 'Délka ploten', 'plL', [[0, 'Auto']].concat(K.PL_L.map((v) => [v, v])))
           : cfg.top === 'ram' ? '' : '<div class="thk"><span>Délka pásovin</span><div class="pills"><button type="button" class="pill" data-k="barL" data-v="0" aria-pressed="' + !cfg.barL + '">Auto</button>' +
             '<span class="num"><input id="barLn" type="number" inputmode="numeric" min="100" max="2400" step="10" aria-label="Délka pásovin v mm" placeholder="vlastní"> mm</span></div></div>');
     }
     const used = A.rows.filter((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && (r.part.poz === 'RL' || r.part.poz === 'RK')));
     $('topDims').innerHTML = dims + (used.length ? '<p class="note" style="margin:8px 0 0">Použito: ' + used.map((r) => r.q + '× ' + esc(r.prof) + ' ' + esc(r.len) + ' mm').join(', ') + ' · deska zůstane přesahovat aspoň 20 mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
-    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: b.dataset.k === 'rjp' ? b.dataset.v : Number(b.dataset.v) })));
+    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: b.dataset.k === 'rjp' || b.dataset.k === 'plS' ? b.dataset.v : Number(b.dataset.v) })));
     const bl = $('barLn');
     if (bl) { if (cfg.barL) bl.value = cfg.barL; bl.addEventListener('change', (e) => set({ barL: Number(e.target.value) || 0 })); }
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';
@@ -418,9 +419,9 @@
 
     const kit = A.mount;
     group($('mounts'), K.MOUNTS, (m) => {
-      const ok = K.mountOk(m.id, cfg.top);
+      const jw = cfg.top === 'ramj' ? K.rjOf(cfg).w : 99, ok = K.mountOk(m.id, cfg.top, jw);
       return '<button type="button" class="opt join" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.mount) + '"' + (ok ? '' : ' disabled style="opacity:.5"') + '><span class="t">' + m.lab + '</span><span class="p">+ ' + esc(m.p) + '</span><span class="c">− ' + esc(m.c) + '</span>' +
-        (!ok ? '<span class="c"><strong>Jen s pásovinami – u ploten a jeklu nejsou hrany pro spony.</strong></span>' : m.minTd && cfg.td < m.minTd ? '<span class="c"><strong>Deska ' + cfg.td + ' mm je na to tenká.</strong></span>' : '') + '</button>';
+        (!ok ? '<span class="c"><strong>' + (m.id === 'spony' ? 'Jen s pásovinami – u ploten a jeklu nejsou hrany pro spony.' : 'Do jeklu ' + jw + ' mm se nevejde.') + '</strong></span>' : m.minTd && cfg.td < m.minTd ? '<span class="c"><strong>Deska ' + cfg.td + ' mm je na to tenká.</strong></span>' : '') + '</button>';
     }, (id) => set({ mount: id }));
     $('mountHow').innerHTML = '<strong>Pro truhláře – ' + esc(kit.M.lab.toLowerCase()) + ', deska ' + cfg.td + ' mm</strong>' +
       '<ol style="margin:0;padding-left:20px">' + kit.steps.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
