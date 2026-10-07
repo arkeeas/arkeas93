@@ -1,108 +1,198 @@
 # -*- coding: utf-8 -*-
 """
-Konferenční stolek „Vnořené rámy“ – jedna souvislá svařená kostra z jeklu + skleněná deska.
-Stejná geometrie jako model VR v konfigurátoru (vyvoj.js).
+Konferenční stolek „Infinity Cube“ – jedna uzavřená smyčka z jeklu tvaru kvádru + čiré sklo.
 
 Spuštění ve FreeCADu: Makro → Makra… → vybrat tento soubor → Spustit
 (nebo v Python konzoli: exec(open('/cesta/stolek_kostra.py').read())).
 
-Kostra:
-  - vyšší část pod sklem: x ∈ ±L/2, horní rám ve výšce Ht = H − tloušťka skla
-  - nižší část vedle ní:  x ∈ L/2 … L/2 + E, rám ve výšce Hm
-  - na zemi jeden uzavřený obdélník x ∈ −L/2 … L/2 + E
-  - svislé hrany: levé nohy (zem → horní rám), sloupky (nižší → horní rám), pravé nohy (zem → nižší rám)
-Uzavřená smyčka: levá noha nahoru → horní rám → sloupek dolů → nižší rám → pravá noha dolů → po zemi zpět.
-Doplňkové hrany ji uzavřou do obdélníků tak, že v každém rohu se potká jekl ve směru X, Y i Z.
-Skript to na konci ověří (žádný konec profilu nezůstane volný).
+Princip iluze:
+  - Obrys je kvádr L × W × H. Horní rám je celý v jedné rovině (všechny horní jekly ve stejné výšce),
+    na něm leží čiré sklo.
+  - V každém rohu stojí dva svislé jekly: vnější (na obvodu) a vnitřní (posunutý o ODSAZENI dovnitř
+    v X i Y). Nahoře podélný jekl v rohu odbočí dolů do vnějšího, příčný (o ODSAZENI dovnitř) do vnitřního –
+    v rohu se tak „jeden jekl stáčí dolů, druhý do strany a třetí do hloubky“, ale nikdy se nepotkají
+    všechny tři v jednom bodě.
+  - Dole je stejné uspořádání, jen v rozích prohozené tak, aby z celé konstrukce vznikla JEDNA uzavřená
+    smyčka. K tomu stačí 2 malá odsazení (schůdek o ODSAZENI v půdorysu) na rámu na zemi – nahoře žádné.
+  - Všechny lomy jsou 90°, žádný jekl nekončí slepě. Skript to na konci ověří.
 """
-import FreeCAD as App
-import Part
+import itertools
 
 # ---------------- parametry (mm) ----------------
-L = 1000.0      # délka skla / horní části
-W = 600.0       # šířka stolku
-H = 450.0       # výška stolku včetně skla
-GLASS = 10.0    # tloušťka skla
-E = 400.0       # délka nižší části vedle skla
-HM_PCT = 55.0   # výška nižšího rámu v % výšky kostry
-S = 40.0        # jekl S × S
-T = 2.0         # tloušťka stěny jeklu
-GLASS_INSET = 0.0   # 0 = sklo položené na rámu; > 0 = sklo zapuštěné do rámu o tolik mm (falc)
+L = 1000.0          # délka stolku (= délka skla)
+W = 600.0           # šířka stolku (= šířka skla)
+H = 450.0           # výška včetně skla
+GLASS = 10.0        # tloušťka skla
+S = 40.0            # jekl S × S
+T = 2.0             # stěna jeklu
+ODSAZENI = 2 * S    # o kolik je vnitřní jekl posunutý dovnitř (osa–osa), musí být > S
+GLASS_OVER = 0.0    # o kolik sklo přesahuje rám na každé straně (0 = lícuje s obrysem)
 
-Ht = H - GLASS + GLASS_INSET
-Hm = max(3 * S, min(Ht * HM_PCT / 100.0, Ht - 2 * S - 40))
-yy = W / 2 - S / 2          # osy jeklů v Y
-zT, zM, zF = Ht - S / 2, Hm - S / 2, S / 2   # osy rámů v Z
-x0, xa, xe = -L / 2 + S / 2, L / 2 - S / 2, L / 2 + E - S / 2   # osy svislých hran v X
+if ODSAZENI <= S:
+    raise ValueError('ODSAZENI musí být větší než S, jinak se vnitřní a vnější jekly dotknou.')
 
-# ---------------- osy kostry (uzly a hrany) ----------------
-def rect(xa_, xb_, z):
-    p = [(xa_, -yy, z), (xb_, -yy, z), (xb_, yy, z), (xa_, yy, z)]
-    return [(p[i], p[(i + 1) % 4]) for i in range(4)]
-
-edges = []
-edges += rect(x0, xa, zT)            # horní rám (pod sklem)
-edges += rect(xa, xe, zM)            # nižší rám
-edges += rect(x0, xe, zF)            # rám na zemi – uzavřený obdélník
-for y in (-yy, yy):
-    edges.append(((x0, y, zF), (x0, y, zT)))   # levé nohy
-    edges.append(((xa, y, zM), (xa, y, zT)))   # sloupky nižší → horní rám
-    edges.append(((xe, y, zF), (xe, y, zM)))   # pravé nohy
+X, Y, D = L / 2 - S / 2, W / 2 - S / 2, ODSAZENI     # osy obvodových jeklů a odsazení
+ZT, ZB = H - GLASS - S / 2, S / 2                    # osy horního rámu a rámu na zemi
+CORNERS = [(1, 1), (1, -1), (-1, -1), (-1, 1)]
+RAILS = [('x', 1), ('x', -1), ('y', 1), ('y', -1)]   # podélný jekl na y = ±Y, příčný na x = ±X
 
 
-# ---------------- kontrola spojitosti ----------------
-def key(p):
-    return tuple(round(c, 3) for c in p)
+def pos(c, kind):
+    """půdorysná poloha svislého jeklu v rohu c: 'O' vnější, 'I' vnitřní"""
+    sx, sy = c
+    return (sx * X, sy * Y) if kind == 'O' else (sx * (X - D), sy * (Y - D))
 
+
+def rail_corners(r):
+    a, s = r
+    return [(1, s), (-1, s)] if a == 'x' else [(s, 1), (s, -1)]
+
+
+def build_loop(top, bot):
+    """top/bot: v každém rohu, který jekl ('x' nebo 'y') dostane vnější svislý jekl.
+    Vrátí uzavřenou smyčku jako seznam bodů, nebo None, když vyjde víc smyček."""
+    lv = {'T': dict(zip(CORNERS, top)), 'B': dict(zip(CORNERS, bot))}
+    links = {}
+
+    def link(a, b, pts):
+        links.setdefault(a, []).append((b, pts))
+        links.setdefault(b, []).append((a, pts[::-1]))
+
+    for lvl, z in (('T', ZT), ('B', ZB)):
+        for r in RAILS:
+            c1, c2 = rail_corners(r)
+            k1 = 'O' if lv[lvl][c1] == r[0] else 'I'
+            k2 = 'O' if lv[lvl][c2] == r[0] else 'I'
+            p1, p2 = pos(c1, k1), pos(c2, k2)
+            if r[0] == 'x':   # podélný: případný schůdek v půli délky (posun v Y)
+                pts = [p1, (0.0, p1[1]), (0.0, p2[1]), p2] if abs(p1[1] - p2[1]) > 1e-6 else [p1, p2]
+            else:             # příčný: případný schůdek v půli šířky (posun v X)
+                pts = [p1, (p1[0], 0.0), (p2[0], 0.0), p2] if abs(p1[0] - p2[0]) > 1e-6 else [p1, p2]
+            link((c1, k1, lvl), (c2, k2, lvl), [(x, y, z) for x, y in pts])
+    for c in CORNERS:
+        for k in 'OI':
+            x, y = pos(c, k)
+            link((c, k, 'T'), (c, k, 'B'), [(x, y, ZT), (x, y, ZB)])
+    # průchod smyčkou: z každého konce jekl pokračuje druhým napojením; smyčka musí projít všech 16 konců
+    if any(len(v) != 2 for v in links.values()):
+        return None
+    start = next(iter(links))
+    loop, prev, cur, seen = [], None, start, set()
+    while True:
+        seen.add(cur)
+        b, pts = links[cur][0] if prev is None or links[cur][0][0] != prev else links[cur][1]
+        loop.extend(pts[:-1])
+        prev, cur = cur, b
+        if cur == start:
+            break
+    return loop if len(seen) == 16 else None
+
+
+# nahoře bez schůdků (všechny podélné jekly na obvodu), dole nejméně schůdků, jedna smyčka
+loop = None
+for bot in itertools.product('xy', repeat=4):
+    lp = build_loop(('x',) * 4, bot)
+    if lp:
+        loop = lp
+        break
+if loop is None:
+    raise RuntimeError('Nepodařilo se složit jednu uzavřenou smyčku.')
+
+# odstranit body uprostřed rovných úseků
+def simplify(pts):
+    out = []
+    n = len(pts)
+    for i in range(n):
+        a, b, c = pts[i - 1], pts[i], pts[(i + 1) % n]
+        d1 = [b[k] - a[k] for k in range(3)]
+        d2 = [c[k] - b[k] for k in range(3)]
+        cr = (d1[1] * d2[2] - d1[2] * d2[1], d1[2] * d2[0] - d1[0] * d2[2], d1[0] * d2[1] - d1[1] * d2[0])
+        if any(abs(v) > 1e-6 for v in cr):
+            out.append(b)
+    return out
+
+loop = simplify(loop)
+segs = [(loop[i], loop[(i + 1) % len(loop)]) for i in range(len(loop))]
+
+
+# ---------------- kontroly ----------------
 def axis(a, b):
-    d = [abs(b[i] - a[i]) for i in range(3)]
-    return 'XYZ'[d.index(max(d))]
+    d = [abs(b[k] - a[k]) for k in range(3)]
+    if sorted(d)[1] > 1e-6:
+        raise RuntimeError('Úsek není rovnoběžný s osou: %s → %s' % (a, b))
+    return d.index(max(d))
 
-nodes = {}
-for a, b in edges:
-    for p, q in ((a, b), (b, a)):
-        nodes.setdefault(key(p), set()).add(axis(p, q))
-bad = [n for n, ax in nodes.items() if ax != {'X', 'Y', 'Z'}]
-if bad:
-    raise RuntimeError('Kostra není spojitá – rohy bez všech tří os: %s' % bad)
+ax = [axis(a, b) for a, b in segs]
+for i in range(len(segs)):
+    if ax[i] == ax[(i + 1) % len(segs)]:
+        raise RuntimeError('Lom není 90° v bodě %s' % (segs[i][1],))
+zs = sorted(set(round(p[2], 3) for p in loop))
+assert zs == [round(ZB, 3), round(ZT, 3)], 'Jekly mají být jen ve dvou výškách (zem a horní rám)'
+top_segs = [s for s in segs if round(s[0][2], 3) == round(ZT, 3) and round(s[1][2], 3) == round(ZT, 3)]
+assert all(round(s[0][2], 3) == round(ZT, 3) for s in top_segs), 'Horní rám není v jedné rovině'
 
-# ---------------- tělesa ----------------
-def bar(a, b, half):
-    """kvádr kolem osy a–b, průřez 2·half, na koncích prodloužený o half (rohy se slijí)"""
-    lo = [min(a[i], b[i]) - half for i in range(3)]
-    hi = [max(a[i], b[i]) + half for i in range(3)]
-    return Part.makeBox(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], App.Vector(*lo))
 
-outer = bar(*edges[0], S / 2)
-for a, b in edges[1:]:
-    outer = outer.fuse(bar(a, b, S / 2))
-inner = bar(*edges[0], S / 2 - T)
-for a, b in edges[1:]:
-    inner = inner.fuse(bar(a, b, S / 2 - T))
-frame = outer.cut(inner).removeSplitter()   # dutá kostra, dutiny propojené přes rohy (svařenec)
+def box_of(a, b, half):
+    lo = [min(a[k], b[k]) - half for k in range(3)]
+    hi = [max(a[k], b[k]) + half for k in range(3)]
+    return lo, hi
 
-if GLASS_INSET > 0:   # falc pro zapuštěné sklo
-    frame = frame.cut(Part.makeBox(L - 2 * T, W - 2 * T, GLASS_INSET + 1, App.Vector(-L / 2 + T, -W / 2 + T, Ht - GLASS_INSET)))
 
-glass = Part.makeBox(L - (2 * T if GLASS_INSET > 0 else 0), W - (2 * T if GLASS_INSET > 0 else 0), GLASS,
-                     App.Vector(-L / 2 + (T if GLASS_INSET > 0 else 0), -W / 2 + (T if GLASS_INSET > 0 else 0), Ht - GLASS_INSET))
+def overlap(b1, b2, tol=0.5):
+    return all(b1[0][k] < b2[1][k] - tol and b2[0][k] < b1[1][k] - tol for k in range(3))
 
-# ---------------- dokument ----------------
-doc = App.ActiveDocument or App.newDocument('Stolek')
-f = doc.addObject('Part::Feature', 'Kostra_jekl_%dx%dx%d' % (S, S, T))
-f.Shape = frame
-g = doc.addObject('Part::Feature', 'Sklo_%dmm' % GLASS)
-g.Shape = glass
-doc.recompute()
+n = len(segs)
+for i in range(n):
+    for j in range(i + 2, n):
+        if i == 0 and j == n - 1:
+            continue   # sousední přes začátek smyčky
+        if overlap(box_of(*segs[i], S / 2), box_of(*segs[j], S / 2)):
+            raise RuntimeError('Jekly se protínají: úsek %d a %d' % (i, j))
+# v žádném rohu obrysu se nepotkají tři jekly v jednom bodě
+for p in loop:
+    meets = sum(1 for a, b in segs if p in (a, b))
+    assert meets == 2, 'Uzel %s spojuje %d jekly' % (p, meets)
 
-if App.GuiUp:
-    import FreeCADGui as Gui
-    f.ViewObject.ShapeColor = (0.12, 0.12, 0.13)
-    g.ViewObject.ShapeColor = (0.75, 0.88, 0.92)
-    g.ViewObject.Transparency = 75
-    Gui.activeDocument().activeView().viewIsometric()
-    Gui.SendMsgToActiveView('ViewFit')
+total = sum(sum(abs(b[k] - a[k]) for k in range(3)) for a, b in segs)
+report = 'Infinity Cube: jedna uzavřená smyčka, %d úseků, všechny lomy 90°, horní rám v jedné rovině, jekl %.2f m' % (n, total / 1000.0)
 
-total = sum(((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2) ** 0.5 for a, b in edges)
-App.Console.PrintMessage('Stolek: %d hran, %d rohů (všechny X+Y+Z), jekl celkem %.2f m, kostra %.1f kg\n'
-                         % (len(edges), len(nodes), total / 1000.0, frame.Volume * 7.85e-6))
+# ---------------- FreeCAD ----------------
+try:
+    import FreeCAD as App
+    import Part
+except ImportError:      # mimo FreeCAD: jen kontrola geometrie
+    App = None
+    print(report)
+    for a, b in segs:
+        print('  %s → %s' % (tuple(round(v) for v in a), tuple(round(v) for v in b)))
+
+if App is not None:
+    def solid(a, b, half):
+        lo, hi = box_of(a, b, half)
+        return Part.makeBox(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], App.Vector(*lo))
+
+    outer = solid(*segs[0], S / 2)
+    for a, b in segs[1:]:
+        outer = outer.fuse(solid(a, b, S / 2))
+    inner = solid(*segs[0], S / 2 - T)
+    for a, b in segs[1:]:
+        inner = inner.fuse(solid(a, b, S / 2 - T))
+    frame = outer.cut(inner).removeSplitter()     # dutý jekl, dutina průchozí celou smyčkou
+
+    gl = L + 2 * GLASS_OVER, W + 2 * GLASS_OVER
+    glass = Part.makeBox(gl[0], gl[1], GLASS, App.Vector(-gl[0] / 2, -gl[1] / 2, H - GLASS))
+
+    doc = App.ActiveDocument or App.newDocument('InfinityCube')
+    f = doc.addObject('Part::Feature', 'Ram_jekl_%dx%dx%d' % (S, S, T))
+    f.Shape = frame
+    g = doc.addObject('Part::Feature', 'Sklo_cire_%dmm' % GLASS)
+    g.Shape = glass
+    doc.recompute()
+    if App.GuiUp:
+        import FreeCADGui as Gui
+        f.ViewObject.ShapeColor = (0.10, 0.10, 0.11)
+        g.ViewObject.ShapeColor = (0.80, 0.92, 0.95)
+        g.ViewObject.Transparency = 80
+        Gui.activeDocument().activeView().viewIsometric()
+        Gui.SendMsgToActiveView('ViewFit')
+    App.Console.PrintMessage(report + ', hmotnost rámu %.1f kg\n' % (frame.Volume * 7.85e-6))

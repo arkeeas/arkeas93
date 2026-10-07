@@ -289,9 +289,9 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
-<script src="vyvoj.js?v=20261007n"></script>
+<script src="vyvoj.js?v=20261007p"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="viewer.js?v=20261007l"></script>
+<script src="viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const K = Vyvoj, $ = (id) => document.getElementById(id);
@@ -337,7 +337,7 @@
     const M = K.MODELS.find((m) => m.id === cfg.model), F = K.FIN.find((f) => f.id === cfg.fin), d = A.build.dims, circle = cfg.shape === 'circle';
     $('mName').textContent = M.lab;
     $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · ' + (M.ks ? (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pásovina ' + cfg.ksD + '×' + cfg.ksT) : 'jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t) + ' · ' + F.lab;
-    $('ohChip').textContent = M.vr ? 'Nižší část vedle skla: ' + K.nf(cfg.vrO) + ' mm' : 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
+    $('ohChip').textContent = M.vr ? 'Čiré sklo ' + K.nf(cfg.L) + ' × ' + K.nf(cfg.W) + ' mm na horním rámu' : 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
     $('td').min = M.vr ? 8 : 18;
 
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => set({ model: id }));
@@ -358,9 +358,8 @@
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
     if (M.vr) {
-      dims = pillRow('Výška nižší části', 'vrH', [45, 55, 65].map((v) => [v, v + ' %'])) +
-        pillRow('Délka nižší části (vedle skla)', 'vrO', [300, 400, 500, 600].map((v) => [v, v + ' mm'])) +
-        '<p class="note" style="margin:8px 0 0">Jedna souvislá svařená kostra z jeklu: vyšší část nese sklo, nižší část pokračuje vedle ní. Na zemi leží jeden uzavřený obdélník, v každém rohu se potká jekl ve směru X, Y i Z – žádný profil nekončí volně. Profil jeklu v Kroku 3.</p>';
+      dims = pillRow('Odsazení vnitřních jeklů', 'vrO', [60, 80, 100, 120].map((v) => [v, v + ' mm'])) +
+        '<p class="note" style="margin:8px 0 0">Jedna nekonečná smyčka z jeklu tvaru kvádru, všechny lomy 90°. V každém rohu jsou dva svislé jekly – vnější a o ' + cfg.vrO + ' mm vnitřní: podélné horní jekly odbočí dolů do vnějšího, příčné do vnitřního, takže se v rohu nikdy nepotkají všechny tři směry. Horní rám je v jedné rovině a nese čiré sklo, na zemi jsou 2 malé schůdky, které smyčku uzavřou. Profil jeklu v Kroku 3.</p>';
     } else if (M.ks) {
       dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
         (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
