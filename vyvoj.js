@@ -18,9 +18,10 @@
      cfg.plS – tvar ploten ('obd' obdélník / 'x' kříž X se 4 otvory), cfg.rjp – profil jeklu rámečku 10×10 až 40×40 ('auto' = 40×20).
    Starší poptávky s modely PZ2 (zámky + příčné) a PZ3 (spojovák + šikmé) se převedou (LEGACY).
 
-   Model Pavouk (PV): hvězdicová podnož – uprostřed svislý náboj (čtvercový jekl s víčky), z něj 4 ramena dolů
-   na zem a 4 nahoru k desce. Rameno dolů a rameno nahoru na opačné straně leží v jedné přímce (v úhlopříčných
-   rovinách tvoří X), náboj je ve středu výšky. Špičky jsou v rozích obdélníku ±xF × ±yF – stejně jako patky.
+   Model Pavouk (PV): hvězdicová podnož – 4 ramena dolů na zem a 4 nahoru k desce. Rameno dolů a rameno nahoru
+   na opačné straně leží v jedné přímce (v úhlopříčných rovinách tvoří X). Na každé straně se rameno nahoru
+   a dolů potkají jako „>“ s pokosem ve středu výšky, sousední strany se dělí rovinami x = 0 / y = 0 a střed
+   zakryje malý sloupek (jekl o 10 mm širší než ramena, s víčky). Špičky i patky jsou v ±xF × ±yF.
    Horní část a uchycení se volí stejně jako u Pohozence (bez volby spojení noh).
 
    Uchycení k desce (cfg.mount, volí truhlář): mění otvory v pásovinách a spojovací materiál – viz MOUNTS. */
@@ -224,7 +225,7 @@
 
   /* ====================== modely ====================== */
   const MODELS = [
-    { id: 'PV', lab: 'Pavouk', desc: 'Hvězdicová podnož – svislý náboj uprostřed, 4 ramena k zemi a 4 k desce', icon: 'M6 6 H58 M12 42 L52 6 M52 42 L12 6 M28 18 H36 V30 H28 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, pav: true },
+    { id: 'PV', lab: 'Pavouk', desc: 'Hvězdicová podnož – 4 ramena k zemi a 4 k desce, uprostřed malý sloupek', icon: 'M6 6 H58 M12 42 L52 6 M52 42 L12 6 M28 18 H36 V30 H28 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, pav: true },
     { id: 'PZ', lab: 'Pohozenec', desc: '4 nohy do # kolem středu – spojení noh a horní část si zvolíte', icon: 'M6 6 H58 M10 42 L54 6 M54 42 L10 6 M28 6 L32 42 M36 6 L32 42', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true }
   ];
   const LEGACY = { PZ2: { joint: 'zamky', top: 'pricne' }, PZ3: { joint: 'spojovak', top: 'diag' } };
@@ -409,17 +410,19 @@
   /* Pavouk: patky i špičky v ±xF × ±yF, náboj ve středu výšky. Velikost náboje tak, aby se ramena mimo něj
      nedotkla: v úhlopříčné rovině (sklon th) ani sousední ramena v půdorysu (úhel mezi úhlopříčkami 2·phiMin). */
   function layoutPV(cfg) {
-    const s = cfg.size, h = s / 2, Htop = cfg.H - cfg.td, zc = Htop / 2;
-    const xF = clamp(Math.round(cfg.L * 0.3), 220, 700), yF = clamp(Math.round(cfg.W * 0.3), 160, 380);
-    const th = Math.atan2(zc, Math.hypot(xF, yF)), phi = Math.atan2(yF, xF), phiMin = Math.min(phi, Math.PI / 2 - phi);
-    const half = Math.ceil(Math.max(s / (2 * Math.sin(th)), s / (2 * Math.sin(phiMin))) + 5);
-    const df = half / Math.max(Math.cos(phi), Math.sin(phi));   // po úhlopříčce ke stěně náboje
-    const hubH = 2 * Math.ceil(df * Math.tan(th) + s / (2 * Math.cos(th))) + 10;
+    const s = cfg.size, h = s / 2, Htop = cfg.H - cfg.td, zc = Htop / 2, k35 = Math.tan(35 * Math.PI / 180);
+    // patky víc do čtverce (úhel úhlopříčky 35–55°), jinak by se ramena u středu nevešla vedle sebe
+    let xF = clamp(Math.round(cfg.L * 0.3), 220, 700), yF = clamp(Math.round(cfg.W * 0.3), 160, 380);
+    if (yF < xF * k35) yF = Math.min(Math.round(xF * k35), Math.round(cfg.W / 2 - 50));
+    if (xF < yF * k35) xF = Math.min(Math.round(yF * k35), Math.round(cfg.L / 2 - 50));
+    const th = Math.atan2(zc, Math.hypot(xF, yF));
+    // sloupek uprostřed: jekl o 10 mm širší než ramena, výška tak, aby zakryl sbíhající se konce ramen
+    const hubA = s + 10, hubH = 2 * Math.ceil((hubA / Math.SQRT2) * Math.tan(th) + s / (2 * Math.cos(th))) + 6;
     const legs = {
       A: [[-xF, -yF, 0], [xF, yF, Htop]], B: [[xF, yF, 0], [-xF, -yF, Htop]],
       C: [[-xF, yF, 0], [xF, -yF, Htop]], D: [[xF, -yF, 0], [-xF, yF, Htop]]
     };
-    return { s, h, t: cfg.t, Htop, xA: xF, yC: yF, c: 0, cT: 0, barMid: null, gapNote: '', barNote: '', legs, zc, hubA: 2 * half, hubH, hubT: 3, pav: true };
+    return { s, h, t: cfg.t, Htop, xA: xF, yC: yF, c: 0, cT: 0, barMid: null, gapNote: '', barNote: '', legs, zc, hubA, hubH, hubT: 3, pav: true };
   }
   const layoutFor = (cfg) => (cfg.model === 'PV' ? layoutPV(cfg) : layout(cfg));
 
@@ -562,23 +565,26 @@
     const raw = {}, lower = {};
     let hubBox = null;
     if (pav) {
-      // jedna přímka = rameno dolů + rameno nahoru na opačné straně, náboj je rozdělí
+      // Na každé straně (úhlopříčná svislá rovina) se rameno nahoru a rameno dolů potkají jako „>“:
+      // pokos ve vodorovné rovině středu. Sousední strany se dělí rovinami x = 0 a y = 0 (rovné řezy,
+      // ramena na sebe dosednou), střed zakryje sloupek.
       const a2 = G.hubA / 2, z0 = G.zc - G.hubH / 2, z1 = G.zc + G.hubH / 2, ht = G.hubT;
       hubBox = box(-a2, a2, -a2, a2, z0 - ht, z1 + ht);
+      const quad = (sx, sy) => box(sx > 0 ? 0 : -BIG, sx > 0 ? BIG : 0, sy > 0 ? 0 : -BIG, sy > 0 ? BIG : 0, -BIG, BIG);
       ['A', 'B', 'C', 'D'].forEach((k) => {
-        const full = tubeRaw(legs[k][0], legs[k][1], s, t, Hc);
-        lower[k] = full.sol.intersect(slab(-1, G.zc)).subtract(hubBox);
-        raw[k] = { m: full.m, sol: full.sol.intersect(slab(G.zc, Hc + 1)).subtract(hubBox) };
+        const full = tubeRaw(legs[k][0], legs[k][1], s, t, Hc), sx = Math.sign(legs[k][1][0]), sy = Math.sign(legs[k][1][1]);
+        lower[k] = full.sol.intersect(slab(-1, G.zc)).intersect(quad(-sx, -sy)).subtract(hubBox);
+        raw[k] = { m: full.m, sol: full.sol.intersect(slab(G.zc, Hc + 1)).intersect(quad(sx, sy)).subtract(hubBox) };
       });
     } else ['A', 'B', 'C', 'D'].forEach((k) => { raw[k] = tubeRaw(legs[k][0], legs[k][1], s, t, pricne ? Htop : Hc); });
     /* spojení noh */
     if (pav) {
-      // náboj: jekl a × a × 3, nahoře a dole zavařené víčko 3 mm
+      // sloupek: jekl a × a × 3, nahoře a dole zavařené víčko 3 mm
       const a2 = G.hubA / 2, z0 = G.zc - G.hubH / 2, z1 = G.zc + G.hubH / 2, ht = G.hubT;
       const hub = box(-a2, a2, -a2, a2, z0, z1).subtract(box(-a2 + ht, a2 - ht, -a2 + ht, a2 - ht, z0 - 1, z1 + 1));
-      parts.push({ poz: 'N', name: 'Náboj', m: { p1: [0, 0, z0], u: [0, 0, 1], v: [1, 0, 0], w: [0, 1, 0], L: G.hubH }, solid: toBrep(hub), csg: hub, ang: 0, prof: 'jekl ' + G.hubA + '×' + G.hubA + '×' + ht, feat: '' });
+      parts.push({ poz: 'N', name: 'Sloupek uprostřed', m: { p1: [0, 0, z0], u: [0, 0, 1], v: [1, 0, 0], w: [0, 1, 0], L: G.hubH }, solid: toBrep(hub), csg: hub, ang: 0, prof: 'jekl ' + G.hubA + '×' + G.hubA + '×' + ht, feat: '' });
       [[z1, z1 + ht], [z0 - ht, z0]].forEach(([za, zb]) => plateBoxes.push(toBrep(box(-a2, a2, -a2, a2, za, zb))));
-      plates.push({ name: 'Víčko náboje', w: G.hubA, l: G.hubA, t: ht, q: 1, holes: [], kind: 'vicko' }, { name: 'Víčko náboje', w: G.hubA, l: G.hubA, t: ht, q: 1, holes: [], kind: 'vicko' });
+      plates.push({ name: 'Víčko sloupku', w: G.hubA, l: G.hubA, t: ht, q: 1, holes: [], kind: 'vicko' }, { name: 'Víčko sloupku', w: G.hubA, l: G.hubA, t: ht, q: 1, holes: [], kind: 'vicko' });
     } else if (zamky) {
       // výřezy v rozích: C, D dostanou profil A a B (+0,2 mm)
       ['C', 'D'].forEach((k) => ['A', 'B'].forEach((n) => { const m = raw[n].m, cl = 0.2; raw[k].sol = raw[k].sol.subtract(prism(m.p1, m.u, m.v, m.w, -300, m.L + 300, -h - cl, h + cl, -h - cl, h + cl)); }));
@@ -713,7 +719,7 @@
     // díly: A≅B, C≅D (otočení o 180°)
     const names = { A: 'Noha dlouhá A/B', C: zamky ? 'Noha C/D (výřezy)' : 'Noha C/D' };
     if (pav) ['A', 'B', 'C', 'D'].forEach((k, i) => {
-      const fp = { prof: 'jekl ' + s + '×' + s + '×' + t, feat: 'konec zaříznutý na náboj' };
+      const fp = { prof: 'jekl ' + s + '×' + s + '×' + t, feat: 'u středu pokos na protější rameno + rovné řezy na sousední ramena' };
       parts.splice(i, 0, Object.assign({ poz: 'S', name: 'Rameno dolní (patka)', m: raw[k].m, solid: toBrep(lower[k]), csg: lower[k] }, fp));
       parts.splice(4 + i, 0, Object.assign({ poz: 'H', name: 'Rameno horní (k desce)', m: raw[k].m, solid: toBrep(raw[k].sol), csg: raw[k].sol }, fp));
     });
