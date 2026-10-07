@@ -187,7 +187,7 @@
         <h2><small>Krok 1</small>Tvar podnože</h2>
         <div class="grid g4" id="models"></div>
         <p class="note" id="modelNote" style="margin:10px 0 0"></p>
-        <h3 class="subh">Spojení noh</h3>
+        <h3 class="subh" id="jointsHead">Spojení noh</h3>
         <div class="grid g2" id="joints"></div>
         <h3 class="subh">Horní část – na čem leží deska</h3>
         <div class="grid g3" id="tops"></div>
@@ -287,7 +287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261005d"></script>
-<script src="vyvoj.js?v=20261007f"></script>
+<script src="vyvoj.js?v=20261007g"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261005d"></script>
 <script>
@@ -342,8 +342,9 @@
     $('models').hidden = K.MODELS.length < 2;
     $('modelNote').textContent = M.desc + (M.note ? ' · ' + M.note : '');
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
+    $('jointsHead').hidden = $('joints').hidden = !!M.pav;
     group($('joints'), K.JOINTS, (o) => card(o, o.id === cfg.joint), (id) => set({ joint: id }));
-    group($('tops'), K.TOPS, (o) => card(o, o.id === cfg.top), (id) => set({ top: id }));
+    group($('tops'), K.topsFor(cfg.model), (o) => card(o, o.id === cfg.top), (id) => set({ top: id }));
     // rozměry pásovin / ploten / jeklu rámečku
     const pillRow = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + esc(lab) + '">' +
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
