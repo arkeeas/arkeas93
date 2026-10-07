@@ -18,11 +18,12 @@
      cfg.plS – tvar ploten ('obd' obdélník / 'x' kříž X se 4 otvory), cfg.rjp – profil jeklu rámečku 10×10 až 40×40 ('auto' = 40×20).
    Starší poptávky s modely PZ2 (zámky + příčné) a PZ3 (spojovák + šikmé) se převedou (LEGACY).
 
-   Model Vnořené rámy (VR, konferenční stolek): dva rámy z jeklu do sebe, v bočním pohledu ⊐ a ⊏.
-   Rám 1: horní obdélník pod deskou (rozměr desky), na levém konci 2 nohy na spodní obdélník na zemi.
-   Rám 2 (otočený, nižší): střední obdélník posunutý o přesah doprava (vyčnívá za desku), na pravém konci
-   2 nohy na svůj obdélník na zemi. Rámy jsou svařené krátkými sloupky: pravý konec horního obdélníku stojí
-   na středním, levý konec středního stojí na levém spodním. Rohy obdélníků pokos 45°, nohy rovně.
+   Model Vnořené rámy (VR, konferenční stolek): jedna souvislá svařená kostra z jeklu, nic nekončí volně.
+   Vyšší část pod deskou (x ∈ ±L/2, výška Ht) a nižší část vedle ní (délka vrO, výška vrH % Ht).
+   Uzavřená smyčka: levá noha nahoru → horní rám → sloupek dolů na nižší rám → pravá noha na zem → po zemi
+   zpět; doplňkové hrany ji uzavřou do obdélníků tak, že v každém rohu se potká jekl v ose X, Y i Z.
+   Na zemi leží jeden uzavřený obdélník (žádné otevřené U), sklo leží na horním uzavřeném rámu.
+   Rohy obdélníků pokos 45°, nohy a sloupky rovně.
 
    Model Kosočtverec (KS): 2 boky na koncích stolu, každý je obdélník rozdělený na 4 rohové trojúhelníky
    a kosočtverec uprostřed (vrcholy ve středech stran). Všechny tvary jsou duté rámečky z pásoviny postavené
@@ -237,7 +238,7 @@
 
   /* ====================== modely ====================== */
   const MODELS = [
-    { id: 'VR', lab: 'Vnořené rámy', desc: 'Konferenční stolek – dva rámy z jeklu do sebe, jeden vyčnívá za desku', icon: 'M6 10 H44 M10 10 V40 H34 M24 24 H58 M54 24 V40 H40 M40 10 V24 M24 24 V40', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, vr: true },
+    { id: 'VR', lab: 'Vnořené rámy', desc: 'Konferenční stolek – jedna souvislá kostra z jeklu: vyšší část pod sklem a nižší vedle ní', icon: 'M6 12 H40 M8 12 V42 H58 V26 H38 V12 M56 26 V42', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, vr: true },
     { id: 'KS', lab: 'Kosočtverec', desc: 'Boky z trojúhelníků a kosočtverce z pásoviny, spojené závitovými tyčemi s maticemi', icon: 'M6 6 H58 M12 6 H28 L12 22 Z M52 6 H36 L52 22 Z M12 42 H28 L12 26 Z M52 42 H36 L52 26 Z M32 10 L48 24 L32 38 L16 24 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, ks: true },
     { id: 'PV', lab: 'Pavouk', desc: 'Hvězdicová podnož jen z jeklů – 4 ramena k zemi a 4 k desce, sbíhají se uprostřed', icon: 'M6 6 H58 M12 42 L52 6 M52 42 L12 6 M28 18 H36 V30 H28 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, pav: true },
     { id: 'PZ', lab: 'Pohozenec', desc: '4 nohy do # kolem středu – spojení noh a horní část si zvolíte', icon: 'M6 6 H58 M10 42 L54 6 M54 42 L10 6 M28 6 L32 42 M36 6 L32 42', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true }
@@ -391,7 +392,7 @@
     const lg = LEGACY[c.model] || {};
     o.model = ['PV', 'KS', 'VR'].indexOf(c.model) >= 0 ? c.model : 'PZ';
     o.vrH = [45, 55, 65].indexOf(Number(c.vrH)) >= 0 ? Number(c.vrH) : 55;
-    o.vrO = [100, 150, 200, 250].indexOf(Number(c.vrO)) >= 0 ? Number(c.vrO) : 150;
+    o.vrO = [300, 400, 500, 600].indexOf(Number(c.vrO)) >= 0 ? Number(c.vrO) : 400;
     o.ksD = [60, 80, 100].indexOf(Number(c.ksD)) >= 0 ? Number(c.ksD) : 80;
     o.ksT = [8, 10, 12].indexOf(Number(c.ksT)) >= 0 ? Number(c.ksT) : 10;
     o.ksM = KS_ROD[c.ksM] ? c.ksM : 'M16';
@@ -598,13 +599,13 @@
 
   /* Vnořené rámy: x podél stolu, deska (= horní obdélník) x ∈ ±L/2, druhý rám posunutý o vrO doprava */
   function layoutVR(cfg) {
-    const s = cfg.size, t = cfg.t, Ht = cfg.H - cfg.td, L = cfg.L, W = cfg.W, o = cfg.vrO;
+    const s = cfg.size, t = cfg.t, Ht = cfg.H - cfg.td, L = cfg.L, W = cfg.W, e = cfg.vrO;
     const Hm = Math.round(clamp(Ht * cfg.vrH / 100, 3 * s, Ht - 2 * s - 40));
-    const Lf = Math.round(clamp(0.42 * (L + o), o + 2 * s + 60, (L + o) / 2 - 40));
     return {
-      s, t, Ht, Hm, L, W, o, Lf, vr: true, xA: (L + o) / 2, yC: W / 2, h: s / 2, c: 0, legs: null,
-      R1: [-L / 2, L / 2, -W / 2, W / 2, Ht - s, Ht], R2: [-L / 2 + o, L / 2 + o, -W / 2, W / 2, Hm - s, Hm],
-      F1: [-L / 2, -L / 2 + Lf, -W / 2, W / 2, 0, s], F2: [L / 2 + o - Lf, L / 2 + o, -W / 2, W / 2, 0, s]
+      s, t, Ht, Hm, L, W, e, vr: true, xA: (L + e) / 2, yC: W / 2, h: s / 2, c: 0, legs: null,
+      TOP: [-L / 2, L / 2, -W / 2, W / 2, Ht - s, Ht],               // horní rám pod sklem
+      MID: [L / 2 - s, L / 2 + e, -W / 2, W / 2, Hm - s, Hm],       // nižší rám (levá krátká strana pod pravou stranou horního)
+      FLR: [-L / 2, L / 2 + e, -W / 2, W / 2, 0, s]                  // rám na zemi – jeden uzavřený obdélník
     };
   }
   // poloprostor n·(p − P) ≥ 0 se svislou hranicí (n v rovině XY)
@@ -628,8 +629,8 @@
     return out;
   }
   function buildVR(cfg) {
-    const G = layoutVR(cfg), { s, t, Ht, Hm, L, W, o } = G, parts = [], notes = [], bars = [];
-    const pieces = [].concat(rectTubes(G.R1, s, t, 'Horní rám (pod deskou)'), rectTubes(G.R2, s, t, 'Střední rám'), rectTubes(G.F1, s, t, 'Spodní rám levý'), rectTubes(G.F2, s, t, 'Spodní rám pravý'));
+    const G = layoutVR(cfg), { s, t, Ht, Hm, L, W, e } = G, parts = [], notes = [], bars = [];
+    const pieces = [].concat(rectTubes(G.TOP, s, t, 'Horní rám (pod sklem)'), rectTubes(G.MID, s, t, 'Nižší rám'), rectTubes(G.FLR, s, t, 'Rám na zemi'));
     // nohy a sloupky (svislé jekly, rovné řezy, duté konce dosednou na obdélníky)
     const post = (x, z0, z1, name) => [-1, 1].forEach((sy) => {
       const y = sy * (W / 2 - s / 2);
@@ -637,11 +638,11 @@
       const sol = box(x - s / 2, x + s / 2, y - s / 2, y + s / 2, z0, z1).subtract(box(x - s / 2 + t, x + s / 2 - t, y - s / 2 + t, y + s / 2 - t, z0 - 1, z1 + 1));
       pieces.push({ name, sol, F: [x, y, z0], T: [x, y, z1], ang: 0, vert: true });
     });
-    post(-L / 2 + s / 2, s, Ht - s, 'Noha horního rámu');
-    post(L / 2 + o - s / 2, s, Hm - s, 'Noha středního rámu');
-    post(L / 2 - s / 2, Hm, Ht - s, 'Sloupek horní → střední rám');
-    post(-L / 2 + o + s / 2, s, Hm - s, 'Sloupek střední → spodní rám');
-    if (Ht - s - Hm < 30) notes.push('Mezi horním a středním rámem je jen ' + Math.round(Ht - s - Hm) + ' mm – zvolte nižší střední rám.');
+    // svislé hrany: v každém rohu kostry se tak potká jekl X, Y i Z
+    post(-L / 2 + s / 2, s, Ht - s, 'Noha levá (zem → horní rám)');
+    post(L / 2 - s / 2, Hm, Ht - s, 'Sloupek (nižší → horní rám)');
+    post(L / 2 + e - s / 2, s, Hm - s, 'Noha pravá (zem → nižší rám)');
+    if (Ht - s - Hm < 30) notes.push('Mezi horním a nižším rámem je jen ' + Math.round(Ht - s - Hm) + ' mm – zvolte nižší část níž.');
     // deska na dlouhých jeklech horního rámu: otvory podle uchycení (otvor nahoře, montážní dole)
     [-1, 1].forEach((sy) => {
       const plan = barPlan([0, sy * (W / 2 - s / 2)], [1, 0], L - 2 * s, s, [], cfg.mount);
@@ -662,7 +663,7 @@
     pieces.forEach((pc) => {
       const u = vunit(vsub(pc.T, pc.F)), m = pc.vert ? { p1: pc.F, u, v: [1, 0, 0], w: [0, 1, 0], L: vlen(vsub(pc.T, pc.F)) } : frameOf(pc.F, pc.T);
       // pořadí skládání odspodu: spodní rámy, nohy a sloupky ke spodním, střední rám, sloupky k hornímu, horní rám
-      const order = /^Spodní/.test(pc.name) ? 400 : /^Noha|^Sloupek střední/.test(pc.name) ? 300 : /^Střední/.test(pc.name) ? 200 : /^Sloupek horní/.test(pc.name) ? 150 : 1;
+      const order = /^Rám na zemi/.test(pc.name) ? 400 : /^Noha/.test(pc.name) ? 300 : /^Nižší/.test(pc.name) ? 200 : /^Sloupek/.test(pc.name) ? 150 : 1;
       const part = { name: pc.name, order, m, solid: toBrep(pc.sol), csg: pc.sol, ang: pc.ang, prof: 'jekl ' + s + '×' + s + '×' + t, feat: pc.name.indexOf('Horní rám') === 0 && pc.side === 'dlouhý' && !mountOf(cfg.mount).none ? 'otvory pro desku' : '' };
       const k = pc.name + '|' + Math.round(P.partLength(part)) + '|' + Math.round(P.volume(part.solid) / 50);
       let i = sig.indexOf(k); if (i < 0) { sig.push(k); i = sig.length - 1; }
@@ -674,11 +675,11 @@
     let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
     parts.forEach((pt) => pt.solid.verts.forEach((q) => { mnx = Math.min(mnx, q[0]); mxx = Math.max(mxx, q[0]); mny = Math.min(mny, q[1]); mxy = Math.max(mxy, q[1]); }));
     return { cfg, parts, plates: [], plateBoxes: [], hwBodies, boltPts: [], hw: kit.hw, kit, dims: { Lf: Math.round(mxx - mnx), Wf: Math.round(mxy - mny), Hf: Ht, x0: mnx, x1: mxx },
-      bolted: false, G, notes, bars, weldJoints: 16 + 8, overhangOk: true };
+      bolted: false, G, notes, bars, weldJoints: 12 + 12, overhangOk: true };
   }
   // prutový model pro audit: osy jeklů, obdélníky rozdělené v místech sloupků
   function graphVR(cfg) {
-    const G = layoutVR(cfg), { s, Ht, Hm, L, W, o } = G, nodes = [], els = [], sup = [];
+    const G = layoutVR(cfg), { s, L, W, e } = G, nodes = [], els = [], sup = [];
     const nodeOf = (q) => { let k = nodes.findIndex((r) => Math.abs(r[0] - q[0]) < 0.5 && Math.abs(r[1] - q[1]) < 0.5 && Math.abs(r[2] - q[2]) < 0.5); if (k < 0) { k = nodes.length; nodes.push(q.slice()); } return k; };
     const seg = (a, b, n) => { for (let i = 0; i < n; i++) els.push({ i: nodeOf(vadd(a, vmul(vsub(b, a), i / n))), j: nodeOf(vadd(a, vmul(vsub(b, a), (i + 1) / n))), kind: 'tube', tag: 'r' }); };
     const yy = W / 2 - s / 2;
@@ -688,11 +689,10 @@
       [xs[0], xs[xs.length - 1]].forEach((x) => seg([x, -yy, z], [x, yy, z], 3));
       return z;
     };
-    const zR1 = rect(G.R1, []), zR2 = rect(G.R2, [L / 2 - s / 2]), zF1 = rect(G.F1, [-L / 2 + o + s / 2]), zF2 = rect(G.F2, []);
-    [[-L / 2 + s / 2, zF1, zR1], [L / 2 + o - s / 2, zF2, zR2], [L / 2 - s / 2, zR2, zR1], [-L / 2 + o + s / 2, zF1, zR2]].forEach(([x, z0, z1]) => [-yy, yy].forEach((y) => seg([x, y, z0], [x, y, z1], 3)));
-    [G.F1, G.F2].forEach((R) => [R[0] + s / 2, R[1] - s / 2].forEach((x) => [-yy, yy].forEach((y) => sup.push(nodeOf([x, y, zF1])))));
-    const tops = [-L / 2 + s / 2, L / 2 - s / 2].reduce((a, x) => a.concat([-yy, yy].map((y) => nodeOf([x, y, zR1]))), []);
-    void Ht; void Hm;
+    const zT = rect(G.TOP, []), zM = rect(G.MID, []), zF = rect(G.FLR, []);
+    [[-L / 2 + s / 2, zF, zT], [L / 2 - s / 2, zM, zT], [L / 2 + e - s / 2, zF, zM]].forEach(([x, z0, z1]) => [-yy, yy].forEach((y) => seg([x, y, z0], [x, y, z1], 3)));
+    [G.FLR[0] + s / 2, G.FLR[1] - s / 2].forEach((x) => [-yy, yy].forEach((y) => sup.push(nodeOf([x, y, zF]))));
+    const tops = [-L / 2 + s / 2, L / 2 - s / 2].reduce((a, x) => a.concat([-yy, yy].map((y) => nodeOf([x, y, zT]))), []);
     return { cfg, nodes, els, sup: [...new Set(sup)], tops, G };
   }
 
@@ -1245,7 +1245,7 @@
   function describe(cfg) {
     const M = MODELS.find((m) => m.id === cfg.model) || MODELS[0], F = P.FIN.find((f) => f.id === cfg.fin), S = P.SHAPES.find((x) => x.id === cfg.shape);
     const desk = cfg.shape === 'circle' ? 'Ø ' + P.nf(cfg.L) : P.nf(cfg.L) + ' × ' + P.nf(cfg.W);
-    if (M.vr) return M.lab + ' (umělecká, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', střední rám ' + cfg.vrH + ' % výšky, přesah ' + cfg.vrO + ' mm), deska ' + P.nf(cfg.L) + ' × ' + P.nf(cfg.W) + ' × ' + P.nf(cfg.H) + ' mm, ' + F.lab + ', deska ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
+    if (M.vr) return M.lab + ' (umělecká, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', nižší část ' + cfg.vrO + ' mm ve ' + cfg.vrH + ' % výšky), deska ' + P.nf(cfg.L) + ' × ' + P.nf(cfg.W) + ' × ' + P.nf(cfg.H) + ' mm, ' + F.lab + ', deska ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
     if (M.ks) return M.lab + ' (umělecká, ' + (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pás ' + cfg.ksD + '×' + cfg.ksT) + ', tyče ' + cfg.ksM + ', mezera ' + cfg.ksG + ' mm), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, svařované tvary, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
     const J = JOINTS.find((x) => x.id === cfg.joint), T = topsFor(cfg.model, cfg.pvLay).find((x) => x.id === cfg.top);
     return M.lab + ' (umělecká, ' + (M.pav ? 'nohy: ' + PV_LAYS.find((x) => x.id === cfg.pvLay).lab.toLowerCase() + ', ' : 'nohy: ' + J.lab.toLowerCase() + ', ') + 'nahoře: ' + T.lab + '), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', svařovaná, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
