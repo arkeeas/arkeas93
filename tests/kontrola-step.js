@@ -17,7 +17,7 @@ Vy.JOINTS.forEach((j) => Vy.TOPS.forEach((tp) => Vy.MOUNTS.forEach((mo) => { if 
 // plotny X se všemi uchyceními, rámeček z jeklu od nejmenšího po největší
 Vy.MOUNTS.forEach((mo) => { if (Vy.mountOk(mo.id, 'plotny')) wipVars.push({ joint: 'spojovak', top: 'plotny', plS: 'x', mount: mo.id }); });
 // Vnořené rámy: výšky středního rámu a přesahy
-[55].forEach((h) => [60, 80, 120].forEach((o) => wipVars.push({ joint: 'spojovak', top: 'diag', vrH: h, vrO: o, mount: 'vrut', L: 1100, W: 600, H: 450 })));
+[55].forEach((h) => [80].forEach((o) => wipVars.push({ joint: 'spojovak', top: 'diag', vrH: h, vrO: o, mount: 'vrut', L: 1100, W: 600, H: 450 })));
 // Kosočtverec: jekl (všechny profily)
 (Vy.KS_JEKL || []).forEach((j) => wipVars.push({ joint: 'spojovak', top: 'diag', ksMat: 'jekl', ksJ: j.id, mount: 'vrut' }));
 // Pavouk: obě rozmístění noh

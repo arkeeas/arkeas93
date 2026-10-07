@@ -289,7 +289,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
-<script src="vyvoj.js?v=20261007p"></script>
+<script src="vyvoj.js?v=20261007q"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -358,8 +358,7 @@
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
     if (M.vr) {
-      dims = pillRow('Odsazení vnitřních jeklů', 'vrO', [60, 80, 100, 120].map((v) => [v, v + ' mm'])) +
-        '<p class="note" style="margin:8px 0 0">Jedna nekonečná smyčka z jeklu tvaru kvádru, všechny lomy 90°. V každém rohu jsou dva svislé jekly – vnější a o ' + cfg.vrO + ' mm vnitřní: podélné horní jekly odbočí dolů do vnějšího, příčné do vnitřního, takže se v rohu nikdy nepotkají všechny tři směry. Horní rám je v jedné rovině a nese čiré sklo, na zemi jsou 2 malé schůdky, které smyčku uzavřou. Profil jeklu v Kroku 3.</p>';
+      dims = '<p class="note" style="margin:0">Jedna nepřerušená uzavřená smyčka z jeklu, která projde všech 12 hran kvádru – 16 úseků, každý lom 90° s pokosem 45°. Projít každou hranu jen jednou nejde (v rozích se potkávají 3 hrany), proto 4 hrany vedou dva jekly těsně vedle sebe. Horní rám je v jedné rovině a nese čiré sklo. Profil jeklu v Kroku 3, rozměry v Kroku 2.</p>';
     } else if (M.ks) {
       dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
         (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
