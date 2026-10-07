@@ -16,6 +16,8 @@ const wipVars = [];
 Vy.JOINTS.forEach((j) => Vy.TOPS.forEach((tp) => Vy.MOUNTS.forEach((mo) => { if (Vy.mountOk(mo.id, tp.id, 40)) wipVars.push({ joint: j.id, top: tp.id, mount: mo.id }); })));
 // plotny X se všemi uchyceními, rámeček z jeklu od nejmenšího po největší
 Vy.MOUNTS.forEach((mo) => { if (Vy.mountOk(mo.id, 'plotny')) wipVars.push({ joint: 'spojovak', top: 'plotny', plS: 'x', mount: mo.id }); });
+// Pavouk: obě rozmístění noh
+Vy.TOPS && Vy.TOPS.forEach((tp) => wipVars.push({ joint: 'spojovak', top: tp.id, pvLay: 'plus', mount: 'vrut' }));
 (Vy.RJ || []).forEach((r) => wipVars.push({ joint: 'zamky', top: 'ramj', rjp: r.id, mount: r.w >= 25 ? 'vrut' : 'lepeni' }));
 for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const vv of m.wip ? wipVars : [null]) {
   const A = K.analyze(K.normalize(Object.assign({ model: m.id, L, W, H, join }, vv || {})), K.DEFAULT_RATES);
@@ -29,7 +31,7 @@ for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const v
   const bodies = A.build.parts.map((p) => p.solid).concat(A.build.plateBoxes);
   bodies.forEach((b, i) => { if (!G.checkClosed(b.verts, b.faces)) errs.push("těleso " + (i + 1) + " není uzavřené"); });
   validate(G.stepFile("sestava", bodies), "sestava").errs.forEach((e) => errs.push("sestava: " + e));
-  console.log((errs.length ? "CHYBA " : "OK    ") + m.lab + (m.wip ? " [umělecké]" : "") + (join === "bolt" ? " (šroubovaná)" : "") + (vv ? " – " + vv.joint + " / " + vv.top + (vv.plS ? " " + vv.plS : "") + (vv.rjp ? " " + vv.rjp : "") + " / " + vv.mount : ""));
+  console.log((errs.length ? "CHYBA " : "OK    ") + m.lab + (m.wip ? " [umělecké]" : "") + (join === "bolt" ? " (šroubovaná)" : "") + (vv ? " – " + vv.joint + " / " + vv.top + (vv.plS ? " " + vv.plS : "") + (vv.rjp ? " " + vv.rjp : "") + (vv.pvLay ? " " + vv.pvLay : "") + " / " + vv.mount : ""));
   errs.slice(0, 4).forEach((e) => console.log("   - " + e));
   if (errs.length) bad++;
 }
