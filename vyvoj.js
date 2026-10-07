@@ -701,7 +701,7 @@
       const u = dir(pc.F, pc.T), m = pc.vert ? { p1: pc.F[2] < pc.T[2] ? pc.F : pc.T, u: [0, 0, 1], v: [1, 0, 0], w: [0, 1, 0], L: Math.abs(pc.T[2] - pc.F[2]) } : frameOf(pc.F, pc.T);
       void u;
       const order = pc.vert ? 300 : pc.top ? 1 : 400;   // skládání odspodu: rám na zemi, svislé, horní rám
-      const part = { name: pc.name, order, m, solid: toBrep(pc.sol), csg: pc.sol, ang: 45, prof: 'jekl ' + s + '×' + s + '×' + t, feat: pc.holes ? 'otvory pro desku' : '' };
+      const part = { name: pc.name, order, ins: [0, 0, -1], m, solid: toBrep(pc.sol), csg: pc.sol, ang: 45, prof: 'jekl ' + s + '×' + s + '×' + t, feat: pc.holes ? 'otvory pro desku' : '' };   // vše se spouští rovně shora
       const k = pc.name + '|' + Math.round(P.partLength(part)) + '|' + Math.round(P.volume(part.solid) / 50);
       let i = sig.indexOf(k); if (i < 0) { sig.push(k); i = sig.length - 1; }
       part.poz = 'V' + (i + 1);
