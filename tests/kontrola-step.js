@@ -10,9 +10,12 @@ const { validate } = require("./validate-step.js");
 const K = globalThis.Podnoze, G = globalThis.Generator;
 const [L, W, H] = [process.argv[2] || 1600, process.argv[3] || 800, process.argv[4] || 750];
 let bad = 0;
-const MOUNTS = (globalThis.Vyvoj && globalThis.Vyvoj.MOUNTS || []).map((x) => x.id);
-for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const mount of m.wip ? MOUNTS : [null]) {
-  const A = K.analyze(K.normalize({ model: m.id, L, W, H, join, mount }), K.DEFAULT_RATES);
+// umělecké: všechny kombinace spojení noh × horní část, uchycení k desce u každé
+const Vy = globalThis.Vyvoj || { MOUNTS: [], JOINTS: [], TOPS: [] };
+const wipVars = [];
+Vy.JOINTS.forEach((j) => Vy.TOPS.forEach((tp) => Vy.MOUNTS.forEach((mo) => { if (Vy.mountOk(mo.id, tp.id)) wipVars.push({ joint: j.id, top: tp.id, mount: mo.id }); })));
+for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const vv of m.wip ? wipVars : [null]) {
+  const A = K.analyze(K.normalize(Object.assign({ model: m.id, L, W, H, join }, vv || {})), K.DEFAULT_RATES);
   if (join === "bolt" && !A.bolted) continue;
   const errs = [];
   A.rows.filter((r) => r.kind === "tube").forEach((r) => {
@@ -23,7 +26,7 @@ for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const m
   const bodies = A.build.parts.map((p) => p.solid).concat(A.build.plateBoxes);
   bodies.forEach((b, i) => { if (!G.checkClosed(b.verts, b.faces)) errs.push("těleso " + (i + 1) + " není uzavřené"); });
   validate(G.stepFile("sestava", bodies), "sestava").errs.forEach((e) => errs.push("sestava: " + e));
-  console.log((errs.length ? "CHYBA " : "OK    ") + m.lab + (m.wip ? " [umělecké]" : "") + (join === "bolt" ? " (šroubovaná)" : "") + (mount ? " – uchycení " + mount : ""));
+  console.log((errs.length ? "CHYBA " : "OK    ") + m.lab + (m.wip ? " [umělecké]" : "") + (join === "bolt" ? " (šroubovaná)" : "") + (vv ? " – " + vv.joint + " / " + vv.top + " / " + vv.mount : ""));
   errs.slice(0, 4).forEach((e) => console.log("   - " + e));
   if (errs.length) bad++;
 }
