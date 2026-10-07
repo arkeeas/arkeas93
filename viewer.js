@@ -63,7 +63,7 @@
         cv.width = Math.max(10, r.width * dpr); cv.height = Math.max(10, r.height * dpr);
         const x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height);
         const A = state.A, bodies = K.previewBodies(A);
-        if (state.showDesk) bodies.push(Object.assign(deskSolid(K.deskOutline(A.cfg.shape, A.DL, A.DW), A.build.dims.Hf, A.cfg.H), { color: '#C79B6B', alpha: state.see ? 0.3 : 1 }));
+        if (state.showDesk) bodies.push(Object.assign(deskSolid(K.deskOutline(A.cfg.shape, A.DL, A.DW), A.build.dims.Hf, A.cfg.H), { color: A.build.glassTop ? '#CFE8EE' : '#C79B6B', alpha: A.build.glassTop ? 0.3 : state.see ? 0.3 : 1 }));
         const F = fig(); if (F) F.bodies.forEach((b) => bodies.push(b));
         const a = angles[state.view] || angles.iso;
         K.paint(x, cv.width, cv.height, bodies, { az: a[0], el: a[1], pad: 0.1 });
@@ -157,11 +157,13 @@
         const outline = K.deskOutline(A.cfg.shape, A.DL, A.DW);
         const shape = new THREE.Shape(outline.map((p) => new THREE.Vector2(p[0], p[1])));
         const geo = new THREE.ExtrudeGeometry(shape, { depth: A.cfg.td, bevelEnabled: false, curveSegments: 4 });
-        const wood = new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0, transparent: state.see, opacity: state.see ? 0.32 : 1, depthWrite: !state.see });
+        const glass = !!A.build.glassTop;   // čiré sklo (Infinity Cube)
+        const wood = glass ? new THREE.MeshStandardMaterial({ color: '#CFE8EE', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, depthWrite: false })
+          : new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0, transparent: state.see, opacity: state.see ? 0.32 : 1, depthWrite: !state.see });
         const desk = new THREE.Mesh(geo, wood);
         desk.position.z = A.build.dims.Hf; desk.castShadow = !state.see; desk.receiveShadow = true;
         group.add(desk);
-        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: '#7A5634', transparent: true, opacity: state.see ? 0.9 : 0.35 }));
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: glass ? '#7FA9B3' : '#7A5634', transparent: true, opacity: glass ? 0.9 : state.see ? 0.9 : 0.35 }));
         edges.position.z = A.build.dims.Hf; group.add(edges);
       }
       scene.add(group);
