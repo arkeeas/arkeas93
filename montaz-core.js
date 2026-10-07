@@ -530,8 +530,9 @@
           if (!(r0.blocked && r0.blocked.length) && r1.blocked && r1.blocked.length) sc -= 150;
         }
         if (recv(i) && !hasTab(i)) sc += 60; else if (hasTab(i)) sc += 30;
-        const hub = M.items.some((o) => o.part && o.part.poz === 'N');
-        if (it.part && it.part.poz === 'N') sc += 300;   // Pavouk: sloupek první, na něj ramena
+        const arm = (o, re) => o.part && re.test(o.part.name || ''), hub = M.items.some((o) => arm(o, /^Rameno /));
+        if (arm(it, /^Rameno dolní/)) sc += 300;        // Pavouk: nejdřív ramena k zemi (svaří se k sobě),
+        else if (arm(it, /^Rameno horní/)) sc += 150;   // pak ramena k desce, nakonec horní část
         else if (!hub && it.kind === 'tube' && it.part && Math.abs(it.part.m.u[2]) < 0.05 && it.c[2] > M.Hf - 1.5 * M.s) sc += 45;   // horní rám nejdřív
         sc += it.seams.filter((sid) => { const sm = M.seams[sid]; return placed.has(sm.a === i ? sm.b : sm.a); }).length * 4;
         sc += it.c[2] / Math.max(1, M.size[2]) * 5;
