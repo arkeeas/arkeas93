@@ -12,9 +12,12 @@ const K = globalThis.Podnoze, Mz = globalThis.Montaz;
 const args = process.argv.slice(2), verbose = args.includes("-v"), num = args.filter((a) => a !== "-v");
 const [L, W, H] = [num[0] || 1600, num[1] || 800, num[2] || 750];
 let bad = 0;
-for (const m of K.allModels()) for (const join of ["weld", "bolt"]) {
+// umělecké: každé spojení noh × horní část
+const Vy = globalThis.Vyvoj || { JOINTS: [], TOPS: [] }, wipVars = [];
+Vy.JOINTS.forEach((j) => Vy.TOPS.forEach((tp) => wipVars.push({ joint: j.id, top: tp.id })));
+for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const vv of m.wip ? wipVars : [null]) {
   const t0 = Date.now();
-  const A = K.analyze(K.normalize({ model: m.id, L, W, H, join }), K.DEFAULT_RATES);
+  const A = K.analyze(K.normalize(Object.assign({ model: m.id, L, W, H, join }, vv || {})), K.DEFAULT_RATES);
   if (join === "bolt" && !A.bolted) continue;
   const M = Mz.prepare(A);
   const errs = [];
@@ -51,7 +54,7 @@ for (const m of K.allModels()) for (const join of ["weld", "bolt"]) {
   const ms = Date.now() - t0, msR = Date.now() - tr;
   if (conflicts.length) errs.push("konflikt nasazení v navrženém pořadí: " + conflicts.join(", "));
   if (blocked.length) errs.push("cestou narazí (navržené pořadí): " + blocked.join("; "));
-  console.log((errs.length ? "CHYBA " : "OK    ") + (m.lab + (join === "bolt" ? " (šroubovaná)" : "")).padEnd(32) +
+  console.log((errs.length ? "CHYBA " : "OK    ") + (m.lab + (join === "bolt" ? " (šroubovaná)" : "") + (vv ? " " + vv.joint + "/" + vv.top : "")).padEnd(32) +
     " dílů " + String(M.items.length).padStart(2) + "  zámků " + String(M.tabLinks.length).padStart(2) + "  svarů " + String(M.seams.length).padStart(3) +
     "  přístup ok/omez/ne " + st.ok + "/" + st.tight + "/" + st.no + "  (" + ms + " ms, hořák " + msR + " ms)");
   const dirW = (d) => { const a = d.map(Math.abs), m = Math.max(...a); return m === a[2] ? (d[2] < 0 ? "shora" : "zespodu") : m === a[0] ? (d[0] < 0 ? "zprava" : "zleva") : (d[1] < 0 ? "zezadu" : "zepředu"); };

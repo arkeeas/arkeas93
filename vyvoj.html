@@ -67,7 +67,9 @@
   .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 700px) { .g3 { grid-template-columns: minmax(0, 1fr); } }
   .subh { margin: 18px 0 8px; font-size: 14px; font-weight: 600; }
-  #tops svg { stroke-width: 4; } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #tops svg { stroke-width: 4; }
+  #topDims .pills { flex-wrap: wrap; }
+  #topDims .pill { min-width: 52px; height: 38px; } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (max-width: 520px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .opt { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
   .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
@@ -189,6 +191,7 @@
         <div class="grid g2" id="joints"></div>
         <h3 class="subh">Horní část – na čem leží deska</h3>
         <div class="grid g3" id="tops"></div>
+        <div id="topDims"></div>
       </div>
 
       <div class="step">
@@ -284,7 +287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261005d"></script>
-<script src="vyvoj.js?v=20261007c"></script>
+<script src="vyvoj.js?v=20261007d"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261005d"></script>
 <script>
@@ -341,6 +344,22 @@
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
     group($('joints'), K.JOINTS, (o) => card(o, o.id === cfg.joint), (id) => set({ joint: id }));
     group($('tops'), K.TOPS, (o) => card(o, o.id === cfg.top), (id) => set({ top: id }));
+    // rozměry pásovin / ploten / jeklu rámečku
+    const pillRow = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + esc(lab) + '">' +
+      items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
+    let dims = '';
+    if (cfg.top === 'ramj') {
+      const au = K.rjOf(Object.assign({}, cfg, { rjp: 'auto' }));
+      dims = pillRow('Profil jeklu rámečku', 'rjp', [['auto', 'Auto (' + au.w + '×' + au.h + ')']].concat(K.RJ.map((r) => [r.id, r.w + '×' + r.h])));
+    } else {
+      const what = cfg.top === 'plotny' ? 'ploten' : 'pásovin';
+      dims = pillRow('Tloušťka ' + what, 'barT', K.BAR_TS.map((v) => [v, v + ' mm'])) +
+        pillRow('Šířka ' + what, 'barW', [[0, 'Auto']].concat(K.BAR_STD.map((v) => [v, v]))) +
+        (cfg.top === 'plotny' ? pillRow('Délka ploten', 'plL', [[0, 'Auto']].concat(K.PL_L.map((v) => [v, v]))) : '');
+    }
+    const used = A.rows.find((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && r.part.poz === 'RL'));
+    $('topDims').innerHTML = dims + (used ? '<p class="note" style="margin:8px 0 0">Použito: ' + esc(used.prof) + ', ' + esc(used.len) + ' mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
+    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: b.dataset.k === 'rjp' ? b.dataset.v : Number(b.dataset.v) })));
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';
     $('wField').hidden = circle;
     ['L', 'W', 'H'].forEach((k) => { syncInput(k, cfg[k]); syncInput(k + 'n', cfg[k]); });
@@ -397,7 +416,7 @@
     group($('mounts'), K.MOUNTS, (m) => {
       const ok = K.mountOk(m.id, cfg.top);
       return '<button type="button" class="opt join" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.mount) + '"' + (ok ? '' : ' disabled style="opacity:.5"') + '><span class="t">' + m.lab + '</span><span class="p">+ ' + esc(m.p) + '</span><span class="c">− ' + esc(m.c) + '</span>' +
-        (!ok ? '<span class="c"><strong>Jen s pásovinami – u ploten nejsou hrany pro spony.</strong></span>' : m.minTd && cfg.td < m.minTd ? '<span class="c"><strong>Deska ' + cfg.td + ' mm je na to tenká.</strong></span>' : '') + '</button>';
+        (!ok ? '<span class="c"><strong>Jen s pásovinami – u ploten a jeklu nejsou hrany pro spony.</strong></span>' : m.minTd && cfg.td < m.minTd ? '<span class="c"><strong>Deska ' + cfg.td + ' mm je na to tenká.</strong></span>' : '') + '</button>';
     }, (id) => set({ mount: id }));
     $('mountHow').innerHTML = '<strong>Pro truhláře – ' + esc(kit.M.lab.toLowerCase()) + ', deska ' + cfg.td + ' mm</strong>' +
       '<ol style="margin:0;padding-left:20px">' + kit.steps.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
