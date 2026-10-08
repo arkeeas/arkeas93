@@ -289,7 +289,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
-<script src="vyvoj.js?v=20261008d"></script>
+<script src="vyvoj.js?v=20261008e"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -358,7 +358,7 @@
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
     if (M.vr) {
-      dims = '<p class="note" style="margin:0">Podle předlohy: jedna uzavřená trasa z jeklu – horní rám se sklem s mezerou v zadním vrcholu (pod pravým horním rohem žádná stojka), přední portál a pravý rám v jedné výšce kousek pod ním, horní rám odsazený dovnitř, na zemi jen 2 jekly. Každý lom 90° s pokosem 45°, v každém lomu jen 2 jekly. Horní rám drží jen jekly u mezery – nosnost je proto nízká (viz výpočet). Profil jeklu v Kroku 3, rozměry v Kroku 2.</p>';
+      dims = '<p class="note" style="margin:0">Podle předlohy: jedna nepřerušená trasa z jeklu (20 úseků) – horní rám se sklem s mezerou v zadním vrcholu (pod pravým horním rohem žádná stojka), přední portál a pravý rám v jedné výšce kousek pod ním, horní rám odsazený dovnitř, na zemi jen 2 jekly, ve střední úrovni 2 podélné a 2 příčné jekly. Levá zadní noha stojí na zemi, vnější levý střední jekl končí čelem kousek před ní. Každý lom 90° s pokosem 45°, v každém lomu jen 2 jekly. Horní rám drží jen jekly u mezery – nosnost je proto nízká (viz výpočet). Profil jeklu v Kroku 3, rozměry v Kroku 2.</p>';
     } else if (M.ks) {
       dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
         (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
