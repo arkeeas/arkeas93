@@ -22,6 +22,7 @@
     { id: 'X', lab: 'Kříž X', desc: 'Překřížené nohy', icon: 'M6 6 H58 M12 42 L52 6 M52 42 L12 6' },
     { id: 'T', lab: 'Trapéz', desc: 'Boky zúžené k zemi', icon: 'M6 6 H58 M12 6 L20 42 H44 L52 6' },
     { id: 'TR', lab: 'Trapéz obrácený', desc: 'Boky rozšířené k zemi', icon: 'M6 6 H58 M20 6 L12 42 H52 L44 6' },
+    { id: 'TJ', lab: 'Trojúhelníky', desc: 'Dva trojúhelníkové rámy v jedné rovině: spodní celý z jeklu, horní přerušený a navařený do spodního – vzniká kosočtverec', icon: 'M8 42 H56 L32 8 Z M8 8 H56 L32 42 Z', note: 'Nosnost je zjednodušený odhad – dílna konstrukci před výrobou ověří.', tr: true, testing: false },
     { id: 'A', lab: 'A-rám', desc: 'Nohy se sbíhají nahoru, příčka', icon: 'M6 6 H58 M12 42 L29 6 M52 42 L35 6 M19 29 H45' },
     { id: 'D', lab: 'Delta', desc: 'Trojúhelník na spodní příčce', icon: 'M6 6 H58 M12 42 H52 M12 42 L29 6 M52 42 L35 6' },
     { id: 'V', lab: 'V-rám', desc: 'Nohy do středu na patku', icon: 'M6 6 H58 M12 6 L29 42 M52 6 L35 42 M18 42 H46' },

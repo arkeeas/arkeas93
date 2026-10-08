@@ -195,6 +195,7 @@
       <div class="step">
         <h2><small>Krok 3</small>Profil jeklu</h2>
         <div class="grid g4" id="sizes"></div>
+        <div id="tjOpts" hidden></div>
         <div class="thk"><span id="thkLab">Tloušťka stěny</span><div class="pills" id="thks" role="group" aria-label="Tloušťka stěny"></div></div>
         <div class="load" id="load"></div>
       </div>
@@ -267,7 +268,8 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261007l"></script>
+<script src="core.js?v=20261008g"></script>
+<script src="vyvoj.js?v=20261008g"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -327,6 +329,16 @@
     group($('sizes'), K.SIZES, (z) => '<button type="button" class="opt" data-id="' + z + '" aria-pressed="' + (z === cfg.size) + '"><span class="l" style="font-weight:600;font-size:15px">' + z + '×' + z + '</span><span class="s">' + (z === 20 ? 'malé stolky' : 'od ' + K.THK[z][0] + ' mm') + '</span></button>', (id) => set({ size: Number(id) }));
     $('thkLab').textContent = 'Tloušťka stěny jeklu ' + cfg.size + '×' + cfg.size;
     group($('thks'), K.THK[cfg.size], (t) => '<button type="button" class="pill" data-id="' + t + '" aria-pressed="' + (t === cfg.t) + '">' + t + ' mm</button>', (id) => set({ t: Number(id) }));
+    const tj = !!M.tr;   // Trojúhelníky: vlastní jekl a rozměry místo profilu z kroku 3
+    $('sizes').hidden = tj; $('thks').parentElement.hidden = tj; $('tjOpts').hidden = !tj;
+    if (tj) {
+      const row = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + lab + '">' +
+        items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
+      $('tjOpts').innerHTML = row('Šířka základny spodního trojúhelníku', 'trA', [[250, '500 mm'], [300, '600 mm'], [350, '700 mm'], [400, '800 mm']]) +
+        row('Výška vrcholu spodního trojúhelníku', 'trH', [400, 450, 500, 550, 600, 650].map((v) => [v, v + ' mm'])) +
+        row('Jekl (hloubka × šířka)', 'trJ', window.Vyvoj.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]));
+      $('tjOpts').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: b.dataset.k === 'trJ' ? b.dataset.v : Number(b.dataset.v) })));
+    }
 
     const cl = A.audit ? A.audit.checks.map((c) => c.lvl) : [A.lvl];
     const custLvl = cl.indexOf('bad') >= 0 ? 'bad' : (cl.indexOf('warn') >= 0 || A.lvl === 'warn') ? 'warn' : A.lvl;

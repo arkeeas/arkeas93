@@ -288,8 +288,8 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261007l"></script>
-<script src="vyvoj.js?v=20261008f"></script>
+<script src="core.js?v=20261008g"></script>
+<script src="vyvoj.js?v=20261008g"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -358,12 +358,7 @@
     const pillRow = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + esc(lab) + '">' +
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
-    if (M.tr) {
-      dims = pillRow('Šířka základny spodního trojúhelníku', 'trA', [[250, '500 mm'], [300, '600 mm'], [350, '700 mm'], [400, '800 mm']]) +
-        pillRow('Výška vrcholu spodního trojúhelníku', 'trH', [400, 450, 500, 550, 600, 650].map((v) => [v, v + ' mm'])) +
-        pillRow('Jekl (hloubka × šířka)', 'trJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t])) +
-        '<p class="note" style="margin:8px 0 0">Spodní trojúhelník je jeden celý kus jeklu. Horní se v místě křížení přeruší a navaří na spodní, takže oba tvary jsou do sebe zapuštěné a uprostřed vznikne kosočtverec. Nosnost tohoto modelu zatím nepočítáme.</p>';
-    } else if (M.ks) {
+    if (M.ks) {
       dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
         (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
           : pillRow('Hloubka pásu (šířka boku)', 'ksD', [60, 80, 100].map((v) => [v, v + ' mm'])) + pillRow('Tloušťka pásu', 'ksT', [8, 10, 12].map((v) => [v, v + ' mm']))) +
@@ -384,7 +379,7 @@
     }
     const used = A.rows.filter((r) => (r.kind === 'plate' && r.plate.kind !== 'spojovak') || (r.part && (r.part.poz === 'RL' || r.part.poz === 'RK')));
     $('topDims').innerHTML = dims + (used.length ? '<p class="note" style="margin:8px 0 0">Použito: ' + used.map((r) => r.q + '× ' + esc(r.prof) + ' ' + esc(r.len) + ' mm').join(', ') + ' · deska zůstane přesahovat aspoň 20 mm' + (A.build.notes.length ? ' · <span style="color:var(--warn-ink)">' + A.build.notes.map(esc).join(' ') + '</span>' : '') + '</p>' : '');
-    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: ['rjp', 'plS', 'ksM', 'ksMat', 'ksJ', 'trJ'].indexOf(b.dataset.k) >= 0 ? b.dataset.v : Number(b.dataset.v) })));
+    $('topDims').querySelectorAll('button[data-k]').forEach((b) => b.addEventListener('click', () => set({ [b.dataset.k]: ['rjp', 'plS', 'ksM', 'ksMat', 'ksJ'].indexOf(b.dataset.k) >= 0 ? b.dataset.v : Number(b.dataset.v) })));
     const bl = $('barLn');
     if (bl) { if (cfg.barL) bl.value = cfg.barL; bl.addEventListener('change', (e) => set({ barL: Number(e.target.value) || 0 })); }
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';
