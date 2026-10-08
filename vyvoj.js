@@ -18,9 +18,8 @@
      cfg.plS – tvar ploten ('obd' obdélník / 'x' kříž X se 4 otvory), cfg.rjp – profil jeklu rámečku 10×10 až 40×40 ('auto' = 40×20).
    Starší poptávky s modely PZ2 (zámky + příčné) a PZ3 (spojovák + šikmé) se převedou (LEGACY).
 
-   Model Infinity Cube (VR, konferenční stolek): obrys kvádr, JEDNA nepřerušená uzavřená smyčka z jeklu přes
-   všech 12 hran (16 úseků, 4 hrany zdvojené jeklem vedle sebe), lomy 90° s pokosem 45°, horní rám v jedné
-   rovině nese čiré sklo. Trasa VR_ROUTE = freecad/stolek_kostra.py.
+   Model Infinity Cube (VR, konferenční stolek): obrys kvádr, JEDNA nepřerušená uzavřená smyčka z 8 jeklů přes
+   všech 8 rohů (v každém rohu právě 2 jekly), lomy 90° s pokosem 45°, 2 horní podélné jekly nesou čiré sklo. Trasa VR_ROUTE = freecad/stolek_kostra.py.
 
    Model Kosočtverec (KS): 2 boky na koncích stolu, každý je obdélník rozdělený na 4 rohové trojúhelníky
    a kosočtverec uprostřed (vrcholy ve středech stran). Všechny tvary jsou duté rámečky z pásoviny postavené
@@ -235,7 +234,7 @@
 
   /* ====================== modely ====================== */
   const MODELS = [
-    { id: 'VR', lab: 'Infinity Cube', desc: 'Konferenční stolek – jedna nepřerušená smyčka z jeklu přes všech 12 hran kvádru, nahoře čiré sklo', icon: 'M10 8 H54 V40 H10 Z M16 14 V40 M48 14 V40 M16 14 H48', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, vr: true },
+    { id: 'VR', lab: 'Infinity Cube', desc: 'Konferenční stolek – jedna nepřerušená smyčka z 8 jeklů, v každém rohu jen 2 jekly, nahoře čiré sklo', icon: 'M10 8 H54 V40 H10 Z M16 14 V40 M48 14 V40 M16 14 H48', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, vr: true },
     { id: 'KS', lab: 'Kosočtverec', desc: 'Boky z trojúhelníků a kosočtverce z pásoviny, spojené závitovými tyčemi s maticemi', icon: 'M6 6 H58 M12 6 H28 L12 22 Z M52 6 H36 L52 22 Z M12 42 H28 L12 26 Z M52 42 H36 L52 26 Z M32 10 L48 24 L32 38 L16 24 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, ks: true },
     { id: 'PV', lab: 'Pavouk', desc: 'Hvězdicová podnož jen z jeklů – 4 ramena k zemi a 4 k desce, sbíhají se uprostřed', icon: 'M6 6 H58 M12 42 L52 6 M52 42 L12 6 M28 18 H36 V30 H28 Z', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true, pav: true },
     { id: 'PZ', lab: 'Pohozenec', desc: '4 nohy do # kolem středu – spojení noh a horní část si zvolíte', icon: 'M6 6 H58 M10 42 L54 6 M54 42 L10 6 M28 6 L32 42 M36 6 L32 42', note: 'Rozpracovaný model – geometrie se ještě ladí.', wip: true }
@@ -595,15 +594,13 @@
   }
 
   /* Vnořené rámy: x podél stolu, deska (= horní obdélník) x ∈ ±L/2, druhý rám posunutý o vrO doprava */
-  /* Infinity Cube: jedna uzavřená smyčka 16 úseků přes všech 12 hran kvádru (každou hranu projít právě jednou
-     nejde – v rozích se potkávají 3 hrany, Eulerova věta). 4 hrany projde dvakrát – tam jsou 2 jekly vedle sebe
-     (posunuté o šířku jeklu). Trasa = výsledek úplného průzkumu (nejméně posunů, bez průniků, horní rám v jedné
-     rovině); stejná jako ROUTE ve freecad/stolek_kostra.py. Každá souřadnice: [roh 0/1, posun v šířkách jeklu]. */
+  /* Infinity Cube: jedna uzavřená smyčka 8 jeklů, která projde všemi 8 rohy kvádru a v každém rohu se potkají
+     právě 2 jekly pod 90° (pokos 45°) – žádné rozvětvení ani křížový svar. Nahoře 2 podélné jekly (nesou sklo),
+     4 svislé nohy, na zemi 2 příčné jekly. Zepředu tvar „Π“, z boku „U“, dohromady nekonečná smyčka.
+     Stejná trasa jako PROFILY ve freecad/stolek_kostra.py. Každá souřadnice: [roh 0/1, posun v šířkách jeklu]. */
   const VR_ROUTE = [
-    [[0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0], [1, 0]], [[0, 0], [1, 0], [1, 0]], [[0, 0], [1, 0], [0, 1]],
-    [[0, 0], [0, 1], [0, 1]], [[1, 0], [0, 1], [0, 1]], [[1, 0], [0, 1], [1, 0]], [[1, 0], [1, 0], [1, 0]],
-    [[1, 0], [1, 0], [0, 0]], [[1, 0], [0, 0], [0, 0]], [[1, 0], [0, 0], [1, 0]], [[0, 1], [0, 0], [1, 0]],
-    [[0, 1], [1, 0], [1, 0]], [[1, -1], [1, 0], [1, 0]], [[1, -1], [1, 0], [0, 0]], [[0, 0], [1, 0], [0, 0]]
+    [[0, 0], [0, 0], [1, 0]], [[1, 0], [0, 0], [1, 0]], [[1, 0], [0, 0], [0, 0]], [[1, 0], [1, 0], [0, 0]],
+    [[1, 0], [1, 0], [1, 0]], [[0, 0], [1, 0], [1, 0]], [[0, 0], [1, 0], [0, 0]], [[0, 0], [0, 0], [0, 0]]
   ];
   function layoutVR(cfg) {
     const s = cfg.size, t = cfg.t, Ht = cfg.H - cfg.td, L = cfg.L, W = cfg.W;
@@ -672,7 +669,7 @@
     const G = layoutVR(cfg), nodes = [], els = [], sup = [];
     const nodeOf = (q) => { let k = nodes.findIndex((r) => Math.abs(r[0] - q[0]) < 0.5 && Math.abs(r[1] - q[1]) < 0.5 && Math.abs(r[2] - q[2]) < 0.5); if (k < 0) { k = nodes.length; nodes.push(q.slice()); } return k; };
     G.segs.forEach(([a, b]) => { const nd = Math.max(3, Math.round(vlen(vsub(b, a)) / 80)); for (let i = 0; i < nd; i++) els.push({ i: nodeOf(vadd(a, vmul(vsub(b, a), i / nd))), j: nodeOf(vadd(a, vmul(vsub(b, a), (i + 1) / nd))), kind: 'tube', tag: 'r' }); });
-    // zdvojené hrany a rohy: jekly těsně vedle sebe jsou po délce svařené – tuhé spoje mezi blízkými uzly
+    // jekly těsně vedle sebe (pokud by v trase byly) jsou po délce svařené – tuhé spoje mezi blízkými uzly
     const linked = new Set(els.map((e) => Math.min(e.i, e.j) + '|' + Math.max(e.i, e.j)));
     for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
       const d = vlen(vsub(nodes[i], nodes[j]));
@@ -1232,7 +1229,7 @@
   function describe(cfg) {
     const M = MODELS.find((m) => m.id === cfg.model) || MODELS[0], F = P.FIN.find((f) => f.id === cfg.fin), S = P.SHAPES.find((x) => x.id === cfg.shape);
     const desk = cfg.shape === 'circle' ? 'Ø ' + P.nf(cfg.L) : P.nf(cfg.L) + ' × ' + P.nf(cfg.W);
-    if (M.vr) return M.lab + ' (umělecká, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', smyčka 16 úseků přes 12 hran), sklo ' + P.nf(cfg.L) + ' × ' + P.nf(cfg.W) + ' × ' + P.nf(cfg.H) + ' mm, ' + F.lab + ', deska ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
+    if (M.vr) return M.lab + ' (umělecká, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', smyčka z 8 jeklů, v rohu vždy 2), sklo ' + P.nf(cfg.L) + ' × ' + P.nf(cfg.W) + ' × ' + P.nf(cfg.H) + ' mm, ' + F.lab + ', deska ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
     if (M.ks) return M.lab + ' (umělecká, ' + (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pás ' + cfg.ksD + '×' + cfg.ksT) + ', tyče ' + cfg.ksM + ', mezera ' + cfg.ksG + ' mm), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, svařované tvary, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
     const J = JOINTS.find((x) => x.id === cfg.joint), T = topsFor(cfg.model, cfg.pvLay).find((x) => x.id === cfg.top);
     return M.lab + ' (umělecká, ' + (M.pav ? 'nohy: ' + PV_LAYS.find((x) => x.id === cfg.pvLay).lab.toLowerCase() + ', ' : 'nohy: ' + J.lab.toLowerCase() + ', ') + 'nahoře: ' + T.lab + '), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', svařovaná, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();
