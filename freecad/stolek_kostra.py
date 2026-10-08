@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Konferenční stolek „Infinity Cube“ – jedna uzavřená smyčka z 8 rovných profilů (jekl), v každém rohu
-právě 2 profily, + čiré sklo položené na horních dvou podélných profilech.
+Konferenční stolek „Infinity Cube“ podle předlohy (skica) – jedna zalomená trasa z 18 rovných jeklů
+ve 3 výškách, v každém lomu právě 2 profily, + čiré sklo položené na horním rámu.
 
 Spuštění ve FreeCADu: Makro → Makra… → vybrat tento soubor → Spustit
 (nebo v Python konzoli: exec(open('/cesta/stolek_kostra.py').read())).
@@ -19,31 +19,37 @@ import math
 S = 50.0        # jekl S × S
 T = 3.0         # stěna jeklu
 GLASS = 10.0    # tloušťka čirého skla
-GLASS_OVER = 0.0    # přesah skla přes vnější hranu horních profilů
+GLASS_OVER = 0.0    # přesah skla přes vnější obrys stolku
 
-# ---------------- rozměry stolku (vnější obrys kvádru, mm) ----------------
-L = 1000.0      # délka (X)
-W = 600.0       # šířka (Y)
-H = 500.0       # výška rámu bez skla (Z)
+# ---------------- rozměry stolku (vnější obrys, mm) ----------------
+L = 1000.0      # délka (X, dopředu 0 → dozadu L)
+W = 600.0       # šířka (Y, „pravá“ strana skici je y = 0)
+H = 450.0       # výška rámu bez skla (Z)
 
-# ---------------- 8 profilů = jedna uzavřená smyčka (osy jeklů, mm) ----------------
-# Smyčka projde všech 8 rohů kvádru a v každém rohu se potkají PRÁVĚ 2 profily pod 90° (pokos 45°):
-# nahoře 2 podélné (nesou sklo), 4 svislé nohy, dole na zemi 2 příčné. Zepředu „Π“, z boku „U“.
-# (Smyčka přes všech 12 hran s jen 2 profily v rohu nejde – v každém rohu kvádru se potkávají 3 hrany.)
-x0, x1 = S / 2, L - S / 2
-y0, y1 = S / 2, W - S / 2
-z0, z1 = S / 2, H - S / 2
-PROFILY = [
-    ('1 horní přední podélný', (x0, y0, z1), (x1, y0, z1)),
-    ('2 noha přední pravá',    (x1, y0, z1), (x1, y0, z0)),
-    ('3 dolní pravý příčný',   (x1, y0, z0), (x1, y1, z0)),
-    ('4 noha zadní pravá',     (x1, y1, z0), (x1, y1, z1)),
-    ('5 horní zadní podélný',  (x1, y1, z1), (x0, y1, z1)),
-    ('6 noha zadní levá',      (x0, y1, z1), (x0, y1, z0)),
-    ('7 dolní levý příčný',    (x0, y1, z0), (x0, y0, z0)),
-    ('8 noha přední levá',     (x0, y0, z0), (x0, y0, z1)),
+# ---------------- trasa podle předlohy (skica): 18 úseků, osy jeklů ----------------
+# Jedna zalomená trasa ve 3 výškách, všechny lomy 90° s pokosem, v každém lomu jen 2 profily:
+#   horní rám (nese sklo) – v horním zadním vrcholu mezera, oba jekly u ní jdou svisle dolů na zem;
+#   pod pravým horním rohem žádná stojka – vedle (o d) stojí pravý rám v nižší výšce z2;
+#   vpředu před horním rámem nižší portál ve výšce z1, vlevo dole otevřený;
+#   na zemi vnější a vnitřní obíhající jekly (vlevo a vzadu dva vedle sebe s mezerou).
+d = 1.5 * S                                  # rozteč souběžných jeklů (mezera d − S)
+x0, xb = S / 2, L - S / 2                    # vpředu / vzadu
+xf, xi = x0 + d, xb - d                      # přední hrana horního rámu / vnitřní zadní jekl na zemi
+yl, ym = W - S / 2, S / 2                    # levá / pravá strana
+yt, yi = ym + d, yl - d                      # pravá hrana horního rámu / vnitřní levý jekl
+zg, zt = S / 2, H - S / 2                    # zem / horní rám
+z1, z2 = zg + 0.7 * (zt - zg), zg + 0.6 * (zt - zg)   # přední portál / pravý rám
+TRASA = [
+    (xb, yl, zg), (xb, yl, zt), (xf, yl, zt), (xf, yt, zt), (xb, yt, zt), (xb, yi, zt), (xb, yi, zg),
+    (xb, ym, zg), (xb, ym, z2), (x0, ym, z2), (x0, ym, zg), (xi, ym, zg),
+    (xi, yi, zg), (x0, yi, zg), (x0, yt, zg), (x0, yt, z1), (x0, yl, z1), (x0, yl, zg),
 ]
-HORNI = [0, 4]          # na těchto profilech leží sklo
+JMENA = ['levá zadní noha', 'horní levý podélný', 'horní přední příčný', 'horní pravý podélný', 'horní zadní příčný (k mezeře)',
+         'noha u mezery', 'zadní vnější na zemi', 'pravá zadní stojka', 'pravý rám nahoře', 'pravá přední noha',
+         'pravý na zemi', 'zadní vnitřní na zemi', 'levý vnitřní na zemi', 'přední na zemi', 'portál pravá noha',
+         'portál nahoře', 'portál levá noha', 'levý vnější na zemi']
+PROFILY = [('%d %s' % (k + 1, JMENA[k]), TRASA[k], TRASA[(k + 1) % len(TRASA)]) for k in range(len(TRASA))]
+HORNI = [1, 2, 3, 4]    # na těchto profilech leží sklo
 
 
 # ---------------- kontrola trasy ----------------
@@ -171,13 +177,11 @@ if App is not None:
         inner = inner.fuse(s)
     frame = outer.cut(inner).removeSplitter()
 
-    # sklo na horních třech profilech (horní plocha jeklů)
+    # sklo na horním rámu (horní plocha jeklů), přes celý obrys stolku – vpředu a vpravo přesahuje o d
     top = max(PROFILY[i][1][2] for i in HORNI) + S / 2
-    xs = [c for i in HORNI for c in (PROFILY[i][1][0], PROFILY[i][2][0])]
-    ys = [c for i in HORNI for c in (PROFILY[i][1][1], PROFILY[i][2][1])]
-    x0, x1 = min(xs) - S / 2 - GLASS_OVER, max(xs) + S / 2 + GLASS_OVER
-    y0, y1 = min(ys) - S / 2 - GLASS_OVER, max(ys) + S / 2 + GLASS_OVER
-    glass = Part.makeBox(x1 - x0, y1 - y0, GLASS, V(x0, y0, top))
+    gx0, gx1 = -GLASS_OVER, L + GLASS_OVER
+    gy0, gy1 = -GLASS_OVER, W + GLASS_OVER
+    glass = Part.makeBox(gx1 - gx0, gy1 - gy0, GLASS, V(gx0, gy0, top))
 
     doc = App.ActiveDocument or App.newDocument('InfinityCube')
     grp = doc.addObject('App::DocumentObjectGroup', 'Profily_%d_ks' % len(PROFILY))
@@ -200,4 +204,4 @@ if App is not None:
         g.ViewObject.Transparency = 80
         Gui.activeDocument().activeView().viewIsometric()
         Gui.SendMsgToActiveView('ViewFit')
-    App.Console.PrintMessage(report + '\nRám %.1f kg, sklo %d × %d × %d mm\n' % (frame.Volume * 7.85e-6, x1 - x0, y1 - y0, GLASS))
+    App.Console.PrintMessage(report + '\nRám %.1f kg, sklo %d × %d × %d mm\n' % (frame.Volume * 7.85e-6, gx1 - gx0, gy1 - gy0, GLASS))
