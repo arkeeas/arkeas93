@@ -734,7 +734,7 @@
      Každý bok (na koncích stolu) leží v jedné rovině: spodní trojúhelník (základna na zemi, vrchol ve výšce h)
      je jeden celý kus jeklu. Horní trojúhelník je obrácený (základna pod deskou, vrchol dole). Tam, kde ho
      protíná spodní, se přeruší a navaří na stěny spodního – oba tvary jsou „v sobě“ a uprostřed vzniká kosočtverec.
-     Jen z jeklu, rozměry nastavitelné (trA, trH, trJ). Nosnost zatím nepočítáme (B.noAudit). */
+     Jen z jeklu, rozměry nastavitelné (trA, trH, trJ). Nosnost zjednodušeně v auditTJ. */
   function layoutTR(cfg) {
     const J = KS_JEKL.find((j) => j.id === cfg.trJ), Htop = cfg.H - cfg.td;
     const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L;
@@ -789,8 +789,7 @@
     let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
     parts.forEach((pt) => pt.solid.verts.forEach((q) => { mnx = Math.min(mnx, q[0]); mxx = Math.max(mxx, q[0]); mny = Math.min(mny, q[1]); mxy = Math.max(mxy, q[1]); }));
     const Lf = Math.round(2 * Math.max(-mnx, mxx)), Wf = Math.round(2 * Math.max(-mny, mxy));
-    // svary: u každého boku 3 rohy spodního, 3 rohy horního a 4 přechody horní → spodní
-    return { cfg, parts, plates: [], plateBoxes: [], hwBodies: [], boltPts: [], hw: [], kit, extraCost: 0, dims: { Lf, Wf, Hf: Htop }, bolted: false, G, notes, bars: [], weldJoints: 2 * (3 + 3 + 4), noAudit: true };
+    return { cfg, parts, plates: [], plateBoxes: [], hwBodies: [], boltPts: [], hw: [], kit, extraCost: 0, dims: { Lf, Wf, Hf: Htop }, bolted: false, G, notes, bars: [], weldJoints: 2 * (3 + 3 + 4) };
   }
 
   /* zjednodušený audit Kosočtverce: tyče v ohybu přes mezeru (přenášejí veškeré zatížení mezi tvary),
@@ -822,6 +821,38 @@
     const fab = B.notes.map((t) => ({ lvl: 'warn', t }));
     const lvls = checks.map((c) => c.lvl).concat(fab.map((f) => f.lvl));
     return { cfg, checks, fab, overall: lvls.indexOf('bad') >= 0 ? 'bad' : lvls.indexOf('warn') >= 0 ? 'warn' : 'ok', singular: false, capKg: capN / 9.81 / 1.5, sway, dz1: 0, stab, graph: null };
+  }
+
+  /* nosnost Trojúhelníků (zjednodušeně): horní pás jako prostě podepřený nosník mezi rohy (rozpětí 2a),
+     bodová síla 1000 N uprostřed; vyklonění boku z roviny; převržení přes hranu základny; svar křížení */
+  function auditTJ(cfg, B) {
+    const G = B.G, D = G.D, tb = G.tb, jt = G.jt, span = 2 * G.a, Htop = G.Htop, E = 210000;
+    const Iv = (D * Math.pow(tb, 3) - (D - 2 * jt) * Math.pow(tb - 2 * jt, 3)) / 12;      // svislé ohybové síly: výška pásu tb
+    const Ih = (tb * Math.pow(D, 3) - (tb - 2 * jt) * Math.pow(D - 2 * jt, 3)) / 12;      // vyklonění do boku: hloubka D
+    const sP = (1000 * span / 4) * (tb / 2) / Iv;
+    const capN = 2 * 1000 * SIG_ALLOW / sP;                                                 // 2 horní pásy (boky)
+    const sway = 200 * Math.pow(Htop, 3) / (3 * E * 2 * Ih);
+    const hull = P.convexHull([[-G.xS - D / 2, -G.a], [G.xS + D / 2, -G.a], [G.xS + D / 2, G.a], [-G.xS - D / 2, G.a]]);
+    const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L, DW = cfg.dmode === 'own' ? cfg.dW : cfg.W;
+    const Vf = cfg.L >= 1600 ? 400 : cfg.L < 800 ? 200 : 300, Wt = (massOf(B) + 15 * DL * DW / 1e6) * 9.81;
+    const probe = P.deskOutline(cfg.shape, DL, DW).map((q) => { const r2 = Math.hypot(q[0], q[1]); return [q[0] * (1 - 50 / r2), q[1] * (1 - 50 / r2)]; });
+    let stab = Infinity;
+    for (let k = 0; k < hull.length; k++) {
+      const a = hull[k], b = hull[(k + 1) % hull.length], ex = [b[0] - a[0], b[1] - a[1]], le = Math.hypot(ex[0], ex[1]), nO = [ex[1] / le, -ex[0] / le];
+      const dist = (q) => (q[0] - a[0]) * nO[0] + (q[1] - a[1]) * nO[1], cgArm = -dist([0, 0]);
+      probe.forEach((q) => { const d = dist(q); if (d > 0) stab = Math.min(stab, (Wt * cgArm) / (Vf * d)); });
+    }
+    const lv = (x, ok, warn, lower) => lower ? (x >= ok ? 'ok' : x >= warn ? 'warn' : 'bad') : (x <= ok ? 'ok' : x <= warn ? 'warn' : 'bad');
+    const wVal = (1000 / 4) / (0.7 * jt * 2 * D);                                           // 1000 N přes 4 přechody, koutový svar 0,7 t po obvodu hloubky D
+    const checks = [
+      { id: 'pt', lab: 'Bodová síla 1000 N na horní pás (ohyb)', val: sP, unit: 'MPa', lvl: lv(sP, SIG_ALLOW, 235), hint: 'rozpětí ' + span + ' mm mezi rohy' },
+      { id: 'weld', lab: 'Svary v přechodech spodní × horní', val: wVal, unit: 'MPa', lvl: lv(wVal, WELD_ALLOW, 235), hint: 'koutový svar a = 0,7 t, délka 2 D' },
+      { id: 'cap', lab: 'Nosnost (orientačně)', val: Math.min(999, Math.floor(capN / 9.81 / 1.5 / 10) * 10), unit: 'kg', lvl: lv(capN / 9.81 / 1.5, 150, 80, true), hint: 'z ohybu horního pásu, rezerva 1,5' },
+      { id: 'sway', lab: 'Vyklonění boku z roviny při 200 N', val: sway, unit: 'mm', lvl: lv(sway, 5, 10), hint: 'bok jako konzola od základny' },
+      { id: 'stab', lab: 'Stabilita proti převržení', val: stab === Infinity ? 99 : Math.min(99, stab), unit: '× rezerva', lvl: lv(stab, 1.5, 1.0, true), hint: Vf + ' N 50 mm od hrany desky' }
+    ];
+    const lvls = checks.map((c) => c.lvl);
+    return { cfg, checks, fab: [], overall: lvls.indexOf('bad') >= 0 ? 'bad' : lvls.indexOf('warn') >= 0 ? 'warn' : 'ok', singular: false, capKg: capN / 9.81 / 1.5, sway, dz1: 0, stab, graph: null };
   }
 
   const cache = new Map();
@@ -1087,7 +1118,7 @@
 
   function audit(cfgIn, ratesIn) {
     if (normalize(cfgIn).model === 'KS') { const c2 = normalize(cfgIn); return auditKS(c2, build(c2)); }
-    if (normalize(cfgIn).model === 'TJ') return null;   // nosnost tohoto modelu zatím nepočítáme
+    if (normalize(cfgIn).model === 'TJ') { const c3 = normalize(cfgIn); return auditTJ(c3, build(c3)); }
     const cfg = normalize(cfgIn), R = P.rates0(ratesIn), g = graph(cfg), n = g.nodes.length, N = 6 * n, sec = P.sectionOf(cfg.size, cfg.t);
     const F1 = new Float64Array(N); g.tops.forEach((i) => { F1[6 * i + 2] = -1500 / g.tops.length; });
     const loadsP = g.tops.map((i) => { const F = new Float64Array(N); F[6 * i + 2] = -1000; return F; });
@@ -1179,7 +1210,7 @@
     const price = Math.round(cost * markup / 10) * 10, vat = Math.round(price * 1.21 / 10) * 10;
     let au = null; try { au = audit(cfg, R); } catch (e) { au = null; }
     const load = au ? Math.min(500, Math.floor(au.capKg / 10) * 10) : 0;
-    const lvl = B.noAudit ? 'warn' : load >= 150 ? 'ok' : load >= 80 ? 'warn' : 'bad';
+    const lvl = load >= 150 ? 'ok' : load >= 80 ? 'warn' : 'bad';
     const warns = ['Rozpracovaný model – tvar a výrobní podklady se ještě ověřují, cena je orientační.'];
     if (lvl === 'bad') warns.push('Na tuto velikost je podnož slabá – zvolte silnější jekl nebo menší stůl.');
     if (lvl === 'warn') warns.push('Na běžné stolování stačí, na těžší zátěž zvolte silnější profil.');
@@ -1189,7 +1220,7 @@
       if (ck('stab').lvl !== 'ok') warns.push('Při opření o okraj desky je stůl na hraně stability – zmenšete přesah desky.');
       if (ck('pt').lvl === 'bad' || ck('weld').lvl === 'bad') warns.push('Při soustředěné zátěži by byla podnož přetížená – zvolte silnější jekl.');
     }
-    if (B.noAudit) warns.push('Nosnost tohoto modelu zatím není spočítaná – orientační jen tvar a cena.');
+    if (cfg.model === 'TJ') warns.push('Výpočet nosnosti Trojúhelníků je zjednodušený – před výrobou ověřte konstrukci.');
     B.notes.forEach((x) => warns.push(x));
     B.kit.warns.forEach((x) => warns.push(x));
     const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L, DW = cfg.dmode === 'own' ? cfg.dW : cfg.W;
