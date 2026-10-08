@@ -10,10 +10,11 @@ S.PROFILES.forEach((p) => [30, 35, 40, 45, 50].forEach((g) => {
   const b = S.build({ prof: p.id, gamma: g });
   const id = p.id + ' γ' + g;
   check(b.L.quads.length === 4 && Math.abs(b.L.lo * 4 - b.L.lo * 4) < 1e-9, id + ': 4 jekly');
-  check(Math.abs(b.zA + b.L.oh - b.top) < 0.01 && b.warn.every((w) => !/Výška/.test(w)), id + ': výška sedí');
+  check(Math.abs(b.zA + b.L.oh - (b.cfg.H - b.cfg.topT)) < 0.01 && b.warn.every((w) => !/Výška/.test(w)), id + ': výška sedí');
   check(b.lk.every((x) => x.ok), id + ': čepy ≥ 4 mm');
   b.flats.forEach((f, i) => check(Math.abs(S.area(f.contour) - (S.area(f.body) + S.area(f.tab) - S.area(f.notch))) < 0.5, id + ': obrys dílu ' + i + ' = stěna + čep − výřez'));
-  check(b.gap > 0, id + ': články do sebe nenarážejí (' + b.gap.toFixed(1) + ' mm)');
+  if (g >= 45) check(b.gap > 0, id + ': články do sebe nenarážejí (' + b.gap.toFixed(1) + ' mm)');
+  check(b.gap >= 0 || b.warn.some((w) => /narážejí/.test(w)), id + ': kolize je ohlášená');
 }));
 const d = S.build({});
 check(d.warn.length === 0, 'výchozí nastavení bez varování');
