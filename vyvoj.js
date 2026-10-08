@@ -754,14 +754,23 @@
       const cav = extrudeX(offsetPoly(out, Array(n).fill(jt)), x0 + jt, x1 - jt).subtract(extrudeX(offsetPoly(inn, Array(n).fill(-jt)), x0, x1));
       return sol.subtract(cav);
     };
-    const parts = [], notes = [];
+    const parts = [], notes = [], bars = [];
     if (G.clamped) notes.push('Vrchol spodního trojúhelníku je zvýšen na ' + Math.ceil((Htop / 2 + 60) / 10) * 10 + ' mm, aby se trojúhelníky překryly.');
-    notes.push('Uchycení k desce u tohoto modelu zatím není – deska se přilepí nebo se doplní v dalším kroku.');
     [-xS, xS].forEach((xc, fi) => {
       const x0 = xc - D / 2, x1 = xc + D / 2;
       const lo = tube(Lo, LoIn, x0, x1);
       // horní trojúhelník se odřízne tam, kde ho pokrývají stěny spodního (navaří se na ně)
-      const up = tube(Up, UpIn, x0, x1).subtract(lo);
+      let up = tube(Up, UpIn, x0, x1).subtract(lo);
+      // horní pás nese desku: otvory podle uchycení (plán v rovině desky, u = podél pásu = osa y)
+      const plan = barPlan([xc, 0], [0, 1], 2 * a, D, [], cfg.mount), nn = [-plan.d[1], plan.d[0]];
+      const P2 = (u, v) => [plan.c[0] + plan.d[0] * u + nn[0] * v, plan.c[1] + plan.d[1] * u + nn[1] * v];
+      plan.holes.forEach(([k2, u, r, ol, v]) => {
+        const pts = (rr) => (k2 === 'oval' ? stadium(u, 0, ol || 40, rr, 8) : circle(u, v || 0, rr, 20)).map(([x, y]) => P2(x, y));
+        up = up.subtract(extrude(pts(r), Htop - jt - 1, Htop + 1));
+        const ra = k2 === 'oval' ? 2 * Math.max(r / 2 + 3, 7) : Math.max(r + 3, 7);
+        up = up.subtract(extrude(pts(ra), Htop - tb - 1, Htop - tb + jt + 1));   // montážní kapsa pro hlavu šroubu
+      });
+      bars.push({ id: 'T' + fi, name: 'Horní pás', plan, xc });
       [[Lo, LoIn, lo, 'LO', 'Trojúhelník spodní'], [Up, UpIn, up, 'UP', 'Trojúhelník horní']].forEach(([out, inn, sol, id, what]) => {
         const n = out.length;
         out.forEach((A0, i) => {
@@ -785,11 +794,13 @@
       pt.poz = 'J' + (i + 1);
     });
     parts.sort((p1, p2) => Number(p1.poz.slice(1)) - Number(p2.poz.slice(1)));
-    const kit = mountKit(cfg, []);
+    const kit = mountKit(cfg, bars);
+    const hwBodies = [];
+    kit.studs.forEach(([x, y]) => hwBodies.push(toBrep(extrude(circle(x, y, 4, 12), Htop, Htop + kit.studL))));
     let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
     parts.forEach((pt) => pt.solid.verts.forEach((q) => { mnx = Math.min(mnx, q[0]); mxx = Math.max(mxx, q[0]); mny = Math.min(mny, q[1]); mxy = Math.max(mxy, q[1]); }));
     const Lf = Math.round(2 * Math.max(-mnx, mxx)), Wf = Math.round(2 * Math.max(-mny, mxy));
-    return { cfg, parts, plates: [], plateBoxes: [], hwBodies: [], boltPts: [], hw: [], kit, extraCost: 0, dims: { Lf, Wf, Hf: Htop }, bolted: false, G, notes, bars: [], weldJoints: 2 * (3 + 3 + 4) };
+    return { cfg, parts, plates: [], plateBoxes: [], hwBodies, boltPts: [], hw: kit.hw, kit, extraCost: 0, dims: { Lf, Wf, Hf: Htop }, bolted: false, G, notes, bars, weldJoints: 2 * (3 + 3 + 4) };
   }
 
   /* zjednodušený audit Kosočtverce: tyče v ohybu přes mezeru (přenášejí veškeré zatížení mezi tvary),
@@ -830,7 +841,7 @@
     const Iv = (D * Math.pow(tb, 3) - (D - 2 * jt) * Math.pow(tb - 2 * jt, 3)) / 12;      // svislé ohybové síly: výška pásu tb
     const Ih = (tb * Math.pow(D, 3) - (tb - 2 * jt) * Math.pow(D - 2 * jt, 3)) / 12;      // vyklonění do boku: hloubka D
     const sP = (1000 * span / 4) * (tb / 2) / Iv;
-    const capN = 2 * 1000 * SIG_ALLOW / sP;                                                 // 2 horní pásy (boky)
+    const capN = 2 * 8 * (SIG_ALLOW * Iv / (tb / 2)) / span;                                // rovnoměrně: 2 horní pásy, q L = 8 M / L
     const sway = 200 * Math.pow(Htop, 3) / (3 * E * 2 * Ih);
     const hull = P.convexHull([[-G.xS - D / 2, -G.a], [G.xS + D / 2, -G.a], [G.xS + D / 2, G.a], [-G.xS - D / 2, G.a]]);
     const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L, DW = cfg.dmode === 'own' ? cfg.dW : cfg.W;
@@ -847,7 +858,7 @@
     const checks = [
       { id: 'pt', lab: 'Bodová síla 1000 N na horní pás (ohyb)', val: sP, unit: 'MPa', lvl: lv(sP, SIG_ALLOW, 235), hint: 'rozpětí ' + span + ' mm mezi rohy' },
       { id: 'weld', lab: 'Svary v přechodech spodní × horní', val: wVal, unit: 'MPa', lvl: lv(wVal, WELD_ALLOW, 235), hint: 'koutový svar a = 0,7 t, délka 2 D' },
-      { id: 'cap', lab: 'Nosnost (orientačně)', val: Math.min(999, Math.floor(capN / 9.81 / 1.5 / 10) * 10), unit: 'kg', lvl: lv(capN / 9.81 / 1.5, 150, 80, true), hint: 'z ohybu horního pásu, rezerva 1,5' },
+      { id: 'cap', lab: 'Nosnost rovnoměrně (horní pásy)', val: Math.min(999, Math.floor(capN / 9.81 / 1.5 / 10) * 10), unit: 'kg', lvl: lv(capN / 9.81 / 1.5, 150, 80, true), hint: 'z ohybu horního pásu, rezerva 1,5' },
       { id: 'sway', lab: 'Vyklonění boku z roviny při 200 N', val: sway, unit: 'mm', lvl: lv(sway, 5, 10), hint: 'bok jako konzola od základny' },
       { id: 'stab', lab: 'Stabilita proti převržení', val: stab === Infinity ? 99 : Math.min(99, stab), unit: '× rezerva', lvl: lv(stab, 1.5, 1.0, true), hint: Vf + ' N 50 mm od hrany desky' }
     ];
