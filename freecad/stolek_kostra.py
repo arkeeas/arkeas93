@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Konferenční stolek „Infinity Cube“ – podle předlohy (skica) – jedna uzavřená trasa z 15 rovných jeklů
-(na zemi jen 2, portál a pravý rám v jedné výšce, horní rám kousek nad nimi odsazený dovnitř), v každém lomu právě 2 profily, + čiré sklo položené na horním rámu.
+Konferenční stolek „Infinity Cube“ – podle předlohy (skica) – jedna nepřerušená trasa z 20 rovných jeklů
+(na zemi jen 2, portál a pravý rám v jedné výšce, horní rám kousek nad nimi odsazený dovnitř, mezera vzadu nahoře), v každém lomu právě 2 profily, + čiré sklo položené na horním rámu.
 
 Spuštění ve FreeCADu: Makro → Makra… → vybrat tento soubor → Spustit
 (nebo v Python konzoli: exec(open('/cesta/stolek_kostra.py').read())).
@@ -26,29 +26,37 @@ L = 1000.0      # délka (X, dopředu 0 → dozadu L)
 W = 600.0       # šířka (Y, „pravá“ strana skici je y = 0)
 H = 450.0       # výška rámu bez skla (Z)
 
-# ---------------- trasa podle předlohy (skica): 15 úseků, osy jeklů ----------------
-# Jedna uzavřená trasa, všechny lomy 90° s pokosem, v každém lomu jen 2 profily:
-#   horní rám (nese sklo) – v horním zadním vrcholu mezera, oba jekly u ní jdou svisle dolů na zem;
-#   pod pravým horním rohem žádná stojka;
-#   přední portál a pravý rám ve stejné výšce zp, horní rám jen kousek nad nimi a odsazený dovnitř o d;
-#   na zemi jen 2 jekly (levý a zadní); pravá přední noha a pravá noha portálu jsou dole spojené krátkým ohybem.
+# ---------------- trasa podle předlohy (skica): 20 úseků, osy jeklů ----------------
+# Jedna nepřerušená trasa, všechny lomy 90° s pokosem, v každém lomu jen 2 profily (žádný T ani křížový spoj):
+#   horní rám (nese sklo) T1 levý, T2 přední, T3 pravý, T4 zadní – vpředu a vpravo odsazený dovnitř o d,
+#     v horním zadním vrcholu mezera mezi T1 a T4, pod pravým horním rohem žádná stojka;
+#   na zemi jen 2 jekly – přední příčka portálu a spodek pravého rámu;
+#   přední portál a pravý rám mají horní jekl ve stejné výšce zm, horní rám je kousek nad nimi;
+#   střední úroveň zs: 2 podélné jekly vlevo a 2 zadní příčné návraty (každý pár s mezerou);
+#   otevřené konce: levá zadní noha stojí na zemi, vnější levý střední jekl končí čelem kousek před ní.
 d = 1.5 * S                                  # odsazení horního rámu dovnitř / rozteč souběžných jeklů
 x0, xb = S / 2, L - S / 2                    # vpředu / vzadu
-xf = x0 + d                                  # přední hrana horního rámu
+xf, xi = x0 + d, xb - d                      # přední hrana horního rámu / vnitřní zadní návrat
 yl, ym = W - S / 2, S / 2                    # levá / pravá strana
-yt, yi = ym + d, yl - d                      # pravá hrana horního rámu / jekl za mezerou
+yt, yi = ym + d, yl - d                      # pravá hrana horního rámu / vnitřní levý jekl
 zg, zt = S / 2, H - S / 2                    # zem / horní rám
-zp = zt - 1.5 * S                            # portál + pravý rám kousek pod horním rámem
+zm = zt - 1.5 * S                            # horní jekl portálu a pravého rámu (kousek pod horním rámem)
+zs = zm - 1.5 * S                            # střední úroveň
 TRASA = [
-    (xb, yl, zg), (xb, yl, zt), (xf, yl, zt), (xf, yt, zt), (xb, yt, zt), (xb, yi, zt), (xb, yi, zg),
-    (xb, ym, zg), (xb, ym, zp), (x0, ym, zp), (x0, ym, zg),
-    (x0, yt, zg), (x0, yt, zp), (x0, yl, zp), (x0, yl, zg),
+    (xb, yl, zg), (xb, yl, zt),
+    (xf, yl, zt), (xf, yt, zt), (xb, yt, zt), (xb, yi, zt),
+    (xb, yi, zs), (xb, ym, zs), (xb, ym, zm),
+    (x0, ym, zm), (x0, ym, zg), (xi, ym, zg), (xi, ym, zs),
+    (xi, yi, zs), (x0, yi, zs), (x0, yi, zg),
+    (x0, yt, zg), (x0, yt, zm), (x0, yl, zm), (x0, yl, zs), (xi, yl, zs),
 ]
-JMENA = ['levá zadní noha', 'horní levý', 'horní přední', 'horní pravý', 'horní zadní (k mezeře)', 'noha u mezery',
-         'zadní na zemi', 'pravá zadní noha', 'pravý rám', 'pravá přední noha', 'ohyb dole', 'portál pravá noha',
-         'portál nahoře', 'portál levá noha', 'levý na zemi']
-PROFILY = [('%d %s' % (k + 1, JMENA[k]), TRASA[k], TRASA[(k + 1) % len(TRASA)]) for k in range(len(TRASA))]
-HORNI = [1, 2, 3, 4]    # na těchto profilech leží sklo
+OTEVRENA = True     # trasa má 2 otevřené konce (noha na zemi, čelo u mezery dole)
+JMENA = ['levá zadní noha', 'T1 horní levý', 'T2 horní přední', 'T3 horní pravý', 'T4 horní zadní (k mezeře)',
+         'svislý pod mezerou', 'vnější zadní návrat', 'zadní stojka pravého rámu', 'pravý rám nahoře', 'pravá přední noha',
+         'pravý na zemi', 'svislý do střední úrovně', 'vnitřní zadní návrat', 'vnitřní levý střední', 'svislý k portálu',
+         'portál na zemi', 'portál pravá noha', 'portál nahoře', 'portál levý svislý', 'vnější levý střední']
+PROFILY = [('%d %s' % (k + 1, JMENA[k]), TRASA[k], TRASA[k + 1]) for k in range(len(TRASA) - 1)]
+HORNI = [1, 2, 3, 4]    # T1–T4    # na těchto profilech leží sklo
 
 
 # ---------------- kontrola trasy ----------------
@@ -89,10 +97,10 @@ for p, idx in sorted(uzly.items()):
 tri = [p for p, idx in uzly.items() if len(idx) >= 3]
 ctyri = [p for p, idx in uzly.items() if len(idx) >= 4]
 volne = [p for p, idx in uzly.items() if len(idx) == 1]
-smycka = not tri and not volne and len(uzly) == len(PROFILY)
+smycka = not tri and len(volne) == (2 if OTEVRENA else 0)
 lines.append('  rohů se 3 profily: %d, se 4 a více: %d, volných konců: %d' % (len(tri), len(ctyri), len(volne)))
-lines.append('  jedna uzavřená smyčka: %s' % ('ANO' if smycka else
-             'NE – rohy se 3 profily dělají z trasy rozvětvenou síť; uzavřená smyčka potřebuje v každém rohu přesně 2 profily'))
+lines.append('  jedna nepřerušená trasa%s: %s' % (' (2 záměrné otevřené konce)' if OTEVRENA else ' (uzavřená)', 'ANO' if smycka else
+             'NE – v rohu se 3 a více profily se trasa větví; nepřerušená trasa potřebuje v každém lomu přesně 2 profily'))
 report = '\n'.join(lines)
 
 
@@ -155,7 +163,7 @@ if App is not None:
                     cuts.append((p, n))
                 if end == 0: e0 = S * 3
                 else: e1 = S * 3
-            else:                      # 3 profily: prodloužit o půl jeklu, plný svařený roh
+            else:                      # otevřený konec (nebo 3 profily): prodloužit o půl jeklu – rovné čelo / plný roh
                 if end == 0: e0 = S / 2
                 else: e1 = S / 2
         o = oriented_box(a, d, L + e0 + e1, S, -e0)
