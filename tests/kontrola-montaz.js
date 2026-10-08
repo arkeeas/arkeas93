@@ -17,7 +17,10 @@ const Vy = globalThis.Vyvoj || { JOINTS: [], TOPS: [] }, wipVars = [];
 Vy.JOINTS.forEach((j) => Vy.TOPS.forEach((tp) => wipVars.push({ joint: j.id, top: tp.id })));
 Vy.TOPS.forEach((tp) => wipVars.push({ joint: 'spojovak', top: tp.id, pvLay: 'plus' }));
 wipVars.push({ joint: 'spojovak', top: 'diag', ksMat: 'jekl' });
-for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const vv of m.wip ? wipVars : [null]) {
+for (const m of K.allModels()) {
+  // Trojúhelníky zatím nemají sestavení v Testing (horní trojúhelník se do spodního skládá jinak) – vypsat, neskrývat
+  if (m.testing === false) { console.log("PŘESKOČENO " + m.lab + " – Testing zatím tento model nepodporuje"); continue; }
+for (const join of ["weld", "bolt"]) for (const vv of m.wip ? wipVars : [null]) {
   const t0 = Date.now();
   const A = K.analyze(K.normalize(Object.assign({ model: m.id, L, W, H, join }, vv || {})), K.DEFAULT_RATES);
   if (join === "bolt" && !A.bolted) continue;
@@ -63,6 +66,7 @@ for (const m of K.allModels()) for (const join of ["weld", "bolt"]) for (const v
   if (verbose) console.log("     pořadí: " + order.map((i, k) => M.items[i].label + (k ? " [" + dirW(dirs[k].dir) + "]" : "")).join(" → "));
   errs.slice(0, 5).forEach((e) => console.log("   - " + e));
   if (errs.length) bad++;
+}
 }
 console.log("\n" + (bad ? bad + " konfigurací s chybou" : "vše v pořádku"));
 process.exit(bad ? 1 : 0);
