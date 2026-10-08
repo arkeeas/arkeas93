@@ -297,7 +297,14 @@
   const K = Vyvoj, $ = (id) => document.getElementById(id);
   let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null };
   try { cfg = K.normalize(JSON.parse(localStorage.getItem('podnoz-cfg-wip') || '{}')); } catch (e) { cfg = K.normalize({}); }
-  if (cfg.model === 'VR') ui.showDesk = false;
+  if (cfg.model === 'VR') {
+    ui.showDesk = false;
+    // Oprav dříve uložené rozměry jídelního stolu, které se do Infinity přenesly.
+    if (cfg.L > 1200 || cfg.W > 800 || cfg.H > 650) {
+      cfg = K.normalize(Object.assign({}, cfg, { L: 1000, W: 600, H: 450, td: 10, size: 50, t: 3, mount: 'lepeni' }));
+      try { localStorage.setItem('podnoz-cfg-wip', JSON.stringify(cfg)); } catch (e) {}
+    }
+  }
   const viewer = Viewer3D.create($('viz'));
   if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
   let db = null, uid = null;
