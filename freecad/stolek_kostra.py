@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Konferenční stolek „Infinity Cube“ – 12 rovných profilů (jekl) přesně podle zadaných bodů + čiré sklo
-položené na horních třech profilech.
+Konferenční stolek „Infinity Cube“ – jedna uzavřená smyčka z 8 rovných profilů (jekl), v každém rohu
+právě 2 profily, + čiré sklo položené na horních dvou podélných profilech.
 
 Spuštění ve FreeCADu: Makro → Makra… → vybrat tento soubor → Spustit
 (nebo v Python konzoli: exec(open('/cesta/stolek_kostra.py').read())).
@@ -21,22 +21,29 @@ T = 3.0         # stěna jeklu
 GLASS = 10.0    # tloušťka čirého skla
 GLASS_OVER = 0.0    # přesah skla přes vnější hranu horních profilů
 
-# ---------------- 12 profilů přesně podle zadání (osy, mm) ----------------
+# ---------------- rozměry stolku (vnější obrys kvádru, mm) ----------------
+L = 1000.0      # délka (X)
+W = 600.0       # šířka (Y)
+H = 500.0       # výška rámu bez skla (Z)
+
+# ---------------- 8 profilů = jedna uzavřená smyčka (osy jeklů, mm) ----------------
+# Smyčka projde všech 8 rohů kvádru a v každém rohu se potkají PRÁVĚ 2 profily pod 90° (pokos 45°):
+# nahoře 2 podélné (nesou sklo), 4 svislé nohy, dole na zemi 2 příčné. Zepředu „Π“, z boku „U“.
+# (Smyčka přes všech 12 hran s jen 2 profily v rohu nejde – v každém rohu kvádru se potkávají 3 hrany.)
+x0, x1 = S / 2, L - S / 2
+y0, y1 = S / 2, W - S / 2
+z0, z1 = S / 2, H - S / 2
 PROFILY = [
-    ('1 přední dlouhá horní',  (0, 0, 500),      (1000, 0, 500)),
-    ('2 pravá krátká horní',   (1000, 0, 500),   (1000, 600, 500)),
-    ('3 zadní dlouhá horní',   (1000, 600, 500), (0, 600, 500)),
-    ('4 zadní pravá noha',     (1000, 600, 500), (1000, 600, 0)),
-    ('5 přední pravá noha',    (1000, 0, 500),   (1000, 0, 0)),
-    ('6 přední levá noha',     (0, 0, 500),      (0, 0, 0)),
-    ('7 zadní dlouhá spodní',  (1000, 600, 0),   (0, 600, 0)),
-    ('8 levá krátká spodní',   (0, 600, 0),      (0, 0, 0)),
-    ('9 přední dlouhá spodní', (0, 0, 0),        (1000, 0, 0)),
-    ('10 zadní levá – půl výšky', (0, 600, 0),   (0, 600, 250)),
-    ('11 šikmý z horního rohu',   (0, 600, 500), (0, 300, 250)),
-    ('12 vodorovná spojka',       (0, 600, 250), (0, 300, 250)),
+    ('1 horní přední podélný', (x0, y0, z1), (x1, y0, z1)),
+    ('2 noha přední pravá',    (x1, y0, z1), (x1, y0, z0)),
+    ('3 dolní pravý příčný',   (x1, y0, z0), (x1, y1, z0)),
+    ('4 noha zadní pravá',     (x1, y1, z0), (x1, y1, z1)),
+    ('5 horní zadní podélný',  (x1, y1, z1), (x0, y1, z1)),
+    ('6 noha zadní levá',      (x0, y1, z1), (x0, y1, z0)),
+    ('7 dolní levý příčný',    (x0, y1, z0), (x0, y0, z0)),
+    ('8 noha přední levá',     (x0, y0, z0), (x0, y0, z1)),
 ]
-HORNI = [0, 1, 2]       # na těchto profilech leží sklo
+HORNI = [0, 4]          # na těchto profilech leží sklo
 
 
 # ---------------- kontrola trasy ----------------
@@ -173,7 +180,7 @@ if App is not None:
     glass = Part.makeBox(x1 - x0, y1 - y0, GLASS, V(x0, y0, top))
 
     doc = App.ActiveDocument or App.newDocument('InfinityCube')
-    grp = doc.addObject('App::DocumentObjectGroup', 'Profily_12_ks')
+    grp = doc.addObject('App::DocumentObjectGroup', 'Profily_%d_ks' % len(PROFILY))
     for name, shp in kusy:
         o = doc.addObject('Part::Feature', 'Profil_' + name.split()[0])
         o.Label = 'Profil ' + name
