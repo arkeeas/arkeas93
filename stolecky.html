@@ -9,62 +9,131 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap">
 <style>
   :root {
-    --ground: #F2F1EE; --surface: #FFFFFF; --ink: #17181A; --muted: #5B5852; --line: #D6D3CC; --line-soft: #E9E7E2;
-    --accent: #B8440F; --accent-ink: #8E3309; --steel: #2A2D31;
-    --ok-bg: #E7F1EA; --ok-ink: #1D5535; --warn-bg: #FFF1DD; --warn-ink: #7A4100; --bad-bg: #FCE9E7; --bad-ink: #8C1D18;
-    --sans: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif; --serif: 'Instrument Serif', Georgia, serif;
+    --ground: #FBFAF7; --surface: #FFFFFF; --stage: #F1EFEA; --ink: #17181A; --muted: #5E5A54; --line: #D9D5CD; --line-soft: #ECE9E3;
+    --accent: #B8440F; --accent-ink: #8E3309; --accent-soft: #FFF4EC;
+    --ok-bg: #E7F1EA; --ok: #2E7D4F; --ok-ink: #1D5535; --warn-bg: #FFF1DD; --warn: #B86200; --warn-ink: #7A4100; --bad-bg: #FCE9E7; --bad: #B3261E; --bad-ink: #8C1D18;
+    --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif; --sans: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
     color-scheme: light;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  html, body { margin: 0; background: var(--ground); color: var(--ink); }
-  body { font: 15px/1.5 var(--sans); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  button, input, select { font: inherit; color: inherit; }
+  html, body { background: var(--ground); color: var(--ink); }
+  body { font: 15px/1.5 var(--sans); }
+  button, input, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
-  .top .brand { font-family: var(--serif); font-size: 22px; }
+  a { color: var(--accent); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .brand { font-family: var(--serif); font-size: 26px; line-height: 1; }
   .top nav { display: flex; gap: 22px; flex-wrap: wrap; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
   .top nav a { color: var(--ink); text-decoration: none; }
   .top nav a[aria-current] { border-bottom: 2px solid var(--ink); padding-bottom: 2px; }
-  main { max-width: 1280px; margin: 0 auto; padding: 18px 20px 40px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
-  @media (min-width: 1000px) { main { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); } .full { grid-column: 1 / -1; } }
-  h1 { font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.1; margin: 0 0 4px; }
-  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
-  .lead { color: var(--muted); margin: 0; max-width: 70ch; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
-  .viz { position: relative; height: 100%; min-height: 440px; background: #ECEAE5; border-radius: 6px; overflow: hidden; }
+  .soon { color: var(--muted); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .stagewrap { background: var(--stage); position: relative; min-height: 420px; height: 58vh; }
+  @media (min-width: 1000px) { .layout { grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); } .stagewrap { position: sticky; top: env(safe-area-inset-top, 0px); height: calc(100vh - 60px); } }
   #viz { position: absolute; inset: 0; }
-  .vbar { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 4px; flex-wrap: wrap; }
-  .vbar button { height: 32px; padding: 0 12px; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; font-size: 13px; }
-  .nojs { padding: 24px; color: var(--muted); }
-  .ctl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
-  .ctl label { font-size: 14px; }
-  .ctl small { display: block; color: var(--muted); font-size: 12px; }
-  .ctl input, .ctl select { height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); text-align: right; width: 110px; font-variant-numeric: tabular-nums; }
-  .ctl select { text-align: left; width: 130px; }
-  .btn { height: 38px; padding: 0 14px; border-radius: 5px; border: 1px solid var(--ink); background: var(--surface); }
+  .stage-head { position: absolute; left: 24px; top: 20px; right: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; pointer-events: none; }
+  .stage-head > * { pointer-events: auto; }
+  .model-name { font-family: var(--serif); font-size: clamp(30px, 4vw, 44px); line-height: 1; text-wrap: balance; }
+  .model-sub { color: var(--muted); font-size: 14px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stage-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .chip { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); background: rgba(255,255,255,.7); padding: 2px 8px; border-radius: 4px; }
+  .check select, .check input[type=number] { height: 30px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+  .check input[type=number] { width: 64px; text-align: right; padding: 0 6px; }
+  #personChip { max-width: 280px; text-align: right; }
+  .views { position: absolute; left: 24px; bottom: 20px; right: 24px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .views button { height: 40px; padding: 0 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 20px; font-size: 14px; }
+  .views button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+  .hint { position: absolute; right: 24px; bottom: 26px; font-size: 12px; color: var(--muted); }
+  @media (max-width: 700px) {
+    .hint { display: none; }
+    .stagewrap { height: 76vh; min-height: 560px; }
+    .stage-head { left: 16px; right: 16px; top: 14px; }
+    .stage-side { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; }
+    .stage-side .check, .stage-side .chip { font-size: 12px; }
+    .check select, .check input[type=number] { height: 28px; font-size: 13px; }
+    #personChip { max-width: none; text-align: left; }
+    .views { left: 16px; right: 16px; bottom: 14px; }
+    .views button { height: 36px; padding: 0 11px; font-size: 13px; }
+  }
+
+  .panel { display: flex; flex-direction: column; min-width: 0; }
+  .steps { padding: 28px 24px 32px; display: flex; flex-direction: column; gap: 34px; }
+  @media (min-width: 1000px) { .steps { padding: 32px 40px 36px; } }
+  .step h2 { margin: 0 0 14px; font-weight: 500; font-size: 20px; line-height: 1.25; }
+  .step h2 small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-bottom: 2px; }
+  .grid { display: grid; gap: 10px; }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 520px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .opt { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt svg { width: 60px; height: 44px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; }
+  .opt[aria-pressed="true"] svg { stroke: var(--accent); }
+  .opt .l { font-size: 13px; } .opt .s { font-size: 12px; color: var(--muted); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .num { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .num input { width: 86px; height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; text-align: right; background: var(--surface); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+  .note { font-size: 14px; color: var(--muted); }
+  .thk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; background: var(--line-soft); border-radius: 4px; margin-top: 10px; }
+  .pills { display: flex; gap: 6px; }
+  .pill { height: 44px; min-width: 64px; padding: 0 12px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 22px; font-weight: 600; font-size: 14px; }
+  .pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .load { margin-top: 12px; padding: 14px 16px; border: 1px solid; border-radius: 4px; display: flex; flex-direction: column; gap: 8px; }
+  .load .head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+  .bar { height: 6px; background: rgba(0,0,0,.08); border-radius: 3px; } .bar i { display: block; height: 6px; border-radius: 3px; }
+  .load p { margin: 0; font-size: 13px; } .load .fine { color: var(--muted); font-size: 12px; }
+  .lvl-ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok-ink); } .lvl-ok .bar i { background: var(--ok); }
+  .lvl-warn { background: var(--warn-bg); border-color: var(--warn); color: var(--warn-ink); } .lvl-warn .bar i { background: var(--warn); }
+  .lvl-bad { background: var(--bad-bg); border-color: var(--bad); color: var(--bad-ink); } .lvl-bad .bar i { background: var(--bad); }
+  .join { text-align: left; align-items: flex-start; justify-content: flex-start; padding: 14px; gap: 8px; }
+  .join .t { font-size: 16px; font-weight: 600; } .join .p { font-size: 13px; color: var(--ok-ink); } .join .c { font-size: 13px; color: var(--bad-ink); }
+  .infoline { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; flex-wrap: wrap; }
+  .box { padding: 12px 14px; background: var(--line-soft); border-radius: 4px; font-size: 14px; display: flex; gap: 8px; align-items: flex-start; }
+  .tip { position: relative; display: inline-flex; }
+  .i { width: 22px; height: 22px; padding: 0; border: 1.5px solid var(--muted); background: var(--surface); color: var(--muted); border-radius: 11px; font-family: var(--serif); font-style: italic; font-size: 15px; line-height: 1; flex-shrink: 0; }
+  .tipbox { display: none; position: absolute; z-index: 20; left: 50%; top: 30px; transform: translateX(-60%); width: min(360px, 80vw); padding: 12px 14px; background: var(--ink); color: #F4F2EE; border-radius: 6px; font-size: 13px; line-height: 1.5; font-weight: 400; }
+  .tip:hover .tipbox, .tip:focus-within .tipbox, .tip.open .tipbox { display: block; }
+  .swatch { padding: 0; border: 0; background: transparent; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+  .swatch span.sq { display: block; width: 100%; aspect-ratio: 1.2; max-width: 100%; border: 1px solid var(--line); }
+  .swatch[aria-pressed="true"] span.sq { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .swatch .l { font-size: 13px; } .swatch .s { font-size: 12px; color: var(--muted); }
+  .own { display: flex; flex-direction: column; gap: 12px; padding: 14px; background: var(--line-soft); border-radius: 4px; margin-top: 10px; }
+  .own label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .own input { height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .msg { padding: 10px 12px; border-radius: 4px; font-size: 13px; }
+  .btn { height: 48px; padding: 0 20px; border-radius: 4px; border: 1px solid var(--ink); background: var(--surface); font-size: 15px; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   .btn.primary:hover { background: var(--accent-ink); }
-  .msg { padding: 10px 12px; border-radius: 5px; font-size: 14px; margin-top: 10px; }
-  .msg.ok { background: var(--ok-bg); color: var(--ok-ink); } .msg.warn { background: var(--warn-bg); color: var(--warn-ink); } .msg.bad { background: var(--bad-bg); color: var(--bad-ink); }
-  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-  .fact { background: var(--line-soft); border-radius: 5px; padding: 8px 10px; font-size: 13px; color: var(--muted); }
-  .fact b { display: block; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  @media (max-width: 640px) { .views { grid-template-columns: minmax(0, 1fr); } }
-  svg { width: 100%; height: auto; display: block; background: #FBFAF7; border: 1px solid var(--line-soft); border-radius: 4px; }
-  figcaption { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  figure { margin: 0; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
-  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .btn.primary:disabled { opacity: .45; background: var(--accent); }
+  .btn.ghost:disabled { opacity: .5; }
+  .steps .grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps .grid.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 560px) { .steps .grid.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .dil { margin-top: 8px; }
+  .dil summary { cursor: pointer; font-weight: 500; font-size: 20px; list-style: none; }
+  .dil summary small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .dil table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 12px; }
+  .dil th, .dil td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .dil th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .tblw { overflow-x: auto; }
-  ol { margin: 6px 0 0; padding-left: 20px; } li { margin: 4px 0; }
-  .flats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
-  @media (max-width: 760px) { .flats { grid-template-columns: minmax(0, 1fr); } }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .flats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+  .flats svg { width: 100%; height: auto; display: block; background: var(--stage); border-radius: 4px; }
+  .flats figcaption { font-size: 12px; color: var(--muted); }
+  .flats figure { margin: 0; }
+  .dil ol { padding-left: 20px; font-size: 14px; } .dil li { margin: 4px 0; }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .fact { background: var(--line-soft); border-radius: 4px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+  .fact b { display: block; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-ink); } .msg.warn { background: var(--warn-bg); color: var(--warn-ink); } .msg.bad { background: var(--bad-bg); color: var(--bad-ink); }
+  .nojs { padding: 24px; color: var(--muted); }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn.small { height: 38px; font-size: 14px; padding: 0 14px; }
+  .flats .wide { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -78,150 +147,191 @@
   </nav>
 </header>
 
-<main>
-  <div class="full">
-    <h1>Konferenční stolek „Dva články“</h1>
-    <p class="lead">Podnož z dvou kosočtverečných článků z jeklu zavěšených do sebe jako články řetězu, dole černá plotna, nahoře kulatá deska. Jekly se řežou na laseru na trubky Bodor K2 na pokos a na rozích do sebe zapadají čepy a výřezy – díly se samy srovnají a jen se svaří.</p>
-  </div>
-
-  <section class="card" aria-label="3D náhled">
-    <div class="viz"><div id="viz"></div>
-      <div class="vbar"><button type="button" data-view="iso">Perspektiva</button><button type="button" data-view="front">Zepředu</button><button type="button" data-view="side">Z boku</button></div>
+<main class="layout" id="konfigurator">
+  <section class="stagewrap" aria-label="Náhled stolku">
+    <div id="viz"></div>
+    <div class="stage-head">
+      <div>
+        <div class="model-name">Řetěz</div>
+        <div class="model-sub" id="mSub"></div>
+      </div>
+      <div class="stage-side"><div class="chip" id="ohChip"></div></div>
     </div>
-  </section>
-
-  <section class="card" aria-label="Rozměry">
-    <h2>Rozměry</h2>
-    <div class="ctl" id="ctl"></div>
-    <div id="msgs"></div>
-    <div class="facts" id="facts"></div>
-  </section>
-
-  <section class="card full" aria-label="Výkres">
-    <h2>Výkres</h2>
-    <div class="views">
-      <figure><div id="svgFront"></div><figcaption>Zepředu: horní článek v rovině výkresu, dolní je k nám hranou.</figcaption></figure>
-      <figure><div id="svgSide"></div><figcaption>Z boku: dolní článek v rovině výkresu, horní je k nám hranou.</figcaption></figure>
+    <div class="views" role="group" aria-label="Pohled">
+      <button data-view="iso" aria-pressed="true">3D</button>
+      <button data-view="front" aria-pressed="false">Zepředu</button>
+      <button data-view="side" aria-pressed="false">Zboku</button>
+      <button data-view="top" aria-pressed="false">Shora</button>
+      <button data-view="bottom" aria-pressed="false">Zespodu</button>
     </div>
+    <div class="hint">Tažením myši otáčíte, kolečkem přibližujete</div>
   </section>
 
-  <section class="card full" aria-label="Řezání na K2">
-    <h2>Řezání na Bodor K2</h2>
-    <div class="tblw"><table id="cut"></table></div>
-    <div class="flats" id="flats"></div>
-    <h2 style="margin-top:16px">Skládání</h2>
-    <ol id="steps"></ol>
-    <p class="lead" style="margin-top:12px">Plotna a deska nejdou na K2 (je to plech a deska), řežou se zvlášť. Tvar čepů a výřezů je vždy v přední i zadní stěně jeklu – K2 vyřízne obě stejně.</p>
+  <section class="panel" aria-label="Nastavení">
+    <div class="steps">
+      <div class="step">
+        <h2><small>Krok 1</small>Tvar článků</h2>
+        <div class="grid g4" id="angles"></div>
+        <div class="grid" style="gap:16px;margin-top:16px">
+          <div class="field"><div class="row"><label for="spread">Rozteč noh</label><span class="num"><input id="spreadn" type="number" inputmode="numeric" aria-label="Rozteč noh v mm"> mm</span></div><input id="spread" type="range" min="60" max="500" step="10"></div>
+          <div class="note">Tři články zavěšené do sebe jako řetěz: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Velikost kosočtverce se dopočítá tak, aby do sebe články právě zapadly.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 2</small>Rozměry stolku</h2>
+        <div class="grid" style="gap:16px">
+          <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="800" step="10"></div>
+          <div class="field"><div class="row"><label for="topD">Průměr desky</label><span class="num"><input id="topDn" type="number" inputmode="numeric" aria-label="Průměr desky v mm"> mm</span></div><input id="topD" type="range" min="400" max="1400" step="10"></div>
+          <div class="field"><div class="row"><label for="topT">Tloušťka desky</label><span class="num"><input id="topTn" type="number" inputmode="numeric" aria-label="Tloušťka desky v mm"> mm</span></div><input id="topT" type="range" min="10" max="60" step="1"></div>
+          <div class="field"><div class="row"><label for="baseW">Plotna dole (čtverec)</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="700" step="10"></div>
+          <div class="field"><div class="row"><label for="baseT">Tloušťka plotny</label><span class="num"><input id="baseTn" type="number" inputmode="numeric" aria-label="Tloušťka plotny v mm"> mm</span></div><input id="baseT" type="range" min="4" max="25" step="1"></div>
+          <div class="field"><div class="row"><label for="plT">Plech pod deskou</label><span class="num"><input id="plTn" type="number" inputmode="numeric" aria-label="Tloušťka plechu pod deskou v mm"> mm</span></div><input id="plT" type="range" min="3" max="12" step="1"></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 3</small>Profil jeklu</h2>
+        <div class="grid g4" id="profs"></div>
+        <div class="note" id="profNote" style="margin-top:10px"></div>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 4</small>Zámečky pro laser</h2>
+        <div class="grid" style="gap:16px">
+          <div class="field"><div class="row"><label for="clear">Vůle výřezu pro čep</label><span class="num"><input id="clearn" type="number" inputmode="decimal" step="0.05" aria-label="Vůle výřezu v mm"> mm</span></div><input id="clear" type="range" min="0" max="0.5" step="0.05"></div>
+          <div class="field"><div class="row"><label for="tabMargin">Okraj čepu od hrany</label><span class="num"><input id="tabMarginn" type="number" inputmode="numeric" aria-label="Okraj čepu v mm"> mm</span></div><input id="tabMargin" type="range" min="1" max="8" step="1"></div>
+          <div class="field"><div class="row"><label for="holeClear">Vůle otvorů v plechu</label><span class="num"><input id="holeClearn" type="number" inputmode="decimal" step="0.1" aria-label="Vůle otvorů v mm"> mm</span></div><input id="holeClear" type="range" min="0" max="2" step="0.1"></div>
+          <div class="field"><div class="row"><label for="weldGap">Vůle v háčku</label><span class="num"><input id="weldGapn" type="number" inputmode="decimal" step="0.5" aria-label="Vůle v háčku v mm"> mm</span></div><input id="weldGap" type="range" min="0" max="3" step="0.5"></div>
+          <div class="note">V rozích zapadne čep jednoho jeklu do výřezu druhého. Nohy se zasunou do otvorů v plotně a v plechu pod deskou. Vůle v háčku 0 = články se dotknou a svaří se v tom místě.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <h2><small>Kontrola</small>Sedí to?</h2>
+        <div id="msgs"></div>
+        <div class="facts" id="facts"></div>
+      </div>
+
+      <details class="dil">
+        <summary><small>Pro dílnu</small>Podklady pro Bodor K2 a plechy</summary>
+        <div class="tblw"><table id="cut"></table></div>
+        <div class="flats" id="flats"></div>
+        <div class="btnrow" id="dl"></div>
+        <ol id="steps"></ol>
+      </details>
+    </div>
   </section>
 </main>
 
-<script src="stolecky-core.js?v=20261008a"></script>
+<script src="stolecky-core.js?v=20261009a"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function () {
   'use strict';
   const S = window.Stolecky, $ = (id) => document.getElementById(id);
-  const FIELDS = [
-    ['H', 'Celková výška', 'mm'], ['topD', 'Průměr desky', 'mm'], ['topT', 'Tloušťka desky', 'mm'],
-    ['baseW', 'Plotna dole (čtverec)', 'mm'], ['baseT', 'Tloušťka plotny', 'mm'],
-    ['prof', 'Jekl', ''], ['gamma', 'Polovina úhlu u špičky', '°'], ['overlap', 'Překryv článků', '× výška článku'],
-    ['clear', 'Vůle výřezu', 'mm'], ['tabMargin', 'Okraj čepu od hrany', 'mm']
-  ];
-  const HINT = { gamma: 'čím větší, tím širší kosočtverec', overlap: 'jak hluboko do sebe články zasahují', clear: 'výřez je o tolik větší než čep (laser)', prof: 'šířka v rovině článku × hloubka × stěna' };
+  const RANGES = ['spread', 'H', 'topD', 'topT', 'baseW', 'baseT', 'plT', 'clear', 'tabMargin', 'holeClear', 'weldGap'];
+  const ANGLES = [[35, 'Štíhlý', '35°'], [40, 'Střední', '40°'], [45, 'Široký', '45°'], [50, 'Velmi široký', '50°']];
   let cfg = S.normalize(S.DEFAULT_CFG);
-  try { const st = JSON.parse(localStorage.getItem('stolecky') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
+  try { const st = JSON.parse(localStorage.getItem('stolecky-retez') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
   const fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
-
-  /* ---------- ovládací prvky ---------- */
-  function buildForm() {
-    $('ctl').innerHTML = FIELDS.map(([k, lab, u]) => {
-      const sm = HINT[k] ? '<small>' + HINT[k] + '</small>' : '';
-      const inp = k === 'prof'
-        ? '<select id="f_prof" aria-label="' + lab + '">' + S.PROFILES.map((p) => '<option value="' + p.id + '"' + (p.id === cfg.prof ? ' selected' : '') + '>' + p.id.replace(/x/g, '×') + '</option>').join('') + '</select>'
-        : '<span><input id="f_' + k + '" type="number" inputmode="decimal" step="' + (k === 'overlap' || k === 'clear' ? '0.01' : '1') + '" value="' + cfg[k] + '" aria-label="' + lab + '"> <small style="display:inline">' + u + '</small></span>';
-      return '<label for="f_' + k + '">' + lab + sm + '</label>' + inp;
-    }).join('') + '<span></span><button type="button" class="btn primary" id="best">Najít nejlepší překryv</button>';
-    FIELDS.forEach(([k]) => $('f_' + k).addEventListener('change', () => { const v = $('f_' + k).value; set({ [k]: k === 'prof' ? v : Number(v) }); }));
-    $('best').addEventListener('click', () => { const b = S.bestOverlap(cfg); set({ overlap: b.overlap }); });
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const optBtn = (id, on, l, s) => '<button type="button" class="opt" data-id="' + id + '" aria-pressed="' + on + '"><span class="l">' + l + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</button>';
+  function group(el, html, pick) { el.innerHTML = html; el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.id))); }
+  function set(p) { cfg = S.normalize(Object.assign({}, cfg, p)); try { localStorage.setItem('stolecky-retez', JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } render(); }
+  function bindRange(k) {
+    const r = $(k), n = $(k + 'n');
+    r.addEventListener('input', () => set({ [k]: Number(r.value) }));
+    n.addEventListener('change', () => set({ [k]: Number(n.value) }));
   }
-  function set(p) { cfg = S.normalize(Object.assign({}, cfg, p)); try { localStorage.setItem('stolecky', JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } FIELDS.forEach(([k]) => { $('f_' + k).value = cfg[k]; }); render(); }
-
-  /* ---------- výkresy ---------- */
-  const poly = (pts, attr) => '<polygon points="' + pts.map((p) => fmt2(p[0]) + ',' + fmt2(p[1])).join(' ') + '" ' + attr + '/>';
-  const fmt2 = (v) => Math.round(v * 100) / 100;
-  function sideView(B, plane) {
-    const { cfg: c, L } = B, W = Math.max(c.topD, c.baseW) + 120, pad = 60;
-    const x0 = -W / 2, X = (x) => x - x0, Z = (z) => c.H + 30 - z;
-    const inPlane = plane === 'xz' ? B.zA : B.zB, edgeOn = plane === 'xz' ? B.zB : B.zA;
-    const link = L.quads.map((q) => poly(q.map(([u, v]) => [X(u), Z(v + inPlane)]), 'fill="#2A2D31" stroke="#9A958C" stroke-width="0.8" stroke-linejoin="round"')).join('');
-    const edge = '<rect x="' + X(-L.hd / 2) + '" y="' + Z(edgeOn + L.oh) + '" width="' + L.hd + '" height="' + 2 * L.oh + '" fill="#5C6168" fill-opacity=".55" stroke="#2A2D31" stroke-width="0.8"/>';
-    const dim = (x1, y1, x2, y2, t, rot) => '<g stroke="#B8440F" stroke-width="1" fill="#B8440F" font-size="13"><line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/><text x="' + (x1 + x2) / 2 + '" y="' + (y1 + y2) / 2 + '" stroke="none" text-anchor="middle" dy="-4"' + (rot ? ' transform="rotate(-90 ' + (x1 + x2) / 2 + ' ' + (y1 + y2) / 2 + ')"' : '') + '>' + t + '</text></g>';
-    return '<svg viewBox="0 0 ' + (W + pad) + ' ' + (c.H + 60) + '" role="img" aria-label="Pohled ' + (plane === 'xz' ? 'zepředu' : 'z boku') + '" font-family="sans-serif">' +
-      '<g transform="translate(' + pad / 2 + ',0)">' +
-      '<rect x="' + X(-c.baseW / 2) + '" y="' + Z(c.baseT) + '" width="' + c.baseW + '" height="' + c.baseT + '" fill="#17181A"/>' +
-      (plane === 'xz' ? edge + link : link + edge) +
-      '<rect x="' + X(-c.topD / 2) + '" y="' + Z(c.H) + '" width="' + c.topD + '" height="' + c.topT + '" fill="#D9B98A" stroke="#8A6A3B" stroke-width="0.8"/>' +
-      dim(X(c.topD / 2) + 18, Z(c.H), X(c.topD / 2) + 18, Z(0), c.H + ' mm', true) +
-      dim(X(-c.topD / 2), Z(c.H) - 14, X(c.topD / 2), Z(c.H) - 14, 'Ø ' + c.topD + ' mm') +
-      dim(X(-L.ow), Z(0) + 20, X(L.ow), Z(0) + 20, fmt(2 * L.ow) + ' mm') +
-      '</g></svg>';
+  function syncForm() {
+    RANGES.forEach((k) => { if (document.activeElement !== $(k + 'n')) $(k + 'n').value = cfg[k]; $(k).value = cfg[k]; });
+    group($('angles'), ANGLES.map(([g, l, s]) => optBtn(g, cfg.gamma === g, l, s)).join(''), (id) => set({ gamma: Number(id) }));
+    group($('profs'), S.PROFILES.map((p) => optBtn(p.id, p.id === cfg.prof, p.id.replace(/x/g, '×'), p.hp + ' v rovině · ' + p.hd + ' hloubka')).join(''), (id) => set({ prof: id }));
+    const P = S.PROFILES.find((p) => p.id === cfg.prof);
+    $('profNote').textContent = 'Široká strana (' + P.hp + ' mm) je vidět zepředu na článku, úzká (' + P.hd + ' mm) je jeho tloušťka. Stěna ' + P.wall + ' mm.';
   }
 
-  function flatSvg(B, i, title) {
-    const f = B.flats[i], pts = f.contour.concat(f.notch);
-    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-    const x0 = Math.min(...xs) - 12, x1 = Math.max(...xs) + 12, y0 = Math.min(...ys) - 28, y1 = Math.max(...ys) + 28;
-    const w = x1 - x0, h = y1 - y0;
-    const P = (p) => [fmt2(p[0] - x0), fmt2(p[1] - y0)];
-    const L = B.L;
-    return '<figure><svg viewBox="0 0 ' + fmt2(w) + ' ' + fmt2(h) + '" role="img" aria-label="' + title + '" font-family="sans-serif">' +
-      poly(f.contour.map(P), 'fill="#EEE9DF" stroke="#17181A" stroke-width="0.8" stroke-linejoin="round"') +
-      poly(f.notch.map(P), 'fill="none" stroke="#B8440F" stroke-width="0.5" stroke-dasharray="2 1.5"') +
-      '<text x="' + fmt2(w / 2) + '" y="' + fmt2(h - 8) + '" text-anchor="middle" font-size="6" fill="#5B5852">dlouhá hrana ' + fmt(L.lo) + ' · krátká hrana ' + fmt(L.li) + ' mm</text>' +
-      '</svg><figcaption><b>' + title + '</b> – stěna jeklu (přední i zadní), čep plný, výřez čárkovaně</figcaption></figure>';
+  /* ---------- podklady pro dílnu ---------- */
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const poly = (pts, attr) => '<polygon points="' + pts.map((p) => r2(p[0]) + ',' + r2(p[1])).join(' ') + '" ' + attr + '/>';
+  function svgBox(all, pad, extraH) {
+    const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+    const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, w = Math.max(...xs) + pad - x0, h = Math.max(...ys) + pad + extraH - y0;
+    return { x0, y0, w, h, P: (p) => [p[0] - x0, p[1] - y0] };
   }
-
-  /* ---------- tabulky ---------- */
-  function cutTable(B) {
-    const L = B.L, P = S.PROFILES.find((p) => p.id === cfg.prof);
-    const row = (t, q, tab, notch) => '<tr><td><b>' + t + '</b></td><td class="n">' + q + '×</td><td>' + cfg.prof.replace(/x/g, '×') + '</td><td class="n">' + fmt(L.lo) + ' / ' + fmt(L.li) + '</td><td class="n">' + fmt(B.miterTop) + '° / ' + fmt(B.miterSide) + '°</td><td>' + tab + '</td><td>' + notch + '</td></tr>';
-    $('cut').innerHTML = '<tr><th>Díl</th><th class="n">Počet</th><th>Jekl</th><th class="n">Délka venku / uvnitř</th><th class="n">Pokos u špičky / u boku</th><th>Čep na konci</th><th>Výřez na začátku</th></tr>' +
-      row('A', 4, 'u boku (' + fmt(B.lk[0].lt) + ' mm)', 'u špičky') + row('B', 4, 'u špičky (' + fmt(B.lk[1].lt) + ' mm)', 'u boku') +
-      '<tr><td colspan="7" style="color:var(--muted)">Osa jeklu ' + fmt(L.cl) + ' mm, pokos je úhel řezu proti ose jeklu, stěna ' + P.wall + ' mm, hmotnost podnože ' + fmt(B.kg) + ' kg. Celkem 8 jeklů – 4 dílů A a 4 dílů B.</td></tr>';
-    $('flats').innerHTML = flatSvg(B, 0, 'Díl A') + flatSvg(B, 1, 'Díl B') +
-      '<div style="grid-column:1/-1"><button type="button" class="btn" id="dxfA">Stáhnout DXF – díl A</button> <button type="button" class="btn" id="dxfB">Stáhnout DXF – díl B</button></div>';
-    ['A', 'B'].forEach((t, i) => $('dxf' + t).addEventListener('click', () => {
-      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([S.dxf(B.flats[i].contour)], { type: 'application/dxf' })); a.download = 'stolek-dily-' + t + '.dxf'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  function partSvg(p) {
+    const f = p.flat, all = f.contour.concat(f.notch || []), b = svgBox(all, 8, 14);
+    return '<figure><svg viewBox="0 0 ' + r2(b.w) + ' ' + r2(b.h) + '" role="img" aria-label="Díl ' + p.id + '" font-family="sans-serif">' +
+      poly(f.contour.map(b.P), 'fill="#EEE9DF" stroke="#17181A" stroke-width="0.7" stroke-linejoin="round"') +
+      (f.notch ? poly(f.notch.map(b.P), 'fill="none" stroke="#B8440F" stroke-width="0.5" stroke-dasharray="2 1.5"') : '') +
+      '<text x="' + r2(b.w / 2) + '" y="' + r2(b.h - 4) + '" text-anchor="middle" font-size="7" fill="#5E5A54">' + esc(p.ends[0]) + ' → ' + esc(p.ends[1]) + '</text></svg>' +
+      '<figcaption><b>' + p.id + ' – ' + esc(p.name) + '</b>, ' + p.qty + ' ks, ' + fmt(p.lo) + ' / ' + fmt(p.li) + ' mm</figcaption></figure>';
+  }
+  function plateSvg(pl) {
+    const all = pl.outline, b = svgBox(all, 6, 0), fl = (q) => q.map((p) => b.P([p[0], -p[1]]));
+    return '<figure><svg viewBox="0 0 ' + r2(b.w) + ' ' + r2(b.h) + '" role="img" aria-label="' + pl.name + '">' +
+      poly(fl(pl.outline), 'fill="#DAD6CE" stroke="#17181A" stroke-width="1.2"') +
+      pl.holes.map((h) => poly(fl(h), 'fill="#FBFAF7" stroke="#17181A" stroke-width="1"')).join('') +
+      pl.circles.map((c) => { const q = b.P([c[0], -c[1]]); return '<circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="' + c[2] + '" fill="#FBFAF7" stroke="#17181A" stroke-width="1"/>'; }).join('') +
+      '</svg><figcaption><b>' + pl.name + '</b> ' + pl.w + ' × ' + pl.w + ' × ' + pl.t + ' mm, ' + pl.holes.length + ' otvory pro nohy' + (pl.circles.length ? ', ' + pl.circles.length + ' díry Ø 7 na vruty do desky' : '') + ' (laser na plech)</figcaption></figure>';
+  }
+  function download(name, text, type) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  function dilna(B) {
+    const row = (p) => '<tr><td><b>' + p.id + '</b></td><td>' + esc(p.name) + '</td><td>' + p.qty + '×</td><td>' + fmt(p.lo) + ' / ' + fmt(p.li) + '</td><td>' + esc(p.ends[0]) + '</td><td>' + esc(p.ends[1]) + '</td></tr>';
+    $('cut').innerHTML = '<tr><th>Díl</th><th>Popis</th><th>Ks</th><th>Délka venku / uvnitř</th><th>Začátek</th><th>Konec</th></tr>' + B.parts.map(row).join('') +
+      '<tr><td colspan="6" style="color:var(--muted)">Jekl ' + cfg.prof.replace(/x/g, '×') + ', celkem ' + B.parts.reduce((s, p) => s + p.qty, 0) + ' kusů. Pokos = úhel řezu proti ose jeklu. Čep i výřez je v přední i zadní stěně.</td></tr>';
+    $('flats').innerHTML = B.parts.map(partSvg).join('') + plateSvg(B.plates.base) + plateSvg(B.plates.top);
+    $('dl').innerHTML = B.parts.map((p) => '<button type="button" class="btn small" data-dxf="' + p.id + '">DXF ' + p.id + '</button>').join('') +
+      '<button type="button" class="btn small" data-pl="base">DXF plotna</button><button type="button" class="btn small" data-pl="top">DXF plech pod deskou</button><button type="button" class="btn small" id="fc">Makro FreeCAD</button>';
+    $('dl').querySelectorAll('[data-dxf]').forEach((b) => b.addEventListener('click', () => {
+      const p = B.parts.find((q) => q.id === b.dataset.dxf);
+      download('stolek-dil-' + p.id + '.dxf', S.dxf([{ layer: 'STENA', polys: [p.flat.contour] }]), 'application/dxf');
     }));
+    $('dl').querySelectorAll('[data-pl]').forEach((b) => b.addEventListener('click', () => {
+      const pl = B.plates[b.dataset.pl];
+      download('stolek-' + (b.dataset.pl === 'base' ? 'plotna' : 'plech-pod-deskou') + '.dxf', S.dxf([{ layer: 'OBRYS', polys: [pl.outline] }, { layer: 'OTVORY', polys: pl.holes, circles: pl.circles }]), 'application/dxf');
+    }));
+    $('fc').addEventListener('click', () => download('stolek-retez.FCMacro', S.freecadMacro(cfg), 'text/plain'));
+    const G = B.G, midTip = G.zm - G.b - G.hp / (2 * Math.sin(G.g));
+    const ids = (mid) => B.parts.filter((p) => (p.frame === 'mid') === mid).map((p) => p.qty + '× ' + p.id).join(', ');
     $('steps').innerHTML = [
-      'Svař dolní článek: čtyři jekly (A, B, A, B) srazíš čepy do výřezů na stole a svaříš pokosy. Kolem čepů svar vybrousíš.',
-      'Horní článek svař jen ze dvou polovin: „V“ dole (2 jekly) a „Λ“ nahoře (2 jekly). Neuzavírej ho, dokud není provlečen dolním článkem.',
-      'Dolní článek ještě drž stranou. Spodní „V“ horního článku provlékni otvorem dolního článku tak, aby špička „V“ visela uvnitř něj.',
-      'Přisaď horní „Λ“ horního článku na boční rohy: čepy zapadnou do výřezů, svařit. Zkontroluj, že se články nedotýkají (vůle ' + fmt(B.gap) + ' mm).',
-      'Svař dolní špičku dolního článku na plotnu a horní špičku horního článku na desku (nebo na jeho plech s otvory).',
-      'Před zinkováním nebo lakováním zkontroluj vůli mezi články – zinek může spojit díly, které se dotýkají.'
+      'Kosočtverec: 4 jekly (' + ids(true) + ') srazíš čepy do výřezů na rovném stole a svaříš všechny čtyři pokosy.',
+      'Nohy: ze 4 jeklů (' + ids(false) + ') svaříš dvě „V“ – v hrotu zapadne čep do výřezu.',
+      'Obě „V“ provlékni kosočtvercem: volný konec nohy prostrčíš otvorem kosočtverce a posuneš, až je hrot uvnitř. Dolní je hrotem nahoru („Λ“), horní hrotem dolů.',
+      'Dolní nohy zasuň do otvorů v plotně (' + fmt(G.ins) + ' mm hluboko) a zavař zespodu v otvoru. Kosočtverec podlož pod spodní špičkou podložkou ' + fmt(midTip - cfg.baseT) + ' mm nad plotnou – tím se spodní špička kosočtverce opře zespodu o hrot dolního „Λ“ (háček).',
+      'Plech pod deskou podepři ' + fmt(cfg.H - cfg.topT - cfg.plT - cfg.baseT) + ' mm nad plotnou, horní nohy zasuň do jeho otvorů (lícují s horní plochou plechu) a zavař.',
+      'Svař články v místech, kde se dotýkají (dole i nahoře vždy dva styky po ' + fmt(G.hd) + ' mm). Řetěz sám v tlaku nedrží – bez těchto svarů by se pod deskou sesunul.',
+      'Desku přišroubuj k plechu vruty přes 4 díry Ø 7.'
     ].map((t) => '<li>' + t + '</li>').join('');
   }
 
   function facts(B) {
-    $('facts').innerHTML = [['Délka jeklu (osa)', fmt(B.L.cl) + ' mm'], ['Šířka podnože', fmt(2 * B.L.ow) + ' mm'], ['Vůle mezi články', fmt(B.gap) + ' mm'], ['Hmotnost jeklů', fmt(B.kg) + ' kg']]
+    $('mSub').textContent = 'Výška ' + cfg.H + ' mm · deska Ø ' + cfg.topD + ' mm · jekl ' + cfg.prof.replace(/x/g, '×');
+    $('ohChip').textContent = 'Rozteč noh ' + cfg.spread + ' mm';
+    $('facts').innerHTML = [['Kosočtverec (výška × šířka)', fmt(B.size.midH) + ' × ' + fmt(B.size.midW) + ' mm'], ['Výška noh', fmt(B.size.legH) + ' mm'],
+      ['Mezi články', B.gap < 0.05 ? 'dosedají' : fmt(B.gap) + ' mm'], ['Hmotnost (jekly + plechy)', fmt(B.kgBars) + ' + ' + fmt(B.kgPlates) + ' kg']]
       .map(([a, b]) => '<div class="fact">' + a + '<b>' + b + '</b></div>').join('');
-    $('msgs').innerHTML = B.warn.length ? B.warn.map((w) => '<div class="msg ' + (B.gap < 0 ? 'bad' : 'warn') + '">' + w + '</div>').join('') : '<div class="msg ok">Články do sebe zapadají, zámečky drží, výška sedí.</div>';
+    $('msgs').innerHTML = B.warn.length ? B.warn.map((w) => '<div class="msg warn" style="margin-bottom:8px">' + esc(w) + '</div>').join('')
+      : '<div class="msg ok">Články do sebe zapadají a nikde se neprotínají, zámečky drží, výška sedí.</div>';
   }
 
   /* ---------- 3D ---------- */
   let T = null;
+  const VIEWS = { iso: [-0.62, -1, 0.5], front: [0, -1, 0.08], side: [1, 0, 0.08], top: [0, -0.0001, 1], bottom: [-0.55, -1, -0.62] };
   function init3d() {
     const host = $('viz');
-    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL). Výkresy a řezné podklady dole fungují i tak.</p>'; return; }
+    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL). Podklady pro dílnu fungují i tak.</p>'; return; }
     try {
       const r = new THREE.WebGLRenderer({ antialias: true });
       r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
       host.appendChild(r.domElement);
-      const scene = new THREE.Scene(); scene.background = new THREE.Color('#ECEAE5');
-      const cam = new THREE.PerspectiveCamera(32, 1, 1, 6000); cam.up.set(0, 0, 1);
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x888078, 0.85));
+      const scene = new THREE.Scene(); scene.background = new THREE.Color('#F1EFEA');
+      const cam = new THREE.PerspectiveCamera(32, 1, 1, 8000); cam.up.set(0, 0, 1);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x888078, 0.9));
       const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(-400, -600, 900); scene.add(sun);
       const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true;
       const grp = new THREE.Group(); scene.add(grp);
@@ -229,50 +339,45 @@
       const size = () => { const w = host.clientWidth || 600, h = host.clientHeight || 400; r.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); };
       window.addEventListener('resize', size); size();
       (function loop() { ctl.update(); r.render(scene, cam); requestAnimationFrame(loop); })();
-      document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => view(b.dataset.view)));
-    } catch (e) { host.innerHTML = '<p class="nojs">3D náhled nejde spustit (WebGL). Výkresy a řezné podklady dole fungují i tak.</p>'; T = null; }
+    } catch (e) { host.innerHTML = '<p class="nojs">3D náhled nejde spustit (WebGL). Podklady pro dílnu fungují i tak.</p>'; T = null; }
   }
   function view(v) {
+    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
     if (!T) return;
-    const c = cfg, mid = new THREE.Vector3(0, 0, c.H * 0.45), d = Math.max(c.H, c.topD) * 1.45;
-    const dir = { iso: [-0.62, -1, 0.5], front: [0, -1, 0.1], side: [1, 0, 0.1] }[v] || [-0.62, -1, 0.5];
-    const n = new THREE.Vector3(...dir).normalize().multiplyScalar(d);
-    T.cam.position.copy(mid).add(n); T.ctl.target.copy(mid); T.ctl.update();
+    const c = cfg, m = new THREE.Vector3(0, 0, c.H * 0.45), d = Math.max(c.H, c.topD) * 2.4;
+    T.cam.position.copy(m).add(new THREE.Vector3(...VIEWS[v]).normalize().multiplyScalar(d)); T.ctl.target.copy(m); T.ctl.update();
   }
   function build3d(B) {
     if (!T) return;
     const { grp } = T; while (grp.children.length) { const o = grp.children.pop(); o.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
-    const c = B.cfg, L = B.L;
+    const c = B.cfg, G = B.G;
     const steel = new THREE.MeshStandardMaterial({ color: 0x26272A, metalness: 0.35, roughness: 0.5 });
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x1B1C1E, roughness: 0.6 });
     const wood = new THREE.MeshStandardMaterial({ color: 0xB88E5A, roughness: 0.7 });
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
-    const bars = (plane, zc) => L.quads.forEach((q) => {
+    const bars = (polys, plane, zc) => polys.forEach((q) => {
       let pts = q.map((p) => new THREE.Vector2(p[0], p[1])); if (THREE.ShapeUtils.isClockWise(pts)) pts = pts.reverse();
-      const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: L.hd, bevelEnabled: false });
-      g.translate(0, 0, -L.hd / 2);
+      const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: G.hd, bevelEnabled: false });
+      g.translate(0, 0, -G.hd / 2);
       const m = new THREE.Matrix4();
       if (plane === 'xz') m.set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, zc, 0, 0, 0, 1);
       else m.set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, zc, 0, 0, 0, 1);
       g.applyMatrix4(m);
-      const mesh = new THREE.Mesh(g, steel); grp.add(mesh);
-      grp.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
+      grp.add(new THREE.Mesh(g, steel), new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
     });
-    bars('xz', B.zA); bars('yz', B.zB);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(c.baseW, c.baseW, c.baseT), new THREE.MeshStandardMaterial({ color: 0x17181A, roughness: 0.6 }));
-    base.position.set(0, 0, c.baseT / 2); grp.add(base);
+    bars(G.lam.polys, 'xz', G.zl); bars(G.mid.polys, 'yz', G.zm); bars(G.vee.polys, 'xz', G.zu);
+    const box = (w, t, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), mat); o.position.set(0, 0, z + t / 2); grp.add(o); };
+    box(c.baseW, c.baseT, 0, plateMat); box(B.plates.top.w, c.plT, c.H - c.topT - c.plT, plateMat);
     const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, c.topT, 72), wood);
     top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); grp.add(top);
     if (!T.fitted) { view('iso'); T.fitted = true; }
   }
 
-  function render() {
-    const B = S.build(cfg);
-    facts(B); cutTable(B);
-    $('svgFront').innerHTML = sideView(B, 'xz'); $('svgSide').innerHTML = sideView(B, 'yz');
-    build3d(B);
-  }
+  function render() { const B = S.build(cfg); syncForm(); facts(B); dilna(B); build3d(B); }
 
-  buildForm(); init3d(); render();
+  RANGES.forEach(bindRange);
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => view(b.dataset.view)));
+  init3d(); render();
 })();
 </script>
 </body>
