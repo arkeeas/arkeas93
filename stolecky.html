@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<link rel="stylesheet" href="modebar.css?v=20261008a">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Konferenční stolečky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap">
+<style>
+  :root {
+    --ground: #F2F1EE; --surface: #FFFFFF; --ink: #17181A; --muted: #5B5852; --line: #D6D3CC; --line-soft: #E9E7E2;
+    --accent: #B8440F; --accent-ink: #8E3309; --steel: #2A2D31;
+    --ok-bg: #E7F1EA; --ok-ink: #1D5535; --warn-bg: #FFF1DD; --warn-ink: #7A4100; --bad-bg: #FCE9E7; --bad-ink: #8C1D18;
+    --sans: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif; --serif: 'Instrument Serif', Georgia, serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); }
+  body { font: 15px/1.5 var(--sans); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .top .brand { font-family: var(--serif); font-size: 22px; }
+  .top nav { display: flex; gap: 22px; flex-wrap: wrap; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .top nav a { color: var(--ink); text-decoration: none; }
+  .top nav a[aria-current] { border-bottom: 2px solid var(--ink); padding-bottom: 2px; }
+  main { max-width: 1280px; margin: 0 auto; padding: 18px 20px 40px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1000px) { main { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); } .full { grid-column: 1 / -1; } }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.1; margin: 0 0 4px; }
+  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  .lead { color: var(--muted); margin: 0; max-width: 70ch; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+  .viz { position: relative; height: 100%; min-height: 440px; background: #ECEAE5; border-radius: 6px; overflow: hidden; }
+  #viz { position: absolute; inset: 0; }
+  .vbar { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .vbar button { height: 32px; padding: 0 12px; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; font-size: 13px; }
+  .nojs { padding: 24px; color: var(--muted); }
+  .ctl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
+  .ctl label { font-size: 14px; }
+  .ctl small { display: block; color: var(--muted); font-size: 12px; }
+  .ctl input, .ctl select { height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); text-align: right; width: 110px; font-variant-numeric: tabular-nums; }
+  .ctl select { text-align: left; width: 130px; }
+  .btn { height: 38px; padding: 0 14px; border-radius: 5px; border: 1px solid var(--ink); background: var(--surface); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--accent-ink); }
+  .msg { padding: 10px 12px; border-radius: 5px; font-size: 14px; margin-top: 10px; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-ink); } .msg.warn { background: var(--warn-bg); color: var(--warn-ink); } .msg.bad { background: var(--bad-bg); color: var(--bad-ink); }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .fact { background: var(--line-soft); border-radius: 5px; padding: 8px 10px; font-size: 13px; color: var(--muted); }
+  .fact b { display: block; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 640px) { .views { grid-template-columns: minmax(0, 1fr); } }
+  svg { width: 100%; height: auto; display: block; background: #FBFAF7; border: 1px solid var(--line-soft); border-radius: 4px; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  figure { margin: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tblw { overflow-x: auto; }
+  ol { margin: 6px 0 0; padding-left: 20px; } li { margin: 4px 0; }
+  .flats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  @media (max-width: 760px) { .flats { grid-template-columns: minmax(0, 1fr); } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">[NÁZEV FIRMY]</div>
+  <nav aria-label="Hlavní menu">
+    <a href="index.html">Podnože</a>
+    <a href="vyvoj.html">Umělecké</a>
+    <a href="zabradli.html">Zábradlí</a>
+    <a href="stolecky.html" aria-current="page">Konferenční stolečky</a>
+  </nav>
+</header>
+
+<main>
+  <div class="full">
+    <h1>Konferenční stolek „Dva články“</h1>
+    <p class="lead">Podnož z dvou kosočtverečných článků z jeklu zavěšených do sebe jako články řetězu, dole černá plotna, nahoře kulatá deska. Jekly se řežou na laseru na trubky Bodor K2 na pokos a na rozích do sebe zapadají čepy a výřezy – díly se samy srovnají a jen se svaří.</p>
+  </div>
+
+  <section class="card" aria-label="3D náhled">
+    <div class="viz"><div id="viz"></div>
+      <div class="vbar"><button type="button" data-view="iso">Perspektiva</button><button type="button" data-view="front">Zepředu</button><button type="button" data-view="side">Z boku</button></div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Rozměry">
+    <h2>Rozměry</h2>
+    <div class="ctl" id="ctl"></div>
+    <div id="msgs"></div>
+    <div class="facts" id="facts"></div>
+  </section>
+
+  <section class="card full" aria-label="Výkres">
+    <h2>Výkres</h2>
+    <div class="views">
+      <figure><div id="svgFront"></div><figcaption>Zepředu: horní článek v rovině výkresu, dolní je k nám hranou.</figcaption></figure>
+      <figure><div id="svgSide"></div><figcaption>Z boku: dolní článek v rovině výkresu, horní je k nám hranou.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="card full" aria-label="Řezání na K2">
+    <h2>Řezání na Bodor K2</h2>
+    <div class="tblw"><table id="cut"></table></div>
+    <div class="flats" id="flats"></div>
+    <h2 style="margin-top:16px">Skládání</h2>
+    <ol id="steps"></ol>
+    <p class="lead" style="margin-top:12px">Plotna a deska nejdou na K2 (je to plech a deska), řežou se zvlášť. Tvar čepů a výřezů je vždy v přední i zadní stěně jeklu – K2 vyřízne obě stejně.</p>
+  </section>
+</main>
+
+<script src="stolecky-core.js?v=20261008a"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  'use strict';
+  const S = window.Stolecky, $ = (id) => document.getElementById(id);
+  const FIELDS = [
+    ['H', 'Celková výška', 'mm'], ['topD', 'Průměr desky', 'mm'], ['topT', 'Tloušťka desky', 'mm'],
+    ['baseW', 'Plotna dole (čtverec)', 'mm'], ['baseT', 'Tloušťka plotny', 'mm'],
+    ['prof', 'Jekl', ''], ['gamma', 'Polovina úhlu u špičky', '°'], ['overlap', 'Překryv článků', '× výška článku'],
+    ['clear', 'Vůle výřezu', 'mm'], ['tabMargin', 'Okraj čepu od hrany', 'mm']
+  ];
+  const HINT = { gamma: 'čím větší, tím širší kosočtverec', overlap: 'jak hluboko do sebe články zasahují', clear: 'výřez je o tolik větší než čep (laser)', prof: 'šířka v rovině článku × hloubka × stěna' };
+  let cfg = S.normalize(S.DEFAULT_CFG);
+  try { const st = JSON.parse(localStorage.getItem('stolecky') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
+  const fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
+
+  /* ---------- ovládací prvky ---------- */
+  function buildForm() {
+    $('ctl').innerHTML = FIELDS.map(([k, lab, u]) => {
+      const sm = HINT[k] ? '<small>' + HINT[k] + '</small>' : '';
+      const inp = k === 'prof'
+        ? '<select id="f_prof" aria-label="' + lab + '">' + S.PROFILES.map((p) => '<option value="' + p.id + '"' + (p.id === cfg.prof ? ' selected' : '') + '>' + p.id.replace(/x/g, '×') + '</option>').join('') + '</select>'
+        : '<span><input id="f_' + k + '" type="number" inputmode="decimal" step="' + (k === 'overlap' || k === 'clear' ? '0.01' : '1') + '" value="' + cfg[k] + '" aria-label="' + lab + '"> <small style="display:inline">' + u + '</small></span>';
+      return '<label for="f_' + k + '">' + lab + sm + '</label>' + inp;
+    }).join('') + '<span></span><button type="button" class="btn primary" id="best">Najít nejlepší překryv</button>';
+    FIELDS.forEach(([k]) => $('f_' + k).addEventListener('change', () => { const v = $('f_' + k).value; set({ [k]: k === 'prof' ? v : Number(v) }); }));
+    $('best').addEventListener('click', () => { const b = S.bestOverlap(cfg); set({ overlap: b.overlap }); });
+  }
+  function set(p) { cfg = S.normalize(Object.assign({}, cfg, p)); try { localStorage.setItem('stolecky', JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } FIELDS.forEach(([k]) => { $('f_' + k).value = cfg[k]; }); render(); }
+
+  /* ---------- výkresy ---------- */
+  const poly = (pts, attr) => '<polygon points="' + pts.map((p) => fmt2(p[0]) + ',' + fmt2(p[1])).join(' ') + '" ' + attr + '/>';
+  const fmt2 = (v) => Math.round(v * 100) / 100;
+  function sideView(B, plane) {
+    const { cfg: c, L } = B, W = Math.max(c.topD, c.baseW) + 120, pad = 60;
+    const x0 = -W / 2, X = (x) => x - x0, Z = (z) => c.H + 30 - z;
+    const inPlane = plane === 'xz' ? B.zA : B.zB, edgeOn = plane === 'xz' ? B.zB : B.zA;
+    const link = L.quads.map((q) => poly(q.map(([u, v]) => [X(u), Z(v + inPlane)]), 'fill="#2A2D31" stroke="#9A958C" stroke-width="0.8" stroke-linejoin="round"')).join('');
+    const edge = '<rect x="' + X(-L.hd / 2) + '" y="' + Z(edgeOn + L.oh) + '" width="' + L.hd + '" height="' + 2 * L.oh + '" fill="#5C6168" fill-opacity=".55" stroke="#2A2D31" stroke-width="0.8"/>';
+    const dim = (x1, y1, x2, y2, t, rot) => '<g stroke="#B8440F" stroke-width="1" fill="#B8440F" font-size="13"><line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/><text x="' + (x1 + x2) / 2 + '" y="' + (y1 + y2) / 2 + '" stroke="none" text-anchor="middle" dy="-4"' + (rot ? ' transform="rotate(-90 ' + (x1 + x2) / 2 + ' ' + (y1 + y2) / 2 + ')"' : '') + '>' + t + '</text></g>';
+    return '<svg viewBox="0 0 ' + (W + pad) + ' ' + (c.H + 60) + '" role="img" aria-label="Pohled ' + (plane === 'xz' ? 'zepředu' : 'z boku') + '" font-family="sans-serif">' +
+      '<g transform="translate(' + pad / 2 + ',0)">' +
+      '<rect x="' + X(-c.baseW / 2) + '" y="' + Z(c.baseT) + '" width="' + c.baseW + '" height="' + c.baseT + '" fill="#17181A"/>' +
+      (plane === 'xz' ? edge + link : link + edge) +
+      '<rect x="' + X(-c.topD / 2) + '" y="' + Z(c.H) + '" width="' + c.topD + '" height="' + c.topT + '" fill="#D9B98A" stroke="#8A6A3B" stroke-width="0.8"/>' +
+      dim(X(c.topD / 2) + 18, Z(c.H), X(c.topD / 2) + 18, Z(0), c.H + ' mm', true) +
+      dim(X(-c.topD / 2), Z(c.H) - 14, X(c.topD / 2), Z(c.H) - 14, 'Ø ' + c.topD + ' mm') +
+      dim(X(-L.ow), Z(0) + 20, X(L.ow), Z(0) + 20, fmt(2 * L.ow) + ' mm') +
+      '</g></svg>';
+  }
+
+  function flatSvg(B, i, title) {
+    const f = B.flats[i], pts = f.contour.concat(f.notch);
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const x0 = Math.min(...xs) - 12, x1 = Math.max(...xs) + 12, y0 = Math.min(...ys) - 28, y1 = Math.max(...ys) + 28;
+    const w = x1 - x0, h = y1 - y0;
+    const P = (p) => [fmt2(p[0] - x0), fmt2(p[1] - y0)];
+    const L = B.L;
+    return '<figure><svg viewBox="0 0 ' + fmt2(w) + ' ' + fmt2(h) + '" role="img" aria-label="' + title + '" font-family="sans-serif">' +
+      poly(f.contour.map(P), 'fill="#EEE9DF" stroke="#17181A" stroke-width="0.8" stroke-linejoin="round"') +
+      poly(f.notch.map(P), 'fill="none" stroke="#B8440F" stroke-width="0.5" stroke-dasharray="2 1.5"') +
+      '<text x="' + fmt2(w / 2) + '" y="' + fmt2(h - 8) + '" text-anchor="middle" font-size="6" fill="#5B5852">dlouhá hrana ' + fmt(L.lo) + ' · krátká hrana ' + fmt(L.li) + ' mm</text>' +
+      '</svg><figcaption><b>' + title + '</b> – stěna jeklu (přední i zadní), čep plný, výřez čárkovaně</figcaption></figure>';
+  }
+
+  /* ---------- tabulky ---------- */
+  function cutTable(B) {
+    const L = B.L, P = S.PROFILES.find((p) => p.id === cfg.prof);
+    const row = (t, q, tab, notch) => '<tr><td><b>' + t + '</b></td><td class="n">' + q + '×</td><td>' + cfg.prof.replace(/x/g, '×') + '</td><td class="n">' + fmt(L.lo) + ' / ' + fmt(L.li) + '</td><td class="n">' + fmt(B.miterTop) + '° / ' + fmt(B.miterSide) + '°</td><td>' + tab + '</td><td>' + notch + '</td></tr>';
+    $('cut').innerHTML = '<tr><th>Díl</th><th class="n">Počet</th><th>Jekl</th><th class="n">Délka venku / uvnitř</th><th class="n">Pokos u špičky / u boku</th><th>Čep na konci</th><th>Výřez na začátku</th></tr>' +
+      row('A', 4, 'u boku (' + fmt(B.lk[0].lt) + ' mm)', 'u špičky') + row('B', 4, 'u špičky (' + fmt(B.lk[1].lt) + ' mm)', 'u boku') +
+      '<tr><td colspan="7" style="color:var(--muted)">Osa jeklu ' + fmt(L.cl) + ' mm, pokos je úhel řezu proti ose jeklu, stěna ' + P.wall + ' mm, hmotnost podnože ' + fmt(B.kg) + ' kg. Celkem 8 jeklů – 4 dílů A a 4 dílů B.</td></tr>';
+    $('flats').innerHTML = flatSvg(B, 0, 'Díl A') + flatSvg(B, 1, 'Díl B') +
+      '<div style="grid-column:1/-1"><button type="button" class="btn" id="dxfA">Stáhnout DXF – díl A</button> <button type="button" class="btn" id="dxfB">Stáhnout DXF – díl B</button></div>';
+    ['A', 'B'].forEach((t, i) => $('dxf' + t).addEventListener('click', () => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([S.dxf(B.flats[i].contour)], { type: 'application/dxf' })); a.download = 'stolek-dily-' + t + '.dxf'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }));
+    $('steps').innerHTML = [
+      'Svař dolní článek: čtyři jekly (A, B, A, B) srazíš čepy do výřezů na stole a svaříš pokosy. Kolem čepů svar vybrousíš.',
+      'Horní článek svař jen ze dvou polovin: „V“ dole (2 jekly) a „Λ“ nahoře (2 jekly). Neuzavírej ho, dokud není provlečen dolním článkem.',
+      'Dolní článek ještě drž stranou. Spodní „V“ horního článku provlékni otvorem dolního článku tak, aby špička „V“ visela uvnitř něj.',
+      'Přisaď horní „Λ“ horního článku na boční rohy: čepy zapadnou do výřezů, svařit. Zkontroluj, že se články nedotýkají (vůle ' + fmt(B.gap) + ' mm).',
+      'Svař dolní špičku dolního článku na plotnu a horní špičku horního článku na desku (nebo na jeho plech s otvory).',
+      'Před zinkováním nebo lakováním zkontroluj vůli mezi články – zinek může spojit díly, které se dotýkají.'
+    ].map((t) => '<li>' + t + '</li>').join('');
+  }
+
+  function facts(B) {
+    $('facts').innerHTML = [['Délka jeklu (osa)', fmt(B.L.cl) + ' mm'], ['Šířka podnože', fmt(2 * B.L.ow) + ' mm'], ['Vůle mezi články', fmt(B.gap) + ' mm'], ['Hmotnost jeklů', fmt(B.kg) + ' kg']]
+      .map(([a, b]) => '<div class="fact">' + a + '<b>' + b + '</b></div>').join('');
+    $('msgs').innerHTML = B.warn.length ? B.warn.map((w) => '<div class="msg ' + (B.gap < 0 ? 'bad' : 'warn') + '">' + w + '</div>').join('') : '<div class="msg ok">Články do sebe zapadají, zámečky drží, výška sedí.</div>';
+  }
+
+  /* ---------- 3D ---------- */
+  let T = null;
+  function init3d() {
+    const host = $('viz');
+    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL). Výkresy a řezné podklady dole fungují i tak.</p>'; return; }
+    try {
+      const r = new THREE.WebGLRenderer({ antialias: true });
+      r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      host.appendChild(r.domElement);
+      const scene = new THREE.Scene(); scene.background = new THREE.Color('#ECEAE5');
+      const cam = new THREE.PerspectiveCamera(32, 1, 1, 6000); cam.up.set(0, 0, 1);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x888078, 0.85));
+      const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(-400, -600, 900); scene.add(sun);
+      const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true;
+      const grp = new THREE.Group(); scene.add(grp);
+      T = { r, scene, cam, ctl, grp, host };
+      const size = () => { const w = host.clientWidth || 600, h = host.clientHeight || 400; r.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); };
+      window.addEventListener('resize', size); size();
+      (function loop() { ctl.update(); r.render(scene, cam); requestAnimationFrame(loop); })();
+      document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => view(b.dataset.view)));
+    } catch (e) { host.innerHTML = '<p class="nojs">3D náhled nejde spustit (WebGL). Výkresy a řezné podklady dole fungují i tak.</p>'; T = null; }
+  }
+  function view(v) {
+    if (!T) return;
+    const c = cfg, mid = new THREE.Vector3(0, 0, c.H * 0.45), d = Math.max(c.H, c.topD) * 1.45;
+    const dir = { iso: [-0.62, -1, 0.5], front: [0, -1, 0.1], side: [1, 0, 0.1] }[v] || [-0.62, -1, 0.5];
+    const n = new THREE.Vector3(...dir).normalize().multiplyScalar(d);
+    T.cam.position.copy(mid).add(n); T.ctl.target.copy(mid); T.ctl.update();
+  }
+  function build3d(B) {
+    if (!T) return;
+    const { grp } = T; while (grp.children.length) { const o = grp.children.pop(); o.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
+    const c = B.cfg, L = B.L;
+    const steel = new THREE.MeshStandardMaterial({ color: 0x26272A, metalness: 0.35, roughness: 0.5 });
+    const wood = new THREE.MeshStandardMaterial({ color: 0xB88E5A, roughness: 0.7 });
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
+    const bars = (plane, zc) => L.quads.forEach((q) => {
+      let pts = q.map((p) => new THREE.Vector2(p[0], p[1])); if (THREE.ShapeUtils.isClockWise(pts)) pts = pts.reverse();
+      const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: L.hd, bevelEnabled: false });
+      g.translate(0, 0, -L.hd / 2);
+      const m = new THREE.Matrix4();
+      if (plane === 'xz') m.set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, zc, 0, 0, 0, 1);
+      else m.set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, zc, 0, 0, 0, 1);
+      g.applyMatrix4(m);
+      const mesh = new THREE.Mesh(g, steel); grp.add(mesh);
+      grp.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
+    });
+    bars('xz', B.zA); bars('yz', B.zB);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(c.baseW, c.baseW, c.baseT), new THREE.MeshStandardMaterial({ color: 0x17181A, roughness: 0.6 }));
+    base.position.set(0, 0, c.baseT / 2); grp.add(base);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, c.topT, 72), wood);
+    top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); grp.add(top);
+    if (!T.fitted) { view('iso'); T.fitted = true; }
+  }
+
+  function render() {
+    const B = S.build(cfg);
+    facts(B); cutTable(B);
+    $('svgFront').innerHTML = sideView(B, 'xz'); $('svgSide').innerHTML = sideView(B, 'yz');
+    build3d(B);
+  }
+
+  buildForm(); init3d(); render();
+})();
+</script>
+</body>
+</html>
