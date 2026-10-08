@@ -2,7 +2,7 @@
 /* Kontrola Skicáře (Node.js 18+):  node tests/kontrola-skica.js [-v]
  *  - katalog profilů se přečte celý, hmotnosti sedí s tabulkovými (±6 %)
  *  - báze prutu u, v, osa jsou kolmé jednotkové a nezávisí na směru kreslení
- *  - všechny šablony: bez upozornění, export → import → export beze změny
+ *  - všechny hotové modely (podnože, umělecké): převod bez upozornění, obrys sedí, export → import → export beze změny
  *  - kusovník, překryv, rozdělení, posun, zrcadlení
  *  - když je k dispozici python3: importér freecad/skica_import.py přečte export a spočítá styky
  */
@@ -30,17 +30,23 @@ dirs.forEach((d) => [0, 90, 37].forEach((r) => {
 }));
 check(S.frame([0, 0, 0], [100, 0, 0], 0).v[2] === 1 && S.frame([0, 0, 0], [0, 0, 100], 0).u[0] === 1, 'vodorovný prut: v nahoru, svislý: u = X');
 
-/* šablony */
+/* hotové modely z konfigurátoru → skica */
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skica-'));
 const files = [];
-S.TEMPLATES.forEach((t) => {
-  const m = S.emptyModel(); S.applyTemplate(m, t.id, {});
-  const C = S.checks(m), J = S.exportJSON(m), back = S.exportJSON(S.importJSON(JSON.parse(JSON.stringify(J))));
-  check(m.members.length > 0 && C.length === 0, 'šablona ' + t.id + ': ' + m.members.length + ' prutů, ' + m.plates.length + ' desek, upozornění ' + C.length);
-  check(JSON.stringify(back) === JSON.stringify(J), 'šablona ' + t.id + ': export → import → export beze změny');
-  const B = S.bounds(m), P = Object.fromEntries(t.params.map((p) => [p.k, p.def]));
-  if (P.H) check(Math.abs(B.size[2] - P.H) <= 30, 'šablona ' + t.id + ': výška ' + B.size[2] + ' (zadáno ' + P.H + ')');
-  const f = path.join(tmp, t.id + '.skica.json'); fs.writeFileSync(f, JSON.stringify(J)); files.push(f);
+require(path.join(__dirname, '..', 'core.js')); require(path.join(__dirname, '..', 'vyvoj.js'));
+const PZ = globalThis.Podnoze, VY = globalThis.Vyvoj;
+PZ.allModels().forEach((md) => {
+  const E = VY.ext.owns(md.id) ? VY : PZ;
+  const cfg = E.normalize(Object.assign({}, E.DEFAULT_CFG, { model: md.id }));
+  const m = S.emptyModel(); let r;
+  try { r = S.importBuild(m, E.build(cfg)); } catch (e) { check(false, 'model ' + md.id + ': ' + e.message); return; }
+  const C = S.checks(m), B = S.bounds(m), J = S.exportJSON(m), back = S.exportJSON(S.importJSON(JSON.parse(JSON.stringify(J))));
+  check(m.members.length >= 4 && C.length === 0 && !r.skipped.length, 'model ' + md.id + ' (' + md.lab + '): ' + m.members.length + ' prutů, ' + m.plates.length + ' desek, upozornění ' + C.length);
+  check(B && Math.abs(B.size[0] - cfg.L) <= 2 && Math.abs(B.size[1] - cfg.W) <= 2 && Math.abs(B.size[2] - cfg.H) <= 40, 'model ' + md.id + ': obrys ' + (B && B.size.join(' × ')) + ' (stůl ' + cfg.L + ' × ' + cfg.W + ' × ' + cfg.H + ')');
+  check(JSON.stringify(back) === JSON.stringify(J), 'model ' + md.id + ': export → import → export beze změny');
+  const tubes = (E.build(cfg).parts || []).length;
+  check(m.members.filter((x) => x.prof.startsWith('jekl')).length === tubes, 'model ' + md.id + ': každý jekl je prut (' + tubes + ')');
+  if (['4N', 'KS', 'PV'].includes(md.id)) { const f = path.join(tmp, md.id + '.skica.json'); fs.writeFileSync(f, JSON.stringify(J)); files.push(f); }
 });
 
 /* úpravy a kontroly */

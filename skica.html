@@ -57,7 +57,14 @@
   .panel { border-left: 1px solid var(--line); background: var(--surface); overflow-y: auto; }
   .sec { padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
   .sec h2 { margin: 0 0 10px; font-weight: 500; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .modal { position: fixed; inset: 0; background: rgba(23,24,26,.45); display: flex; align-items: flex-start; justify-content: center; padding: 50px 16px; z-index: 60; overflow-y: auto; }
+  .modal .box { background: var(--surface); border-radius: 8px; padding: 20px 22px; width: min(520px, 100%); }
+  .modal h3 { margin: 0 0 6px; font-family: var(--serif); font-weight: 400; font-size: 26px; }
+  .krow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+  .kbtn { min-width: 92px; height: 30px; border: 1.5px solid var(--line); background: var(--ground); border-radius: 4px; font-weight: 600; font-size: 13px; }
+  .kbtn.wait { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+  .angc input { width: 52px !important; }
   .tool { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; }
   .tool svg { width: 28px; height: 22px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
   .tool kbd { font: 10px var(--sans); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
@@ -126,6 +133,8 @@
           <span class="seg" id="planeSeg"><button data-p="XY" aria-pressed="true" title="Vodorovná (podlaha)">XY</button><button data-p="XZ" title="Svislá zepředu">XZ</button><button data-p="YZ" title="Svislá zboku">YZ</button></span>
           <input id="planeOff" type="number" step="10" value="0" title="Výška / odsazení roviny (mm)"> mm</div>
         <div class="check">Krok <select id="snapSel"><option>1</option><option>5</option><option selected>10</option><option>25</option><option>50</option><option>100</option></select> mm</div>
+        <div class="check angc">Úhel <span class="seg" id="angSeg" title="Směry kreslení (klávesa A přepíná)"><button data-a="90" aria-pressed="true">90°</button><button data-a="45">45°</button><button data-a="c">vlastní</button></span>
+          <input id="angIn" type="number" min="1" max="90" step="1" value="30" title="Vlastní krok úhlu (°)">°</div>
       </div>
     </div>
     <div class="typed" id="typed" hidden></div>
@@ -139,12 +148,14 @@
     <div class="sec">
       <h2>Nástroj</h2>
       <div class="tools" id="tools">
-        <button class="tool" data-t="draw" aria-pressed="true"><svg viewBox="0 0 28 22"><path d="M4 18 L24 4"/><rect x="2" y="16" width="4" height="4"/><rect x="22" y="2" width="4" height="4"/></svg>Prut<kbd>D</kbd></button>
-        <button class="tool" data-t="plate"><svg viewBox="0 0 28 22"><path d="M3 14 L11 8 L26 8 L18 14 Z M3 14 V17 L18 17 V14 M18 17 L26 11 V8"/></svg>Deska<kbd>P</kbd></button>
-        <button class="tool" data-t="select"><svg viewBox="0 0 28 22"><path d="M9 3 L9 18 L13 14 L16 20 L18.5 19 L15.5 13 L21 13 Z"/></svg>Výběr<kbd>V</kbd></button>
-        <button class="tool" data-t="joint"><svg viewBox="0 0 28 22"><path d="M3 18 L14 7 M14 7 L25 18 M14 7 V2"/><circle cx="14" cy="7" r="3"/></svg>Spoj<kbd>J</kbd></button>
+        <button class="tool" data-t="draw" aria-pressed="true"><svg viewBox="0 0 28 22"><path d="M4 18 L24 4"/><rect x="2" y="16" width="4" height="4"/><rect x="22" y="2" width="4" height="4"/></svg>Prut<kbd data-k="draw">D</kbd></button>
+        <button class="tool" data-t="connect"><svg viewBox="0 0 28 22"><circle cx="5" cy="17" r="2.5"/><circle cx="23" cy="5" r="2.5"/><path d="M7 15.5 L21 6.5" stroke-dasharray="3 2"/></svg>Spojit<kbd data-k="connect">C</kbd></button>
+        <button class="tool" data-t="plate"><svg viewBox="0 0 28 22"><path d="M3 14 L11 8 L26 8 L18 14 Z M3 14 V17 L18 17 V14 M18 17 L26 11 V8"/></svg>Deska<kbd data-k="plate">P</kbd></button>
+        <button class="tool" data-t="select"><svg viewBox="0 0 28 22"><path d="M9 3 L9 18 L13 14 L16 20 L18.5 19 L15.5 13 L21 13 Z"/></svg>Výběr<kbd data-k="select">V</kbd></button>
+        <button class="tool" data-t="joint"><svg viewBox="0 0 28 22"><path d="M3 18 L14 7 M14 7 L25 18 M14 7 V2"/><circle cx="14" cy="7" r="3"/></svg>Spoj<kbd data-k="joint">J</kbd></button>
       </div>
       <p class="help" id="toolHelp"></p>
+      <div class="btns"><button class="btn ghost bad" id="newSk">Nová skica</button><button class="btn ghost" id="keysEdit" title="Upravit klávesové zkratky">Edit zkratek</button></div>
     </div>
 
     <div class="sec" id="selSec" hidden></div>
@@ -164,9 +175,10 @@
     </div>
 
     <div class="sec">
-      <h2>Šablony</h2>
-      <div class="tpl" id="tpl"></div>
-      <div id="tplForm" hidden></div>
+      <h2>Hotové modely</h2>
+      <select class="in w" id="mdlSel"><option value="">Vyber model…</option></select>
+      <div class="btns"><button class="btn primary" id="mdlRep">Nahradit skicu</button><button class="btn" id="mdlAdd">Přidat do skici</button></div>
+      <p class="muted" id="mdlNote" style="margin-top:8px">Podnože a umělecké modely z konfigurátoru ve výchozích rozměrech (1600 × 800 × 750). Jekly sedí přesně, plechy a pásoviny jsou přibližné.</p>
     </div>
 
     <div class="sec">
@@ -189,41 +201,35 @@
         <select class="in" id="openSel"><option value="">Otevřít uloženou…</option></select>
         <button class="btn ghost" id="loadJson">Načíst JSON</button>
         <input type="file" id="fileIn" accept=".json,application/json" hidden>
-        <button class="btn ghost bad" id="newSk">Nová skica</button>
       </div>
       <p class="muted" style="margin-top:10px">Pro AI je nejlepší JSON a obrázek dohromady. Ve FreeCADu ho postaví makro <code>freecad/skica_import.py</code>.</p>
     </div>
 
     <div class="sec" id="keysSec">
-      <h2>Klávesy</h2>
-      <div class="keys">
-        <div><kbd>D</kbd> prut · <kbd>P</kbd> deska</div>
-        <div><kbd>V</kbd> výběr · <kbd>J</kbd> spoj</div>
-        <div><kbd>X</kbd><kbd>Y</kbd><kbd>Z</kbd> zamknout osu</div>
-        <div><kbd>0–9</kbd> délka, <kbd>Enter</kbd></div>
-        <div><kbd>Esc</kbd> ukončit / zrušit</div>
-        <div><kbd>R</kbd> natočit o 90°</div>
-        <div><kbd>[</kbd> <kbd>]</kbd> předchozí / další profil</div>
-        <div><kbd>PgUp</kbd> <kbd>PgDn</kbd> posun roviny</div>
-        <div><kbd>Del</kbd> smazat výběr</div>
-        <div><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd> zpět / znovu</div>
-        <div><kbd>Ctrl</kbd>+<kbd>A</kbd> vybrat vše</div>
-        <div><kbd>F</kbd> celá skica</div>
-      </div>
+      <h2>Klávesy <button class="btn ghost" id="keysEdit2" style="height:26px;font-size:12px">Upravit</button></h2>
+      <div class="keys" id="keysList"></div>
     </div>
   </aside>
 </main>
+<div class="modal" id="keysModal" hidden><div class="box" role="dialog" aria-label="Klávesové zkratky">
+  <h3>Klávesové zkratky</h3>
+  <p class="muted">Klikni na klávesu a stiskni novou. Esc zruší, Backspace zkratku smaže. Číslice, Enter, Esc a Ctrl+… jsou vyhrazené.</p>
+  <div id="keysRows"></div>
+  <div class="btns" style="justify-content:space-between"><button class="btn ghost" id="keysReset">Výchozí</button><button class="btn primary" id="keysClose">Hotovo</button></div>
+</div></div>
 <noscript><p class="nojs">Skicář potřebuje JavaScript.</p></noscript>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="skica-core.js?v=20261008s"></script>
+<script src="core.js?v=20261008s2"></script>
+<script src="vyvoj.js?v=20261008s2"></script>
+<script src="skica-core.js?v=20261008s2"></script>
 <script>
 (function () {
   'use strict';
   const SC = window.SkicaCore;
   const $ = (id) => document.getElementById(id);
-  const LS = { model: 'skica.model.v1', saved: 'skica.saved.v1', catalog: 'skica.katalog.v1' };
+  const LS = { model: 'skica.model.v1', saved: 'skica.saved.v1', catalog: 'skica.katalog.v1', keys: 'skica.klavesy.v1' };
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -241,7 +247,7 @@
   const st = {
     tool: 'draw', prof: (cat.list[3] || cat.list[0] || {}).id, roll: 0,
     plane: 'XY', off: 0, step: 10,
-    start: null, startSnap: null, lock: null, typed: '', lastAxis: 0,
+    start: null, startSnap: null, lock: null, typed: '', lastDir: [1, 0, 0], ang: 90, angCustom: 30, cStart: null,
     hover: null, cand: null, plateCorner: null,
     sel: new Set(), node: null, view: 'iso'
   };
@@ -458,35 +464,49 @@
     });
     return best;
   }
-  /* pohyb po ose od bodu s: osa podle myši, zarovnání na uzly */
+  /* směry kreslení: osy X/Y/Z, při kroku úhlu i směry v rovinách XY, XZ, YZ po násobcích úhlu */
+  function angStep() { return st.ang === 'c' ? Math.min(90, Math.max(1, +st.angCustom || 30)) : st.ang; }
+  function dirList() {
+    if (st.lock != null) { const d = [0, 0, 0]; d[st.lock] = 1; return [{ d, ax: st.lock, lab: 'osa ' + 'XYZ'[st.lock] }]; }
+    const out = [0, 1, 2].map((i) => { const d = [0, 0, 0]; d[i] = 1; return { d, ax: i, lab: 'osa ' + 'XYZ'[i] }; });
+    const a = angStep(); if (a >= 90) return out;
+    [[0, 1, 'XY'], [0, 2, 'XZ'], [1, 2, 'YZ']].forEach(([i, j, pl]) => {
+      for (let k = 1; k * a < 180 - 1e-6; k++) {
+        const deg = k * a; if (Math.abs(deg - 90) < 1e-6) continue;
+        const r = deg * Math.PI / 180, d = [0, 0, 0]; d[i] = Math.cos(r); d[j] = Math.sin(r);
+        out.push({ d, ax: null, lab: SC.round(deg, 1) + '° v ' + pl });
+      }
+    });
+    return out;
+  }
   function axisPoint(mx, my, s) {
     const m = [mx, my], rc = ray(mx, my), s2 = scr(s);
     let best = null;
-    [0, 1, 2].forEach((i) => {
-      if (st.lock != null && st.lock !== i) return;
-      const d = [0, 0, 0]; d[i] = 1;
-      const e = scr(SC.add(s, SC.mul(d, 1000))), L = d2(s2, e);
-      if (L < 4) return;
-      const dist = Math.abs((e[0] - s2[0]) * (s2[1] - m[1]) - (s2[0] - m[0]) * (e[1] - s2[1])) / L;
-      if (!best || dist < best.dist) best = { i, d, dist };
+    dirList().forEach((D) => {
+      const e = scr(SC.add(s, SC.mul(D.d, 1000))), L = d2(s2, e), Lmax = 1000 * camera.zoom;
+      if (L < 4 || L < (D.ax == null ? 0.5 : 0.15) * Lmax) return;     // směr skoro do obrazovky – nejde poznat
+      const dist = Math.abs((e[0] - s2[0]) * (s2[1] - m[1]) - (s2[0] - m[0]) * (e[1] - s2[1])) / L + (D.ax == null ? 1.5 : 0);
+      if (!best || dist < best.dist) best = Object.assign({ dist }, D);
     });
     if (!best) return null;
     let t = lineRayT(s, best.d, rc); if (t == null) return null;
     let guide = null;
-    const raw = SC.add(s, SC.mul(best.d, t)), rs = scr(raw);
+    const rs = scr(SC.add(s, SC.mul(best.d, t)));
     let gb = 9;
-    NODES.forEach((n) => {
-      const tt = n.p[best.i] - s[best.i]; if (Math.abs(tt) < 0.5) return;
-      const q = SC.add(s, SC.mul(best.d, tt)), dd = d2(scr(q), rs);
+    NODES.forEach((n) => [0, 1, 2].forEach((i) => {
+      if (Math.abs(best.d[i]) < 0.2) return;
+      const tt = (n.p[i] - s[i]) / best.d[i]; if (Math.abs(tt) < 0.5) return;
+      const dd = d2(scr(SC.add(s, SC.mul(best.d, tt))), rs);
       if (dd < gb) { gb = dd; t = tt; guide = n.p; }
-    });
+    }));
     if (!guide) t = snapv(t);
-    st.lastAxis = best.i;
-    return { p: SC.add(s, SC.mul(best.d, t)).map((c) => SC.round(c, 1)), axis: best.i, t, guide, kind: guide ? 'zarovnáno' : 'osa ' + 'XYZ'[best.i] };
+    st.lastDir = best.d;
+    const col = best.ax != null ? best.ax : null;
+    return { p: SC.add(s, SC.mul(best.d, t)).map((c) => SC.round(c, 1)), axis: col, dir: best.d, t, guide, kind: guide ? 'zarovnáno · ' + best.lab : best.lab };
   }
 
   /* ---------------- kreslení ---------------- */
-  function cancelDraw() { st.start = null; st.startSnap = null; st.typed = ''; st.plateCorner = null; st.cand = null; st.lock = null; showTyped(); clearGhost(); overlay(); }
+  function cancelDraw() { st.cStart = null; st.start = null; st.startSnap = null; st.typed = ''; st.plateCorner = null; st.cand = null; st.lock = null; showTyped(); clearGhost(); overlay(); }
   function clearGhost() { if (hasGL) { disposeGroup(ghost); render(); } }
   function ghostMember(a, b) {
     clearGhost(); if (!a || !b || SC.len(SC.sub(b, a)) < 0.5) return;
@@ -506,6 +526,10 @@
     if (s) return s;
     const p = planeHit(mx, my, st.plane, st.off);
     return p ? { p, kind: 'rovina ' + st.plane } : null;
+  }
+  function connectCandidate(mx, my) {
+    const s = findSnap(mx, my, st.cStart); if (s) return s;
+    const p = planeHit(mx, my, st.plane, st.off); return p ? { p, kind: 'rovina ' + st.plane } : null;
   }
   function endCandidate(mx, my) {
     if (!st.start) return null;
@@ -571,14 +595,18 @@
       else if (c.kind === 'na prutu') s += '<path d="M' + (x - 6) + ' ' + (y - 6) + 'L' + (x + 6) + ' ' + (y + 6) + 'M' + (x + 6) + ' ' + (y - 6) + 'L' + (x - 6) + ' ' + (y + 6) + '" stroke="' + col + '" stroke-width="2"/>';
       else s += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + col + '"/>';
       if (c.guide) { const [gx, gy] = scr(c.guide); s += '<line x1="' + x + '" y1="' + y + '" x2="' + gx + '" y2="' + gy + '" stroke="#B8440F" stroke-dasharray="4 4" stroke-width="1.2"/>'; }
-      if (st.start && st.tool === 'draw') {
-        const [sx, sy] = scr(st.start);
+      const from = st.tool === 'draw' ? st.start : st.tool === 'connect' ? st.cStart : null;
+      if (from) {
+        const [sx, sy] = scr(from);
         s += '<line x1="' + sx + '" y1="' + sy + '" x2="' + x + '" y2="' + y + '" stroke="' + col + '" stroke-width="1.5"/>';
-        lbl(SC.mul(SC.add(st.start, c.p), 0.5), nf(SC.len(SC.sub(c.p, st.start))), 'live');
+        const dv = SC.sub(c.p, from), Lh = Math.hypot(dv[0], dv[1]);
+        const ang = Lh > 0.5 && Math.abs(dv[2]) > 0.5 ? ' · ' + SC.round(Math.atan2(Math.abs(dv[2]), Lh) * 180 / Math.PI, 1) + '°' : (Lh > 0.5 && Math.abs(dv[0]) > 0.5 && Math.abs(dv[1]) > 0.5 ? ' · ' + SC.round(Math.atan2(Math.abs(dv[1]), Math.abs(dv[0])) * 180 / Math.PI, 1) + '°' : '');
+        lbl(SC.mul(SC.add(from, c.p), 0.5), nf(SC.len(dv)) + ang, 'live');
       }
       if (st.plateCorner && st.tool === 'plate') lbl([(st.plateCorner.p[0] + c.p[0]) / 2, (st.plateCorner.p[1] + c.p[1]) / 2, st.plateCorner.z], nf(Math.abs(c.p[0] - st.plateCorner.p[0])) + ' × ' + nf(Math.abs(c.p[1] - st.plateCorner.p[1])), 'live');
     }
-    if (st.start) { const [sx, sy] = scr(st.start); s += '<circle cx="' + sx + '" cy="' + sy + '" r="5" fill="#fff" stroke="#B8440F" stroke-width="2"/>'; }
+    const fromPt = st.start || st.cStart;
+    if (fromPt) { const [sx, sy] = scr(fromPt); s += '<circle cx="' + sx + '" cy="' + sy + '" r="5" fill="#fff" stroke="#B8440F" stroke-width="2"/>'; }
     svg.innerHTML = s;
   }
   function status(c) {
@@ -586,14 +614,15 @@
     if (!c) { el.textContent = 'Táhni levým tlačítkem = otáčení, pravým = posun, kolečko = zoom'; return; }
     const p = c.p;
     let t = 'X ' + nf(p[0]) + '  Y ' + nf(p[1]) + '  Z ' + nf(p[2]) + ' · ' + c.kind;
-    if (st.start && st.tool === 'draw') t += ' · délka ' + nf(SC.len(SC.sub(p, st.start)));
+    const f0 = st.tool === 'draw' ? st.start : st.tool === 'connect' ? st.cStart : null;
+    if (f0) t += ' · délka ' + nf(SC.len(SC.sub(p, f0)));
     if (st.lock != null) t += ' · zamčeno ' + 'XYZ'[st.lock];
     el.textContent = t;
   }
   function showTyped() {
     const el = $('typed');
     if (!st.typed) { el.hidden = true; return; }
-    el.hidden = false; el.innerHTML = esc(st.typed) + ' mm<small>Enter = délka po ose ' + 'XYZ'[st.lock != null ? st.lock : st.lastAxis] + '</small>';
+    el.hidden = false; el.innerHTML = esc(st.typed) + ' mm<small>Enter = délka ve směru, kam míří myš</small>';
   }
 
   /* ---------------- myš ---------------- */
@@ -611,7 +640,7 @@
       if (!down) return; const p = pos(e), moved = d2(p, down.p) > 5, b = down.b; down = null;
       if (moved) return;
       if (b === 0) click(p[0], p[1], e);
-      if (b === 2 && (st.start || st.plateCorner)) cancelDraw();
+      if (b === 2 && (st.start || st.plateCorner || st.cStart)) cancelDraw();
     });
     cv.addEventListener('contextmenu', (e) => e.preventDefault());
     cv.addEventListener('dblclick', () => { if (st.tool === 'draw') cancelDraw(); });
@@ -621,6 +650,9 @@
     if (st.tool === 'draw') {
       c = st.start ? endCandidate(mx, my) : startPoint(mx, my);
       if (st.start && c) ghostMember(st.start, c.p); else clearGhost();
+    } else if (st.tool === 'connect') {
+      c = st.cStart ? connectCandidate(mx, my) : startPoint(mx, my);
+      if (st.cStart && c) ghostMember(st.cStart, c.p); else clearGhost();
     } else if (st.tool === 'plate') {
       if (st.plateCorner) { const p = planeAtZ(mx, my, st.plateCorner.z); c = p ? { p, kind: 'roh desky' } : null; ghostPlate(st.plateCorner, p); }
       else c = startPoint(mx, my);
@@ -637,6 +669,14 @@
       placeMember(st.start, c.p);
       st.start = c.p; st.typed = ''; st.lock = null; showTyped(); hover(mx, my);
       return;
+    }
+    if (st.tool === 'connect') {
+      if (!st.cStart) { const c = startPoint(mx, my); if (c) st.cStart = c.p; hover(mx, my); return; }
+      const c = connectCandidate(mx, my); if (!c) return;
+      if (SC.len(SC.sub(c.p, st.cStart)) < 0.5) { cancelDraw(); return; }
+      const a = st.cStart; st.cStart = null; clearGhost();
+      commit(() => { const m = SC.addMember(model, st.prof, a, c.p, { roll: st.roll }); st.sel = new Set([m.id]); });
+      hover(mx, my); return;
     }
     if (st.tool === 'plate') {
       if (!st.plateCorner) { const c = startPoint(mx, my); if (c) st.plateCorner = { p: c.p, z: plateZFrom(c) }; hover(mx, my); return; }
@@ -658,56 +698,105 @@
     }
   }
 
-  /* ---------------- klávesy ---------------- */
+  /* ---------------- klávesy (upravitelné) ---------------- */
+  const ACTIONS = [
+    ['draw', 'Nástroj prut', 'd'], ['connect', 'Nástroj spojit dva body', 'c'], ['plate', 'Nástroj deska', 'p'], ['select', 'Nástroj výběr', 'v'], ['joint', 'Nástroj spoj', 'j'],
+    ['lockX', 'Zamknout osu X', 'x'], ['lockY', 'Zamknout osu Y', 'y'], ['lockZ', 'Zamknout osu Z', 'z'],
+    ['angle', 'Přepnout úhel 90° / 45° / vlastní', 'a'], ['roll', 'Natočit profil o 90°', 'r'],
+    ['prevProf', 'Předchozí profil', '['], ['nextProf', 'Další profil', ']'],
+    ['planeUp', 'Rovina nahoru', 'PageUp'], ['planeDown', 'Rovina dolů', 'PageDown'],
+    ['del', 'Smazat výběr', 'Delete'], ['fit', 'Celá skica', 'f'], ['newSketch', 'Nová skica', '']
+  ];
+  const RESERVED = /^([0-9.,]|Enter|Escape|Backspace|Tab|Shift|Control|Alt|Meta)$/;
+  let KEYS = Object.assign(Object.fromEntries(ACTIONS.map((a) => [a[0], a[2]])), store.get(LS.keys, {}));
+  const normKey = (k) => (k.length === 1 ? k.toLowerCase() : k);
+  const keyLab = (k) => !k ? '–' : k === ' ' ? 'Mezera' : k.length === 1 ? k.toUpperCase() : k.replace('Page', 'Pg').replace('Arrow', '');
+  function renderKeys() {
+    $('keysList').innerHTML = ACTIONS.filter((a) => KEYS[a[0]]).map((a) => '<div><kbd>' + esc(keyLab(KEYS[a[0]])) + '</kbd> ' + esc(a[1].toLowerCase()) + '</div>').join('') +
+      '<div><kbd>0–9</kbd> délka, <kbd>Enter</kbd></div><div><kbd>Esc</kbd> ukončit / zrušit</div><div><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd> zpět / znovu</div><div><kbd>Ctrl</kbd>+<kbd>A</kbd> vybrat vše</div>';
+    document.querySelectorAll('kbd[data-k]').forEach((k) => { k.textContent = keyLab(KEYS[k.dataset.k]); });
+  }
+  let waitKey = null;
+  function renderKeyRows() {
+    $('keysRows').innerHTML = ACTIONS.map((a) => '<div class="krow"><span>' + esc(a[1]) + '</span><button class="kbtn' + (waitKey === a[0] ? ' wait' : '') + '" data-a="' + a[0] + '">' + (waitKey === a[0] ? 'stiskni…' : esc(keyLab(KEYS[a[0]]))) + '</button></div>').join('');
+  }
+  function openKeys() { waitKey = null; renderKeyRows(); $('keysModal').hidden = false; }
+  function closeKeys() { waitKey = null; $('keysModal').hidden = true; store.set(LS.keys, KEYS); renderKeys(); }
+  $('keysEdit').onclick = openKeys; $('keysEdit2').onclick = openKeys; $('keysClose').onclick = closeKeys;
+  $('keysReset').onclick = () => { KEYS = Object.fromEntries(ACTIONS.map((a) => [a[0], a[2]])); waitKey = null; renderKeyRows(); };
+  $('keysRows').addEventListener('click', (e) => { const b = e.target.closest('.kbtn'); if (!b) return; waitKey = waitKey === b.dataset.a ? null : b.dataset.a; renderKeyRows(); });
+  $('keysModal').addEventListener('click', (e) => { if (e.target.id === 'keysModal') closeKeys(); });
+  function captureKey(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (e.key === 'Escape') { waitKey = null; renderKeyRows(); return; }
+    if (e.key === 'Backspace' || e.key === 'Delete' && e.shiftKey) { KEYS[waitKey] = ''; waitKey = null; renderKeyRows(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || RESERVED.test(e.key)) { toast('Tahle klávesa je vyhrazená'); return; }
+    const k = normKey(e.key);
+    Object.keys(KEYS).forEach((a) => { if (KEYS[a] === k && a !== waitKey) { KEYS[a] = ''; toast('Klávesa ' + keyLab(k) + ' byla u „' + ACTIONS.find((x) => x[0] === a)[1] + '“ – teď je volná'); } });
+    KEYS[waitKey] = k; waitKey = null; renderKeyRows();
+  }
+  function setAng(a) {
+    st.ang = a; document.querySelectorAll('#angSeg button').forEach((b) => b.setAttribute('aria-pressed', String(String(b.dataset.a) === String(a))));
+    if (lastMove) hover(...lastMove);
+  }
+  function runAction(a, e) {
+    switch (a) {
+      case 'draw': case 'connect': case 'plate': case 'select': case 'joint': setTool(a); break;
+      case 'lockX': case 'lockY': case 'lockZ':
+        if (st.tool === 'draw' && st.start) { const i = 'XYZ'.indexOf(a.slice(-1)); st.lock = st.lock === i ? null : i; if (lastMove) hover(...lastMove); }
+        break;
+      case 'angle': setAng(st.ang === 90 ? 45 : st.ang === 45 ? 'c' : 90); break;
+      case 'roll':
+        if (st.sel.size && st.tool === 'select') commit(() => model.members.forEach((m) => { if (st.sel.has(m.id)) m.roll = ((m.roll || 0) + 90) % 180; }));
+        else { st.roll = st.roll ? 0 : 90; renderRoll(); if (lastMove) hover(...lastMove); }
+        break;
+      case 'prevProf': case 'nextProf': {
+        const i = cat.list.findIndex((p) => p.id === st.prof), n = cat.list.length;
+        if (n) { st.prof = cat.list[((i < 0 ? 0 : i) + (a === 'nextProf' ? 1 : -1) + n) % n].id; renderProfs(); if (lastMove) hover(...lastMove); }
+        break;
+      }
+      case 'planeUp': case 'planeDown': setPlane(st.plane, st.off + (a === 'planeUp' ? 1 : -1) * Math.max(st.step, 50)); break;
+      case 'del': delSel(); break;
+      case 'fit': setView('fit'); break;
+      case 'newSketch': $('newSk').click(); break;
+      default: return false;
+    }
+    if (e) e.preventDefault();
+    return true;
+  }
   document.addEventListener('keydown', (e) => {
+    if (!$('keysModal').hidden) { if (waitKey) captureKey(e); else if (e.key === 'Escape') closeKeys(); return; }
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') { if (e.key === 'Escape') e.target.blur(); return; }
     const k = e.key, ctrl = e.ctrlKey || e.metaKey;
     if (ctrl && (k === 'z' || k === 'Z')) { e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
     if (ctrl && (k === 'y' || k === 'Y')) { e.preventDefault(); doRedo(); return; }
     if (ctrl && (k === 'a' || k === 'A')) { e.preventDefault(); setTool('select'); st.sel = new Set(model.members.map((m) => m.id).concat(model.plates.map((p) => p.id))); paintSel(); renderPanel(); overlay(); return; }
-    if (ctrl) return;
+    if (ctrl || e.altKey) return;
     if (st.tool === 'draw' && st.start && /^[0-9.,]$/.test(k)) { st.typed += k === ',' ? '.' : k; showTyped(); e.preventDefault(); return; }
     if (st.typed && k === 'Backspace') { st.typed = st.typed.slice(0, -1); showTyped(); e.preventDefault(); return; }
     if (st.typed && k === 'Enter') {
-      const L = parseFloat(st.typed); const ax = st.lock != null ? st.lock : st.lastAxis;
+      const L = parseFloat(st.typed);
       if (L > 0 && st.start) {
-        let sign = 1; if (st.cand && st.cand.p) { const dv = st.cand.p[ax] - st.start[ax]; if (dv < 0) sign = -1; }
-        const end = st.start.slice(); end[ax] = SC.round(end[ax] + sign * L, 1);
+        let d = st.lastDir;
+        if (st.cand && st.cand.p && SC.dot(SC.sub(st.cand.p, st.start), d) < 0) d = SC.mul(d, -1);
+        const end = SC.add(st.start, SC.mul(d, L)).map((c) => SC.round(c, 1));
         placeMember(st.start, end); st.start = end;
       }
       st.typed = ''; st.lock = null; showTyped(); if (lastMove) hover(...lastMove); e.preventDefault(); return;
     }
-    switch (k) {
-      case 'Escape': if (st.start || st.plateCorner || st.typed) cancelDraw(); else { st.sel.clear(); st.node = null; paintSel(); renderPanel(); overlay(); } break;
-      case 'd': case 'D': setTool('draw'); break;
-      case 'p': case 'P': setTool('plate'); break;
-      case 'v': case 'V': case 's': case 'S': setTool('select'); break;
-      case 'j': case 'J': setTool('joint'); break;
-      case 'x': case 'X': case 'y': case 'Y': case 'z': case 'Z':
-        if (st.tool === 'draw' && st.start) { const i = 'xyz'.indexOf(k.toLowerCase()); st.lock = st.lock === i ? null : i; showTyped(); if (lastMove) hover(...lastMove); }
-        break;
-      case 'r': case 'R':
-        if (st.sel.size && st.tool === 'select') commit(() => model.members.forEach((m) => { if (st.sel.has(m.id)) m.roll = ((m.roll || 0) + 90) % 180; }));
-        else { st.roll = st.roll ? 0 : 90; renderRoll(); if (lastMove) hover(...lastMove); }
-        break;
-      case '[': case ']': {
-        const i = cat.list.findIndex((p) => p.id === st.prof), n = cat.list.length;
-        if (n) { st.prof = cat.list[((i < 0 ? 0 : i) + (k === ']' ? 1 : -1) + n) % n].id; renderProfs(); if (lastMove) hover(...lastMove); }
-        break;
-      }
-      case 'PageUp': case 'PageDown': setPlane(st.plane, st.off + (k === 'PageUp' ? 1 : -1) * Math.max(st.step, 50)); e.preventDefault(); break;
-      case 'Delete': case 'Backspace': delSel(); e.preventDefault(); break;
-      case 'f': case 'F': setView('fit'); break;
-      case 'Enter': if (st.start) cancelDraw(); break;
-      default: return;
-    }
+    if (k === 'Escape') { if (st.start || st.plateCorner || st.cStart || st.typed) cancelDraw(); else { st.sel.clear(); st.node = null; paintSel(); renderPanel(); overlay(); } return; }
+    if (k === 'Enter') { if (st.start) cancelDraw(); return; }
+    const nk = normKey(k), act = Object.keys(KEYS).find((a) => KEYS[a] && KEYS[a] === nk);
+    if (act) { runAction(act, e); return; }
+    if (k === 'Backspace' && st.sel.size) { delSel(); e.preventDefault(); }
   });
   function delSel() { if (!st.sel.size) return; const ids = [...st.sel]; commit(() => { SC.remove(model, ids); st.sel.clear(); }); }
 
   /* ---------------- panel ---------------- */
   const HELP = {
-    draw: 'Klikni začátek a pak konec – kreslí se řetěz. Osa X / Y / Z se vybere podle pohybu myši (klávesou ji zamkneš), konec se přichytí na uzel, střed nebo bod na prutu. Napiš délku a Enter. Esc nebo pravé tlačítko řetěz ukončí.',
+    draw: 'Klikni začátek a pak konec – kreslí se řetěz. Směr se vybere podle pohybu myši: osy X / Y / Z, s úhlem 45° nebo vlastním i šikmé směry (osu zamkneš klávesou). Konec se přichytí na uzel, střed nebo bod na prutu. Napiš délku a Enter. Esc nebo pravé tlačítko řetěz ukončí.',
+    connect: 'Klikni na dvě místa (uzel, střed, bod na prutu nebo rovina) – spojí je vybraný profil v libovolném směru. Pak můžeš hned klikat další dvojici.',
     plate: 'Klikni dva protilehlé rohy. Když první roh klikneš na uzel nebo prut, deska si sedne na horní plochu profilu.',
     select: 'Klikni prut nebo desku, Shift přidá do výběru. R natočí profil o 90°, Del smaže.',
     joint: 'Klikni na uzel a napiš, jak se má spoj udělat (pokos, na tupo s průběžným prutem, plný roh…). AI i importér se tím řídí.'
@@ -743,6 +832,10 @@
     }
     st.prof = b.dataset.p; renderProfs();
   });
+  document.querySelectorAll('#angSeg button').forEach((b) => b.addEventListener('click', () => setAng(b.dataset.a === 'c' ? 'c' : +b.dataset.a)));
+  $('angIn').addEventListener('input', (e) => { const v = +e.target.value; if (v >= 1 && v <= 90) { st.angCustom = v; setAng('c'); } });
+  $('angIn').addEventListener('focus', () => setAng('c'));
+  $('angIn').addEventListener('change', (e) => { st.angCustom = Math.min(90, Math.max(1, +e.target.value || 30)); e.target.value = st.angCustom; setAng('c'); });
   document.querySelectorAll('#rollSeg button').forEach((b) => b.addEventListener('click', () => { st.roll = +b.dataset.r; renderRoll(); }));
   document.querySelectorAll('#tools .tool').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.t)));
   document.querySelectorAll('#planeSeg button').forEach((b) => b.addEventListener('click', () => setPlane(b.dataset.p, st.off)));
@@ -823,25 +916,36 @@
     }
   }
 
-  let tplSel = null;
-  function renderTpl() {
-    $('tpl').innerHTML = SC.TEMPLATES.map((t) => '<button data-t="' + t.id + '" aria-pressed="' + (t.id === tplSel) + '"><b>' + t.lab + '</b><span>' + t.sub + '</span></button>').join('');
-    const f = $('tplForm'), t = SC.TEMPLATES.find((x) => x.id === tplSel);
-    if (!t) { f.hidden = true; return; }
-    f.hidden = false;
-    const opts = (def) => cat.list.map((p) => '<option' + (p.id === def ? ' selected' : '') + '>' + esc(p.id) + '</option>').join('') + (cat.byId[def] ? '' : '<option selected>' + esc(def) + '</option>');
-    f.innerHTML = '<div class="pform">' + t.params.map((p) => '<label for="tp_' + p.k + '">' + p.lab + '</label><span><input class="in n" id="tp_' + p.k + '" type="number" value="' + p.def + '"> ' + (p.k === 'N' ? 'ks' : 'mm') + '</span>').join('') +
-      t.profs.map((p) => '<label for="tp_' + p.k + '">' + p.lab + '</label><select class="in" id="tp_' + p.k + '">' + opts(p.def) + '</select>').join('') + '</div>' +
-      '<div class="btns"><button class="btn primary" id="tplRep">Nahradit skicu</button><button class="btn" id="tplAdd">Přidat do skici</button></div>';
-    const vals = () => { const o = {}; t.params.concat(t.profs).forEach((p) => { o[p.k] = $('tp_' + p.k).value; }); return o; };
-    $('tplAdd').onclick = () => commit(() => { st.sel = new Set(SC.applyTemplate(model, t.id, vals())); setTool('select'); });
-    $('tplRep').onclick = () => {
-      if ((model.members.length || model.plates.length) && !confirm('Smazat současnou skicu a vložit šablonu?')) return;
-      commit(() => { model.members = []; model.plates = []; model.joints = {}; model.seq = 1; model.name = t.lab; SC.applyTemplate(model, t.id, vals()); st.sel.clear(); });
-      setView('iso');
-    };
+  /* hotové modely z konfigurátoru (core.js = podnože, vyvoj.js = umělecké) */
+  const PZ = window.Podnoze, VY = window.Vyvoj;
+  const ownsArt = (id) => !!(VY && VY.ext && VY.ext.owns && VY.ext.owns(id));
+  function renderModels() {
+    if (!PZ || !PZ.allModels) { $('mdlSel').innerHTML = '<option value="">Modely se nenačetly</option>'; return; }
+    const all = PZ.allModels(), g1 = all.filter((m) => !m.art && !ownsArt(m.id) || m.id === 'TJ'), g2 = all.filter((m) => !g1.includes(m));
+    const opt = (m) => '<option value="' + esc(m.id) + '">' + esc(m.lab) + (m.desc ? ' – ' + esc(m.desc) : '') + '</option>';
+    $('mdlSel').innerHTML = '<option value="">Vyber model…</option><optgroup label="Podnože">' + g1.map(opt).join('') + '</optgroup><optgroup label="Umělecké">' + g2.map(opt).join('') + '</optgroup>';
   }
-  $('tpl').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; tplSel = tplSel === b.dataset.t ? null : b.dataset.t; renderTpl(); });
+  function buildModel(id) {
+    const own = ownsArt(id) && VY;
+    const E = own ? VY : PZ;
+    return E.build(E.normalize(Object.assign({}, E.DEFAULT_CFG, { model: id })));
+  }
+  function insertModel(replace) {
+    const id = $('mdlSel').value; if (!id) { toast('Vyber model'); return; }
+    let A; try { A = buildModel(id); } catch (err) { toast('Model nejde sestavit: ' + err.message); return; }
+    const M = PZ.allModels().find((m) => m.id === id);
+    if (replace && (model.members.length || model.plates.length) && !confirm('Smazat současnou skicu a vložit „' + M.lab + '“?')) return;
+    commit(() => {
+      if (replace) { model.members = []; model.plates = []; model.joints = {}; model.seq = 1; model.name = M.lab; }
+      const r = SC.importBuild(model, A);
+      st.sel = new Set(replace ? [] : r.added);
+      if (r.skipped.length) toast('Vynecháno: ' + r.skipped.length + ' těles');
+    });
+    if (!replace) setTool('select');
+    setView('iso');
+  }
+  $('mdlRep').onclick = () => insertModel(true);
+  $('mdlAdd').onclick = () => insertModel(false);
 
   function renderBom() {
     const K = SC.bom(model);
@@ -917,7 +1021,7 @@
   $('catDefault').onclick = () => { store.set(LS.catalog, $('catText').value || model.catalog); toast('Katalog uložen jako výchozí pro nové skici'); };
 
   /* ---------------- start ---------------- */
-  renderRoll(); renderTpl(); renderSaved(); setTool('draw');
+  renderRoll(); renderModels(); renderKeys(); renderSaved(); setTool('draw');
   if (hasGL) { resize(); changed(); setView('iso'); } else { changed(); }
   window.__skica = { get model() { return model; }, st, SC, setView, click, hover, setTool };
 })();

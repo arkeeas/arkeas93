@@ -266,81 +266,135 @@
     return addMember(model, m.prof, q, b, { roll: m.roll, name: m.name, note: m.note, thru: m.thru }).id;
   }
 
-  /* ---------- šablony ---------- */
-  const TEMPLATES = [
-    {
-      id: 'stul', lab: 'Stůl', sub: 'rám pod deskou + 4 nohy',
-      params: [{ k: 'L', lab: 'Délka', def: 1600 }, { k: 'W', lab: 'Šířka', def: 800 }, { k: 'H', lab: 'Výška', def: 750 }, { k: 'T', lab: 'Deska', def: 40 }, { k: 'O', lab: 'Přesah desky', def: 50 }],
-      profs: [{ k: 'leg', lab: 'Nohy', def: 'jekl 60x60x3' }, { k: 'rail', lab: 'Rám', def: 'jekl 40x40x2' }],
-      build(m, P, cat) {
-        const s = Math.max(...extent(cat[P.leg] || { a: 40, b: 40 })), r = extent(cat[P.rail] || { a: 40, b: 40 })[1];
-        const x0 = P.O + s / 2, x1 = P.L - P.O - s / 2, y0 = P.O + s / 2, y1 = P.W - P.O - s / 2, zt = P.H - P.T - r / 2;
-        [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].forEach(([x, y]) => addMember(m, P.leg, [x, y, 0], [x, y, zt], { name: 'noha' }));
-        addMember(m, P.rail, [x0, y0, zt], [x1, y0, zt], { name: 'rám podélný' }); addMember(m, P.rail, [x0, y1, zt], [x1, y1, zt], { name: 'rám podélný' });
-        addMember(m, P.rail, [x0, y0, zt], [x0, y1, zt], { name: 'rám příčný' }); addMember(m, P.rail, [x1, y0, zt], [x1, y1, zt], { name: 'rám příčný' });
-        if (P.T > 0) addPlate(m, [0, 0], [P.L, P.W], P.H - P.T, P.T, 'dřevo', { name: 'deska' });
-      }
-    },
-    {
-      id: 'stolek', lab: 'Konferenční stolek', sub: 'horní a spodní rám, polička',
-      params: [{ k: 'L', lab: 'Délka', def: 1000 }, { k: 'W', lab: 'Šířka', def: 600 }, { k: 'H', lab: 'Výška', def: 450 }, { k: 'T', lab: 'Deska', def: 10 }, { k: 'Z', lab: 'Spodní rám', def: 120 }],
-      profs: [{ k: 'tube', lab: 'Jekl', def: 'jekl 30x30x2' }],
-      build(m, P, cat) {
-        const s = Math.max(...extent(cat[P.tube] || { a: 30, b: 30 }));
-        const x0 = s / 2, x1 = P.L - s / 2, y0 = s / 2, y1 = P.W - s / 2, zt = P.H - P.T - s / 2, zb = P.Z;
-        [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].forEach(([x, y]) => addMember(m, P.tube, [x, y, 0], [x, y, zt], { name: 'noha' }));
-        [zt, zb].forEach((z) => {
-          addMember(m, P.tube, [x0, y0, z], [x1, y0, z], { name: 'podélný' }); addMember(m, P.tube, [x0, y1, z], [x1, y1, z], { name: 'podélný' });
-          addMember(m, P.tube, [x0, y0, z], [x0, y1, z], { name: 'příčný' }); addMember(m, P.tube, [x1, y0, z], [x1, y1, z], { name: 'příčný' });
-        });
-        if (P.T > 0) addPlate(m, [0, 0], [P.L, P.W], P.H - P.T, P.T, 'sklo', { name: 'deska' });
-        addPlate(m, [x0, y0], [x1, y1], zb + s / 2, 18, 'dřevo', { name: 'polička' });
-      }
-    },
-    {
-      id: 'policka', lab: 'Polička / regál', sub: '2 bočnice žebříky + police',
-      params: [{ k: 'L', lab: 'Šířka', def: 900 }, { k: 'D', lab: 'Hloubka', def: 300 }, { k: 'H', lab: 'Výška', def: 1800 }, { k: 'N', lab: 'Polic', def: 5 }, { k: 'T', lab: 'Police tl.', def: 25 }],
-      profs: [{ k: 'tube', lab: 'Bočnice', def: 'jekl 30x30x2' }, { k: 'bar', lab: 'Nosníky polic', def: 'L 30x30x3' }],
-      build(m, P, cat) {
-        const s = Math.max(...extent(cat[P.tube] || { a: 30, b: 30 })), hb = extent(cat[P.bar] || { a: 30, b: 30 })[1];
-        const n = Math.max(2, Math.round(P.N)), y0 = s / 2, y1 = P.D - s / 2, z0 = 0;
-        const zt = P.H - s / 2, zs = [];
-        for (let i = 0; i < n; i++) zs.push(Math.round(80 + (zt - 80) * i / (n - 1)));
-        [s / 2, P.L - s / 2].forEach((x) => {
-          addMember(m, P.tube, [x, y0, z0], [x, y0, P.H - s / 2], { name: 'bočnice noha' }); addMember(m, P.tube, [x, y1, z0], [x, y1, P.H - s / 2], { name: 'bočnice noha' });
-          zs.forEach((z) => addMember(m, P.tube, [x, y0, z], [x, y1, z], { name: 'příčka bočnice' }));
-        });
-        zs.forEach((z) => {
-          addMember(m, P.bar, [s / 2, y0, z], [P.L - s / 2, y0, z], { name: 'nosník police' }); addMember(m, P.bar, [s / 2, y1, z], [P.L - s / 2, y1, z], { name: 'nosník police' });
-          if (P.T > 0) addPlate(m, [0, 0], [P.L, P.D], z + hb / 2, P.T, 'dřevo', { name: 'police' });
-        });
-      }
-    },
-    {
-      id: 'zabradli', lab: 'Zábradlí rovné', sub: 'rám, sloupky a špruše',
-      params: [{ k: 'L', lab: 'Délka', def: 3000 }, { k: 'H', lab: 'Výška', def: 1000 }, { k: 'S', lab: 'Rozteč sloupků', def: 1200 }, { k: 'G', lab: 'Rozteč špruší', def: 120 }, { k: 'Z', lab: 'Spodní rám', def: 100 }],
-      profs: [{ k: 'rail', lab: 'Rám a sloupky', def: 'jekl 40x40x2' }, { k: 'bar', lab: 'Špruše', def: 'pas 40x5' }],
-      build(m, P, cat) {
-        const s = Math.max(...extent(cat[P.rail] || { a: 40, b: 40 }));
-        const zt = P.H - s / 2, zb = P.Z, x0 = s / 2, x1 = P.L - s / 2;
-        addMember(m, P.rail, [x0, 0, zt], [x1, 0, zt], { name: 'madlo / horní rám' }); addMember(m, P.rail, [x0, 0, zb], [x1, 0, zb], { name: 'spodní rám' });
-        const np = Math.max(1, Math.ceil((x1 - x0) / P.S)), posts = [];
-        for (let i = 0; i <= np; i++) posts.push(Math.round(x0 + (x1 - x0) * i / np));
-        posts.forEach((x) => addMember(m, P.rail, [x, 0, 0], [x, 0, zt], { name: 'sloupek' }));
-        for (let i = 0; i < np; i++) {
-          const a = posts[i] + s / 2, b = posts[i + 1] - s / 2, k = Math.max(1, Math.round((b - a) / P.G));
-          for (let j = 1; j < k; j++) { const x = Math.round(a + (b - a) * j / k); addMember(m, P.bar, [x, 0, zb], [x, 0, zt], { name: 'špruše' }); }
-        }
-      }
+  /* ---------- převod hotových modelů (podnože, umělecké) ----------
+     A = výsledek Podnoze.build / Vyvoj.build. Jekly (parts) se převedou přesně podle své osy a průřezu,
+     plechy a pásoviny (plateBoxes) přes hlavní osy tělesa: protáhlé → pásovina, ploché vodorovné → deska z plechu,
+     protáhlé spojovací materiály (závitové tyče) → kulatina, matice a podložky se vynechají. Přidá se deska stolu. */
+  function eig3(C) {
+    const a = C.map((r) => r.slice()), v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let it = 0; it < 50; it++) {
+      let p = 0, q = 1;
+      if (Math.abs(a[0][2]) > Math.abs(a[p][q])) { p = 0; q = 2; }
+      if (Math.abs(a[1][2]) > Math.abs(a[p][q])) { p = 1; q = 2; }
+      if (Math.abs(a[p][q]) < 1e-9) break;
+      const th = (a[q][q] - a[p][p]) / (2 * a[p][q]), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1)), c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < 3; k++) { const akp = a[k][p], akq = a[k][q]; a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq; }
+      for (let k = 0; k < 3; k++) { const apk = a[p][k], aqk = a[q][k]; a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk; }
+      for (let k = 0; k < 3; k++) { const vkp = v[k][p], vkq = v[k][q]; v[k][p] = c * vkp - s * vkq; v[k][q] = s * vkp + c * vkq; }
     }
-  ];
-  function applyTemplate(model, tid, P) {
-    const t = TEMPLATES.find((x) => x.id === tid); if (!t) return [];
+    return [0, 1, 2].map((i) => ({ val: a[i][i], vec: norm([v[0][i], v[1][i], v[2][i]]) })).sort((x, y) => y.val - x.val);
+  }
+  function range(verts, d) { let lo = Infinity, hi = -Infinity; verts.forEach((p) => { const t = dot(p, d); if (t < lo) lo = t; if (t > hi) hi = t; }); return [lo, hi]; }
+  function obb(verts) {
+    const n = verts.length, c = [0, 1, 2].map((i) => verts.reduce((s, p) => s + p[i], 0) / n);
+    const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    verts.forEach((p) => { const d = sub(p, c); for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) C[i][j] += d[i] * d[j] / n; });
+    const E = eig3(C).map((e) => e.vec);
+    const R = E.map((e) => range(verts, e));
+    return { axes: E, size: R.map((r) => r[1] - r[0]), center: [0, 1, 2].reduce((s, i) => add(s, mul(E[i], (R[i][0] + R[i][1]) / 2)), [0, 0, 0]), ranges: R };
+  }
+  function ensureProfile(model, id) {
+    const p = parseProfile(id); if (!p) return null;
+    if (!parseCatalog(model.catalog).byId[p.id]) model.catalog = model.catalog.replace(/\s*$/, '') + '\n' + p.id;
+    return p;
+  }
+  /* prut z tělesa ve známém směru osy x: najde natočení, při kterém šířka profilu sedí na těleso */
+  function memberFromBody(model, prof, verts, x, hint, extra) {
+    const p0 = [0, 0, 0], f = frame(p0, x, 0), [w, h] = extent(prof);
+    const cands = [];
+    const th0 = hint ? Math.atan2(dot(hint, f.v), dot(hint, f.u)) * 180 / Math.PI : 0;
+    [th0, th0 + 90].forEach((r) => {
+      const g = frame(p0, x, r), eu = range(verts, g.u), ev = range(verts, g.v);
+      cands.push({ r, g, eu, ev, err: Math.abs(eu[1] - eu[0] - w) + Math.abs(ev[1] - ev[0] - h) });
+    });
+    const b = cands.sort((m, n) => m.err - n.err)[0], ex = range(verts, f.x);
+    const base = add(mul(b.g.u, (b.eu[0] + b.eu[1]) / 2), mul(b.g.v, (b.ev[0] + b.ev[1]) / 2));
+    const roll = ((Math.round(b.r) % 180) + 180) % 180;
+    return addMember(model, prof.id, add(base, mul(f.x, ex[0])), add(base, mul(f.x, ex[1])), Object.assign({ roll }, extra || {}));
+  }
+  /* plochý svařenec z pásoviny na hranu (trojúhelník, kosočtverec): obrys → pásoviny po hranách */
+  function hull2(pts) {
+    const P = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    P.forEach((p) => { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 1e-9) lo.pop(); lo.push(p); });
+    P.slice().reverse().forEach((p) => { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], p) <= 1e-9) up.pop(); up.push(p); });
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  function ringToMembers(model, verts, O) {
+    const [e1, e2, e3] = O.axes, mid = (O.ranges[2][0] + O.ranges[2][1]) / 2;
+    const pts = verts.map((p) => [dot(p, e1), dot(p, e2)]);
+    let H = hull2(pts);
+    /* sloučit téměř rovnoběžné hrany (zkosené rohy) */
+    const keep = [];
+    H.forEach((p, i) => {
+      const a = H[(i - 1 + H.length) % H.length], b = H[(i + 1) % H.length];
+      const d1 = norm([p[0] - a[0], p[1] - a[1], 0]), d2 = norm([b[0] - p[0], b[1] - p[1], 0]);
+      if (dot(d1, d2) < 0.996 && Math.hypot(p[0] - a[0], p[1] - a[1]) > 1) keep.push(p);
+    });
+    H = keep;
+    if (H.length < 3) return false;
+    const edges = [];
+    for (let i = 0; i < H.length; i++) {
+      const a = H[i], b = H[(i + 1) % H.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L < 20) continue;
+      const d = [(b[0] - a[0]) / L, (b[1] - a[1]) / L], n = [-d[1], d[0]];   // hull je proti směru hodin → n míří dovnitř
+      let t = Infinity;
+      pts.forEach((p) => {
+        const s = (p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1], q = (p[0] - a[0]) * n[0] + (p[1] - a[1]) * n[1];
+        if (s > 0 && s < L && q > 0.5 && q < t) t = q;
+      });
+      edges.push({ a, b, d, n, t, L });
+    }
+    const minSpan = Math.min(O.size[0], O.size[1]);
+    if (!edges.length || edges.some((e) => !isFinite(e.t) || e.t > 0.35 * minSpan)) return false;
+    const T = Math.round(edges.map((e) => e.t).sort((x, y) => x - y)[Math.floor(edges.length / 2)]);
+    const pr = ensureProfile(model, 'pas ' + Math.round(O.size[2]) + 'x' + Math.max(1, T)); if (!pr) return false;
+    const P3 = (u, v) => add(add(mul(e1, u), mul(e2, v)), mul(e3, mid));
+    edges.forEach((e) => {
+      const o = [e.n[0] * T / 2, e.n[1] * T / 2];
+      const A = P3(e.a[0] + o[0], e.a[1] + o[1]), B = P3(e.b[0] + o[0], e.b[1] + o[1]);
+      const f = frame(A, B, 0), r = Math.atan2(dot(e3, f.v), dot(e3, f.u)) * 180 / Math.PI;
+      addMember(model, pr.id, A, B, { roll: ((Math.round(r) % 180) + 180) % 180, name: 'pásovina na hranu' });
+    });
+    return true;
+  }
+  function importBuild(model, A, opt) {
+    const o = opt || {}, cfg = A.cfg || {}, added = [], skipped = [];
     const before = new Set(model.members.map((m) => m.id).concat(model.plates.map((p) => p.id)));
-    const cat = parseCatalog(model.catalog).byId;
-    const Q = {}; t.params.forEach((p) => { Q[p.k] = Number(P && P[p.k] != null ? P[p.k] : p.def); }); t.profs.forEach((p) => { Q[p.k] = (P && P[p.k]) || p.def; });
-    t.build(model, Q, cat);
-    return model.members.map((m) => m.id).concat(model.plates.map((p) => p.id)).filter((id) => !before.has(id));
+    const defProf = 'jekl ' + (cfg.size || 40) + 'x' + (cfg.size || 40) + 'x' + (cfg.t || 2);
+    (A.parts || []).forEach((pt) => {
+      const verts = pt.solid && pt.solid.verts; if (!verts || !verts.length || !pt.m) return;
+      const prof = ensureProfile(model, (pt.prof || defProf).replace(/×/g, 'x')) || ensureProfile(model, defProf);
+      const x = norm(sub(pt.m.p2, pt.m.p1)); if (len(x) < 0.5) return;
+      memberFromBody(model, prof, verts, x, pt.m.w, { name: (pt.name || '').toLowerCase() });
+    });
+    const bodies = (A.plateBoxes || []).map((b) => ({ b, hw: false })).concat((A.hwBodies || []).map((b) => ({ b, hw: true })));
+    bodies.forEach(({ b, hw }) => {
+      const verts = b.verts; if (!verts || verts.length < 4) return;
+      const O = obb(verts), [L1, L2, L3] = O.size;
+      if (hw) {
+        if (L1 < 3 * L2) return;                       // matice, podložky
+        const pr = ensureProfile(model, 'kulatina ' + Math.round(L2));
+        memberFromBody(model, pr, verts, O.axes[0], null, { name: 'závitová tyč' });
+        return;
+      }
+      if (L1 < 2.5 * L2 && Math.abs(O.axes[2][2]) > 0.95) {
+        const R = [0, 1].map((i) => range(verts, i === 0 ? [1, 0, 0] : [0, 1, 0])), z = range(verts, [0, 0, 1]);
+        addPlate(model, [R[0][0], R[1][0]], [R[0][1], R[1][1]], z[0], Math.max(1, round(z[1] - z[0])), 'plech', { name: 'plech' });
+        return;
+      }
+      if (L3 < 0.5) { skipped.push('těleso bez tloušťky'); return; }
+      if (L1 < 2.5 * L2 && ringToMembers(model, verts, O)) return;
+      const pr = ensureProfile(model, 'pas ' + Math.round(L2) + 'x' + Math.max(1, Math.round(L3)));
+      if (!pr) { skipped.push('nerozpoznané těleso'); return; }
+      memberFromBody(model, pr, verts, O.axes[0], O.axes[1], { name: 'pásovina' });
+    });
+    if (o.desk !== false && cfg.td > 0 && cfg.H > 0) {
+      const dl = cfg.dL || cfg.L, dw = cfg.dW || cfg.W;
+      if (dl > 0 && dw > 0) addPlate(model, [-dl / 2, -dw / 2], [dl / 2, dw / 2], cfg.H - cfg.td, cfg.td, 'dřevo', { name: 'deska' });
+    }
+    model.members.concat(model.plates).forEach((x) => { if (!before.has(x.id)) added.push(x.id); });
+    return { added, skipped };
   }
 
   /* ---------- export / import ---------- */
@@ -420,7 +474,7 @@
     DEFAULT_CATALOG, TYPES, parseProfile, parseCatalog, profileLabel, extent, section, area,
     sub, add, mul, dot, cross, len, norm, round, key, frame,
     emptyModel, addMember, addPlate, mLen, nodes, checks, bom, bounds, move, mirror, remove, split,
-    TEMPLATES, applyTemplate, JOINT_LAB, exportJSON, importJSON, aiText
+    importBuild, obb, JOINT_LAB, exportJSON, importJSON, aiText
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.SkicaCore = API;
