@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Konferenční stolek „Infinity Cube“ – jedna uzavřená trasa z 13 rovných jeklů
-(na zemi jen 2, nohy ve 4 rozích, portál a zadní jekl v jedné výšce, horní rám kousek nad nimi odsazený dovnitř), v každém lomu právě 2 profily, + čiré sklo položené na horním rámu.
+Konferenční stolek „Infinity Cube“ – podle předlohy (skica) – jedna uzavřená trasa z 15 rovných jeklů
+(na zemi jen 2, portál a pravý rám v jedné výšce, horní rám kousek nad nimi odsazený dovnitř), v každém lomu právě 2 profily, + čiré sklo položené na horním rámu.
 
 Spuštění ve FreeCADu: Makro → Makra… → vybrat tento soubor → Spustit
 (nebo v Python konzoli: exec(open('/cesta/stolek_kostra.py').read())).
@@ -26,28 +26,29 @@ L = 1000.0      # délka (X, dopředu 0 → dozadu L)
 W = 600.0       # šířka (Y, „pravá“ strana skici je y = 0)
 H = 450.0       # výška rámu bez skla (Z)
 
-# ---------------- trasa: 13 úseků, osy jeklů ----------------
+# ---------------- trasa podle předlohy (skica): 15 úseků, osy jeklů ----------------
 # Jedna uzavřená trasa, všechny lomy 90° s pokosem, v každém lomu jen 2 profily:
-#   na zemi jen 2 jekly (levý a pravý podélný), nohy ve všech 4 rozích;
-#   přední portál a zadní příčný jekl v jedné výšce zp;
-#   horní rám (nese sklo) je jen kousek nad nimi a vpředu a vpravo odsazený dovnitř o d;
-#   v horním zadním vrcholu mezera – levý jekl u ní jde svisle na zem, druhý dolů na zadní jekl;
-#   pod pravým horním rohem žádná stojka.
-d = 1.5 * S                                  # odsazení horního rámu dovnitř / rozteč jeklů u mezery
+#   horní rám (nese sklo) – v horním zadním vrcholu mezera, oba jekly u ní jdou svisle dolů na zem;
+#   pod pravým horním rohem žádná stojka;
+#   přední portál a pravý rám ve stejné výšce zp, horní rám jen kousek nad nimi a odsazený dovnitř o d;
+#   na zemi jen 2 jekly (levý a zadní); pravá přední noha a pravá noha portálu jsou dole spojené krátkým ohybem.
+d = 1.5 * S                                  # odsazení horního rámu dovnitř / rozteč souběžných jeklů
 x0, xb = S / 2, L - S / 2                    # vpředu / vzadu
 xf = x0 + d                                  # přední hrana horního rámu
 yl, ym = W - S / 2, S / 2                    # levá / pravá strana
-yt, yg = ym + d, yl - d                      # pravá hrana horního rámu / jekl za mezerou
+yt, yi = ym + d, yl - d                      # pravá hrana horního rámu / jekl za mezerou
 zg, zt = S / 2, H - S / 2                    # zem / horní rám
-zp = zt - 1.5 * S                            # portál + zadní jekl kousek pod horním rámem
+zp = zt - 1.5 * S                            # portál + pravý rám kousek pod horním rámem
 TRASA = [
-    (xb, yl, zg), (x0, yl, zg), (x0, yl, zp), (x0, ym, zp), (x0, ym, zg), (xb, ym, zg), (xb, ym, zp),
-    (xb, yg, zp), (xb, yg, zt), (xb, yt, zt), (xf, yt, zt), (xf, yl, zt), (xb, yl, zt),
+    (xb, yl, zg), (xb, yl, zt), (xf, yl, zt), (xf, yt, zt), (xb, yt, zt), (xb, yi, zt), (xb, yi, zg),
+    (xb, ym, zg), (xb, ym, zp), (x0, ym, zp), (x0, ym, zg),
+    (x0, yt, zg), (x0, yt, zp), (x0, yl, zp), (x0, yl, zg),
 ]
-JMENA = ['levý na zemi', 'přední levá noha', 'portál vpředu', 'přední pravá noha', 'pravý na zemi', 'zadní pravá noha',
-         'zadní příčný', 'stojka u mezery', 'horní zadní (k mezeře)', 'horní pravý', 'horní přední', 'horní levý', 'levá zadní noha']
+JMENA = ['levá zadní noha', 'horní levý', 'horní přední', 'horní pravý', 'horní zadní (k mezeře)', 'noha u mezery',
+         'zadní na zemi', 'pravá zadní noha', 'pravý rám', 'pravá přední noha', 'ohyb dole', 'portál pravá noha',
+         'portál nahoře', 'portál levá noha', 'levý na zemi']
 PROFILY = [('%d %s' % (k + 1, JMENA[k]), TRASA[k], TRASA[(k + 1) % len(TRASA)]) for k in range(len(TRASA))]
-HORNI = [8, 9, 10, 11]    # na těchto profilech leží sklo
+HORNI = [1, 2, 3, 4]    # na těchto profilech leží sklo
 
 
 # ---------------- kontrola trasy ----------------
