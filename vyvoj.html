@@ -156,8 +156,8 @@
       </div>
       <div class="stage-side">
         <div class="chip" id="ohChip"></div>
-        <label class="check" for="see"><input id="see" type="checkbox"> Průhledná deska</label>
-        <label class="check" for="showDesk"><input id="showDesk" type="checkbox" checked> Zobrazit desku</label>
+        <label class="check" for="see"><input id="see" type="checkbox"> <span id="seeLab">Průhledná deska</span></label>
+        <label class="check" for="showDesk"><input id="showDesk" type="checkbox" checked> <span id="showDeskLab">Zobrazit desku</span></label>
         <label class="check" for="person">Postava
           <select id="person">
             <option value="">žádná</option>
@@ -197,7 +197,7 @@
       </div>
 
       <div class="step">
-        <h2><small>Krok 2</small>Rozměry stolu (s deskou)</h2>
+        <h2><small>Krok 2</small><span id="step2Title">Rozměry stolu (s deskou)</span></h2>
         <div class="grid" style="gap:16px">
           <div class="field"><div class="row"><label for="L" id="lenLab">Délka</label><span class="num"><input id="Ln" type="number" inputmode="numeric" aria-labelledby="lenLab"> mm</span></div><input id="L" type="range" min="350" max="2400" step="10"></div>
           <div class="field" id="wField"><div class="row"><label for="W">Hloubka</label><span class="num"><input id="Wn" type="number" inputmode="numeric" aria-label="Hloubka v mm"> mm</span></div><input id="W" type="range" min="300" max="1100" step="10"></div>
@@ -224,7 +224,7 @@
       </div>
 
       <div class="step">
-        <h2><small>Krok 6</small>Deska</h2>
+        <h2><small>Krok 6</small><span id="step6Title">Deska</span></h2>
         <div class="grid g5" id="shapes"></div>
         <div class="grid g2" style="margin-top:10px" id="dmodes"></div>
         <div class="own" id="own" hidden>
@@ -239,8 +239,8 @@
             <button class="btn" id="fit" type="button">Přizpůsobit podnož desce</button>
           </div>
         </div>
-        <div class="field" style="margin-top:14px"><div class="row"><label for="td">Tloušťka vaší desky</label><span id="tdv"></span></div><input id="td" type="range" min="18" max="80" step="2"></div>
-        <p class="note" style="margin:10px 0 0">Desku dodáváte sami. Jak se k ní podnož uchytí, vyberete v dalším kroku. Desky z našeho e-shopu připravujeme.</p>
+        <div class="field" style="margin-top:14px"><div class="row"><label for="td" id="tdLab">Tloušťka vaší desky</label><span id="tdv"></span></div><input id="td" type="range" min="18" max="80" step="2"></div>
+        <p class="note" id="deskNote" style="margin:10px 0 0">Desku dodáváte sami. Jak se k ní podnož uchytí, vyberete v dalším kroku. Desky z našeho e-shopu připravujeme.</p>
       </div>
 
       <div class="step">
@@ -289,7 +289,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
-<script src="vyvoj.js?v=20261008g"></script>
+<script src="vyvoj.js?v=20261008i"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -297,6 +297,7 @@
   const K = Vyvoj, $ = (id) => document.getElementById(id);
   let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null };
   try { cfg = K.normalize(JSON.parse(localStorage.getItem('podnoz-cfg-wip') || '{}')); } catch (e) { cfg = K.normalize({}); }
+  if (cfg.model === 'VR') ui.showDesk = false;
   const viewer = Viewer3D.create($('viz'));
   if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
   let db = null, uid = null;
@@ -337,20 +338,35 @@
     A = K.analyze(cfg, rates);
     const M = K.MODELS.find((m) => m.id === cfg.model), F = K.FIN.find((f) => f.id === cfg.fin), d = A.build.dims, circle = cfg.shape === 'circle';
     $('mName').textContent = M.lab;
+    $('seeLab').textContent = M.vr ? 'Průhledné sklo' : 'Průhledná deska';
+    $('showDeskLab').textContent = M.vr ? 'Zobrazit sklo' : 'Zobrazit desku';
+    $('step2Title').textContent = M.vr ? 'Rozměry stolku' : 'Rozměry stolu (s deskou)';
+    $('step6Title').textContent = M.vr ? 'Sklo' : 'Deska';
+    $('tdLab').textContent = M.vr ? 'Tloušťka skla' : 'Tloušťka vaší desky';
+    $('deskNote').textContent = M.vr ? 'Čiré sklo leží na horním rámu. Jeho rozměr odpovídá vnějšímu obrysu stolku.' : 'Desku dodáváte sami. Jak se k ní podnož uchytí, vyberete v dalším kroku. Desky z našeho e-shopu připravujeme.';
     $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · ' + (M.tr ? 'jekl ' + cfg.trJ.replace('x', '×') : M.ks ? (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pásovina ' + cfg.ksD + '×' + cfg.ksT) : 'jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t) + ' · ' + F.lab;
-    $('ohChip').textContent = 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
-    $('td').min = 18;
+    $('ohChip').textContent = M.vr ? 'Čiré sklo ' + K.nf(cfg.L) + ' × ' + K.nf(cfg.W) + ' mm na horním rámu' : 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
+    $('td').min = M.vr ? 8 : 18;
+    $('shapes').hidden = $('dmodes').hidden = !!M.vr;
+    $('own').hidden = M.vr || cfg.dmode !== 'own';
 
-    group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => set({ model: id }));
+    group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => {
+      if (id === 'VR') {
+        const generic = cfg.L === 1600 && cfg.W === 800 && cfg.H === 750 && cfg.size === 40 && cfg.t === 2;
+        const seed = generic ? { L: 1000, W: 600, H: 450, td: 10, size: 50, t: 3, mount: 'lepeni' } : {};
+        ui.showDesk = false;
+        set(Object.assign(seed, { model: id, shape: 'rect', dmode: 'table' }));
+      } else { if (cfg.model === 'VR') ui.showDesk = true; set({ model: id }); }
+    });
 
     $('models').hidden = K.MODELS.length < 2;
     $('modelNote').textContent = M.desc + (M.note ? ' · ' + M.note : '');
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
     $('jointsHead').hidden = $('joints').hidden = !!M.pav;
     $('laysHead').hidden = $('lays').hidden = !M.pav;
-    if (M.ks || M.tr) $('jointsHead').hidden = $('joints').hidden = true;
-    $('topsHead').textContent = M.ks || M.tr ? 'Tvary a spoje' : 'Horní část – na čem leží deska';
-    $('tops').hidden = !!(M.ks || M.tr);
+    if (M.ks || M.tr || M.vr) $('jointsHead').hidden = $('joints').hidden = true;
+    $('topsHead').textContent = M.ks || M.tr ? 'Tvary a spoje' : M.vr ? 'Kostra' : 'Horní část – na čem leží deska';
+    $('tops').hidden = !!(M.ks || M.tr || M.vr);
     group($('lays'), K.PV_LAYS, (o) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.pvLay) + '">' + svg(o.id === 'plus' ? 'M4 24 H60 M32 10 V38' : 'M8 8 L56 40 M56 8 L8 40') + '<span class="t">' + o.lab + '</span><span class="p">' + esc(o.p) + '</span></button>', (id) => set({ pvLay: id }));
     group($('joints'), K.JOINTS, (o) => card(o, o.id === cfg.joint), (id) => set({ joint: id }));
     group($('tops'), K.topsFor(cfg.model, cfg.pvLay), (o) => card(o, o.id === cfg.top), (id) => set({ top: id }));
@@ -358,7 +374,9 @@
     const pillRow = (lab, key, items) => '<div class="thk"><span>' + lab + '</span><div class="pills" role="group" aria-label="' + esc(lab) + '">' +
       items.map(([v, l]) => '<button type="button" class="pill" data-k="' + key + '" data-v="' + v + '" aria-pressed="' + (String(cfg[key]) === String(v)) + '">' + l + '</button>').join('') + '</div></div>';
     let dims = '';
-    if (M.ks) {
+    if (M.vr) {
+      dims = '<p class="note" style="margin:0">Podle předlohy: jedna nepřerušená trasa z jeklu (20 úseků) – horní rám se sklem s mezerou v zadním vrcholu (pod pravým horním rohem žádná stojka), přední portál a pravý rám v jedné výšce kousek pod ním, horní rám odsazený dovnitř, na zemi jen 2 jekly, ve střední úrovni 2 podélné a 2 příčné jekly. Levá zadní noha stojí na zemi, vnější levý střední jekl končí čelem kousek před ní. Každý lom 90° s pokosem 45°, v každém lomu jen 2 jekly. Horní rám drží jen jekly u mezery – nosnost je proto nízká (viz výpočet). Profil jeklu v Kroku 3, rozměry v Kroku 2.</p>';
+    } else if (M.ks) {
       dims = pillRow('Materiál tvarů', 'ksMat', [['pas', 'Pásovina na hranu'], ['jekl', 'Jekl']]) +
         (cfg.ksMat === 'jekl' ? pillRow('Jekl (hloubka × šířka)', 'ksJ', K.KS_JEKL.map((j) => [j.id, j.D + '×' + j.w + '×' + j.t]))
           : pillRow('Hloubka pásu (šířka boku)', 'ksD', [60, 80, 100].map((v) => [v, v + ' mm'])) + pillRow('Tloušťka pásu', 'ksT', [8, 10, 12].map((v) => [v, v + ' mm']))) +
