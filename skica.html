@@ -1,0 +1,925 @@
+<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Skicář</title>
+<link rel="stylesheet" href="modebar.css?v=20261008s">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap">
+<style>
+  :root {
+    --ground: #FBFAF7; --surface: #FFFFFF; --stage: #F1EFEA; --ink: #17181A; --muted: #5E5A54; --line: #D9D5CD; --line-soft: #ECE9E3;
+    --accent: #B8440F; --accent-ink: #8E3309; --accent-soft: #FFF4EC;
+    --ok-bg: #E7F1EA; --ok: #2E7D4F; --ok-ink: #1D5535; --warn-bg: #FFF1DD; --warn: #B86200; --warn-ink: #7A4100; --bad-bg: #FCE9E7; --bad: #B3261E; --bad-ink: #8C1D18;
+    --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif; --sans: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); }
+  body { font: 14px/1.45 var(--sans); }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: var(--accent); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .brand { font-family: var(--serif); font-size: 26px; line-height: 1; }
+  .brand small { font-family: var(--sans); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-left: 10px; }
+  .top nav { display: flex; gap: 22px; flex-wrap: wrap; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .top nav a { color: var(--ink); text-decoration: none; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: calc(100vh - 92px); min-height: 560px; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; height: auto; } .stagewrap { height: 70vh; } }
+  .stagewrap { background: var(--stage); position: relative; overflow: hidden; }
+  #viz { position: absolute; inset: 0; }
+  #viz canvas { display: block; outline: none; }
+  #ovl { position: absolute; inset: 0; pointer-events: none; }
+  #ovl svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .lbl { position: absolute; transform: translate(-50%, -50%); background: var(--ink); color: #fff; font-size: 11px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .lbl.live { background: var(--accent); font-size: 12px; }
+  .lbl.soft { background: rgba(255,255,255,.9); color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+  .stage-head { position: absolute; left: 20px; top: 16px; right: 20px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; pointer-events: none; }
+  .stage-head > * { pointer-events: auto; }
+  .model-name { font-family: var(--serif); font-size: clamp(26px, 3vw, 38px); line-height: 1; }
+  .model-sub { color: var(--muted); font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stage-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); background: rgba(255,255,255,.8); padding: 3px 8px; border-radius: 4px; }
+  .check select, .check input { height: 28px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 13px; }
+  .check input { width: 70px; text-align: right; padding: 0 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: transparent; padding: 3px 9px; font-size: 13px; height: 28px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .views { position: absolute; left: 20px; bottom: 16px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .views button { height: 36px; padding: 0 13px; border: 1px solid var(--line); background: var(--surface); border-radius: 18px; font-size: 13px; }
+  .views button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+  .status { position: absolute; right: 20px; bottom: 20px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.85); padding: 4px 8px; border-radius: 4px; font-variant-numeric: tabular-nums; max-width: 60%; text-align: right; }
+  .typed { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .typed small { font-weight: 400; color: #C9C4BA; margin-left: 8px; font-size: 12px; }
+
+  .panel { border-left: 1px solid var(--line); background: var(--surface); overflow-y: auto; }
+  .sec { padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
+  .sec h2 { margin: 0 0 10px; font-weight: 500; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tool { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; }
+  .tool svg { width: 28px; height: 22px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+  .tool kbd { font: 10px var(--sans); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+  .tool[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .tool[aria-pressed="true"] svg { stroke: var(--accent); }
+  .help { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+  .profs { display: flex; flex-direction: column; gap: 10px; }
+  .pgroup .gl { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .pgrid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pbtn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 3px 7px 3px 5px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+  .pbtn i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .pbtn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .row label { font-size: 13px; color: var(--muted); }
+  .in { height: 32px; border: 1px solid var(--line); border-radius: 4px; padding: 0 8px; background: var(--surface); }
+  .in.n { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+  .in.w { width: 100%; }
+  textarea.in { height: auto; padding: 6px 8px; width: 100%; resize: vertical; font-size: 13px; }
+  .btn { height: 34px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--ink); background: var(--surface); font-size: 13px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--accent-ink); }
+  .btn.ghost { border-color: var(--line); }
+  .btn.bad { border-color: var(--bad); color: var(--bad-ink); }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.bom th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); padding: 4px 4px; }
+  table.bom td { border-bottom: 1px solid var(--line-soft); padding: 4px 4px; }
+  table.bom td.r, table.bom th.r { text-align: right; }
+  .msg { padding: 8px 10px; border-radius: 4px; font-size: 13px; margin-top: 6px; }
+  .msg.warn { background: var(--warn-bg); color: var(--warn-ink); }
+  .msg.bad { background: var(--bad-bg); color: var(--bad-ink); }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-ink); }
+  details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .tpl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .tpl button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 8px; text-align: left; }
+  .tpl button b { display: block; font-weight: 600; font-size: 13px; }
+  .tpl button span { font-size: 12px; color: var(--muted); }
+  .tpl button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .pform { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; margin-top: 10px; font-size: 13px; }
+  .pform select { max-width: 170px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 14px; z-index: 99; }
+  .keys { font-size: 12px; color: var(--muted); columns: 2; column-gap: 14px; }
+  .keys div { break-inside: avoid; margin-bottom: 2px; }
+  .keys kbd { font: 11px var(--sans); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; background: var(--ground); color: var(--ink); }
+  .nojs { padding: 40px; }
+</style>
+</head><body>
+<div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="index.html">Zákazník</a><a href="interni.html">Dílna</a><a href="montaz.html">Testing</a><a href="skica.html" aria-current="page">Skicář</a></nav><span class="mb-note">Rychlé skici z profilů pro AI a FreeCAD – ukládá se jen v tomto prohlížeči.</span></div>
+<header class="top">
+  <div class="brand">Skicář<small>prototypy z profilů</small></div>
+  <nav aria-label="Odkazy"><a href="#" id="helpLink">Klávesy</a><a href="https://github.com/arkeeas/arkeas93/blob/main/freecad/skica_import.py" target="_blank" rel="noopener">Importér FreeCAD</a></nav>
+</header>
+
+<main class="layout">
+  <section class="stagewrap" aria-label="Plátno">
+    <div id="viz"></div>
+    <div id="ovl"><svg id="svg"></svg></div>
+    <div class="stage-head">
+      <div><div class="model-name" id="mName">Nová skica</div><div class="model-sub" id="mSub">prázdné plátno</div></div>
+      <div class="stage-side">
+        <div class="check">Rovina
+          <span class="seg" id="planeSeg"><button data-p="XY" aria-pressed="true" title="Vodorovná (podlaha)">XY</button><button data-p="XZ" title="Svislá zepředu">XZ</button><button data-p="YZ" title="Svislá zboku">YZ</button></span>
+          <input id="planeOff" type="number" step="10" value="0" title="Výška / odsazení roviny (mm)"> mm</div>
+        <div class="check">Krok <select id="snapSel"><option>1</option><option>5</option><option selected>10</option><option>25</option><option>50</option><option>100</option></select> mm</div>
+      </div>
+    </div>
+    <div class="typed" id="typed" hidden></div>
+    <div class="views" id="views">
+      <button data-v="iso" aria-pressed="true">Iso</button><button data-v="front">Zepředu</button><button data-v="side">Zboku</button><button data-v="top">Shora</button><button data-v="fit" title="Celá skica (F)">Vše</button>
+    </div>
+    <div class="status" id="status">Táhni levým tlačítkem = otáčení, pravým = posun, kolečko = zoom</div>
+  </section>
+
+  <aside class="panel" id="panel">
+    <div class="sec">
+      <h2>Nástroj</h2>
+      <div class="tools" id="tools">
+        <button class="tool" data-t="draw" aria-pressed="true"><svg viewBox="0 0 28 22"><path d="M4 18 L24 4"/><rect x="2" y="16" width="4" height="4"/><rect x="22" y="2" width="4" height="4"/></svg>Prut<kbd>D</kbd></button>
+        <button class="tool" data-t="plate"><svg viewBox="0 0 28 22"><path d="M3 14 L11 8 L26 8 L18 14 Z M3 14 V17 L18 17 V14 M18 17 L26 11 V8"/></svg>Deska<kbd>P</kbd></button>
+        <button class="tool" data-t="select"><svg viewBox="0 0 28 22"><path d="M9 3 L9 18 L13 14 L16 20 L18.5 19 L15.5 13 L21 13 Z"/></svg>Výběr<kbd>V</kbd></button>
+        <button class="tool" data-t="joint"><svg viewBox="0 0 28 22"><path d="M3 18 L14 7 M14 7 L25 18 M14 7 V2"/><circle cx="14" cy="7" r="3"/></svg>Spoj<kbd>J</kbd></button>
+      </div>
+      <p class="help" id="toolHelp"></p>
+    </div>
+
+    <div class="sec" id="selSec" hidden></div>
+
+    <div class="sec">
+      <h2>Profil <span class="seg" id="rollSeg" title="Natočení kolem osy (R)"><button data-r="0" aria-pressed="true">0°</button><button data-r="90">90°</button></span></h2>
+      <div class="profs" id="profs"></div>
+      <details id="catDet"><summary>Upravit katalog profilů</summary>
+        <p class="muted">Jeden profil na řádek: <code>jekl 40x40x2</code>, <code>pas 40x5</code>, <code>L 40x40x4</code>, <code>U 50x25x4</code>, <code>trubka 33.7x2</code>, <code>kulatina 12</code>.</p>
+        <textarea class="in" id="catText" rows="9" spellcheck="false"></textarea>
+        <div class="btns"><button class="btn" id="catApply">Použít</button><button class="btn ghost" id="catDefault" title="Tento katalog dostane každá nová skica">Uložit jako výchozí</button></div>
+        <div id="catMsg"></div>
+      </details>
+      <div class="row" id="plateOpts" hidden><label>Deska</label>
+        <select class="in" id="plMat"><option>dřevo</option><option>sklo</option><option>kámen</option><option>plech</option></select>
+        <input class="in n" id="plT" type="number" value="25" min="1"><label>mm</label></div>
+    </div>
+
+    <div class="sec">
+      <h2>Šablony</h2>
+      <div class="tpl" id="tpl"></div>
+      <div id="tplForm" hidden></div>
+    </div>
+
+    <div class="sec">
+      <h2>Kusovník <span id="bomTot" class="muted"></span></h2>
+      <div id="bom"><p class="muted">Zatím nic.</p></div>
+      <div id="checks"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Skica a export</h2>
+      <input class="in w" id="nameIn" placeholder="Název skici">
+      <textarea class="in" id="noteIn" rows="2" placeholder="Poznámka pro AI (účel, zatížení, povrch, co je důležité…)" style="margin-top:6px"></textarea>
+      <div class="btns">
+        <button class="btn primary" id="aiCopy">Kopírovat pro AI</button>
+        <button class="btn" id="dlJson">Stáhnout JSON</button>
+        <button class="btn" id="dlPng">Obrázek PNG</button>
+      </div>
+      <div class="btns">
+        <button class="btn ghost" id="saveLocal">Uložit do prohlížeče</button>
+        <select class="in" id="openSel"><option value="">Otevřít uloženou…</option></select>
+        <button class="btn ghost" id="loadJson">Načíst JSON</button>
+        <input type="file" id="fileIn" accept=".json,application/json" hidden>
+        <button class="btn ghost bad" id="newSk">Nová skica</button>
+      </div>
+      <p class="muted" style="margin-top:10px">Pro AI je nejlepší JSON a obrázek dohromady. Ve FreeCADu ho postaví makro <code>freecad/skica_import.py</code>.</p>
+    </div>
+
+    <div class="sec" id="keysSec">
+      <h2>Klávesy</h2>
+      <div class="keys">
+        <div><kbd>D</kbd> prut · <kbd>P</kbd> deska</div>
+        <div><kbd>V</kbd> výběr · <kbd>J</kbd> spoj</div>
+        <div><kbd>X</kbd><kbd>Y</kbd><kbd>Z</kbd> zamknout osu</div>
+        <div><kbd>0–9</kbd> délka, <kbd>Enter</kbd></div>
+        <div><kbd>Esc</kbd> ukončit / zrušit</div>
+        <div><kbd>R</kbd> natočit o 90°</div>
+        <div><kbd>[</kbd> <kbd>]</kbd> předchozí / další profil</div>
+        <div><kbd>PgUp</kbd> <kbd>PgDn</kbd> posun roviny</div>
+        <div><kbd>Del</kbd> smazat výběr</div>
+        <div><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd> zpět / znovu</div>
+        <div><kbd>Ctrl</kbd>+<kbd>A</kbd> vybrat vše</div>
+        <div><kbd>F</kbd> celá skica</div>
+      </div>
+    </div>
+  </aside>
+</main>
+<noscript><p class="nojs">Skicář potřebuje JavaScript.</p></noscript>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="skica-core.js?v=20261008s"></script>
+<script>
+(function () {
+  'use strict';
+  const SC = window.SkicaCore;
+  const $ = (id) => document.getElementById(id);
+  const LS = { model: 'skica.model.v1', saved: 'skica.saved.v1', catalog: 'skica.katalog.v1' };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  };
+  const nf = (x, d) => Number(x).toLocaleString('cs-CZ', { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: 0 });
+  function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ---------------- stav ---------------- */
+  function freshModel() { const m = SC.emptyModel(); const c = store.get(LS.catalog, null); if (c) m.catalog = c; return m; }
+  let model = store.get(LS.model, null);
+  if (!model || !Array.isArray(model.members)) model = freshModel();
+  model.joints = model.joints || {}; model.plates = model.plates || [];
+  let cat = SC.parseCatalog(model.catalog);
+  const st = {
+    tool: 'draw', prof: (cat.list[3] || cat.list[0] || {}).id, roll: 0,
+    plane: 'XY', off: 0, step: 10,
+    start: null, startSnap: null, lock: null, typed: '', lastAxis: 0,
+    hover: null, cand: null, plateCorner: null,
+    sel: new Set(), node: null, view: 'iso'
+  };
+  const undo = [], redo = [];
+  function snapshot() { return JSON.stringify(model); }
+  function commit(fn) {
+    undo.push(snapshot()); if (undo.length > 200) undo.shift(); redo.length = 0;
+    const r = fn(); changed(); return r;
+  }
+  function changed() {
+    store.set(LS.model, model);
+    cat = SC.parseCatalog(model.catalog);
+    rebuild(); renderPanel();
+  }
+  function doUndo() { if (!undo.length) return; redo.push(snapshot()); model = JSON.parse(undo.pop()); cleanSel(); cancelDraw(); changed(); }
+  function doRedo() { if (!redo.length) return; undo.push(snapshot()); model = JSON.parse(redo.pop()); cleanSel(); cancelDraw(); changed(); }
+  function cleanSel() { const ids = new Set(model.members.map((m) => m.id).concat(model.plates.map((p) => p.id))); [...st.sel].forEach((id) => { if (!ids.has(id)) st.sel.delete(id); }); }
+
+  /* ---------------- barvy profilů ---------------- */
+  const PAL = ['#59646E', '#3A5A8C', '#2E7D4F', '#8C5A3A', '#7A4E8C', '#4F7F7F', '#9A6B1F', '#8C2D3A', '#556B2F', '#6E5A8C', '#2F6C8C', '#8C6E5A'];
+  const colorOf = (id) => { const i = cat.list.findIndex((p) => p.id === id); return i < 0 ? '#999' : PAL[i % PAL.length]; };
+  const PLATE = { 'dřevo': ['#C49A6C', 1], 'sklo': ['#9FD4DC', 0.45], 'kámen': ['#A7A39B', 1], 'plech': ['#7D8790', 1] };
+  const AXC = ['#C0392B', '#2E7D4F', '#2F5FB3'];
+
+  /* ---------------- 3D ---------------- */
+  const host = $('viz');
+  const hasGL = !!window.THREE && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+  if (!hasGL) { host.innerHTML = '<p class="nojs">3D plátno se nenačetlo (chybí připojení k internetu nebo WebGL). Skicář potřebuje knihovnu three.js z internetu.</p>'; }
+  const renderer = hasGL ? new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }) : null;
+  let scene, camera, controls, world, ghost, gridGroup;
+  const V = (p) => new THREE.Vector3(p[0], p[1], p[2]);
+  const meshes = {};
+  if (hasGL) {
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setClearColor(0xF1EFEA, 1);
+    host.appendChild(renderer.domElement);
+    renderer.domElement.tabIndex = 0;
+    scene = new THREE.Scene();
+    camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -500000, 500000); camera.up.set(0, 0, 1);
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.screenSpacePanning = true; controls.enableDamping = false; controls.zoomSpeed = 1.6; controls.minZoom = 0.005; controls.maxZoom = 40;
+    controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
+    controls.addEventListener('change', () => { render(); overlay(); });
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b2a6, 0.8));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.65); sun.position.set(-3000, -5000, 8000); scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(5000, 3000, 2000); scene.add(fill);
+    world = new THREE.Group(); scene.add(world);
+    gridGroup = new THREE.Group(); scene.add(gridGroup);
+    ghost = new THREE.Group(); scene.add(ghost);
+    new ResizeObserver(resize).observe(host);
+  }
+  function render() { if (hasGL) renderer.render(scene, camera); }
+  function resize() {
+    const r = host.getBoundingClientRect(), w = Math.max(10, r.width), h = Math.max(10, r.height);
+    renderer.setSize(w, h, false); renderer.domElement.style.width = w + 'px'; renderer.domElement.style.height = h + 'px';
+    camera.left = -w / 2; camera.right = w / 2; camera.top = h / 2; camera.bottom = -h / 2; camera.updateProjectionMatrix();
+    render(); overlay();
+  }
+  const DIRS = { iso: [1, -1.25, 0.95], front: [0, -1, 0.0001], side: [1, 0, 0.0001], top: [0.0001, -0.0001, 1] };
+  function setView(v, keepZoom) {
+    if (v !== 'fit') st.view = v;
+    const B = SC.bounds(model);
+    const c = B ? B.mn.map((x, i) => (x + B.mx[i]) / 2) : [500, 300, 300];
+    const R = B ? Math.max(400, Math.hypot(B.size[0], B.size[1], B.size[2])) : 1600;
+    const dir = V(DIRS[st.view]).normalize();
+    controls.target.set(c[0], c[1], c[2]);
+    camera.position.copy(controls.target).addScaledVector(dir, 50000);
+    if (!keepZoom) { const r = host.getBoundingClientRect(); camera.zoom = Math.min(r.width, r.height) / (R * 1.25); camera.updateProjectionMatrix(); }
+    controls.update(); render(); overlay();
+    document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === st.view)));
+  }
+
+  function sectionShape(p) {
+    const s = SC.section(p), sh = new THREE.Shape();
+    if (s.round) {
+      sh.absarc(0, 0, s.round / 2, 0, Math.PI * 2, false);
+      if (s.hole > 0) { const h = new THREE.Path(); h.absarc(0, 0, s.hole / 2, 0, Math.PI * 2, true); sh.holes.push(h); }
+      return sh;
+    }
+    s.outer.forEach(([x, y], i) => (i ? sh.lineTo(x, y) : sh.moveTo(x, y)));
+    s.holes.forEach((ring) => { const h = new THREE.Path(); ring.slice().reverse().forEach(([x, y], i) => (i ? h.lineTo(x, y) : h.moveTo(x, y))); sh.holes.push(h); });
+    return sh;
+  }
+  const FALLBACK = SC.parseProfile('jekl 20x20x2');
+  function memberGeo(m) {
+    const p = cat.byId[m.prof] || FALLBACK;
+    const f = SC.frame(m.a, m.b, m.roll);
+    let a = m.a, b = m.b;
+    if (SC.dot(SC.cross(f.u, f.v), SC.sub(b, a)) < 0) { a = m.b; b = m.a; }
+    const L = SC.len(SC.sub(b, a)); if (L < 0.5) return null;
+    const g = new THREE.ExtrudeGeometry(sectionShape(p), { depth: L, bevelEnabled: false, curveSegments: 20, steps: 1 });
+    const mt = new THREE.Matrix4().makeBasis(V(f.u), V(f.v), V(SC.norm(SC.sub(b, a)))).setPosition(V(a));
+    g.applyMatrix4(mt);
+    return g;
+  }
+  const edgeMat = hasGL ? new THREE.LineBasicMaterial({ color: 0x17181A, transparent: true, opacity: 0.35 }) : null;
+  function disposeGroup(g) { g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material !== edgeMat) o.material.dispose(); }); g.clear(); }
+
+  let NODES = [], MIDS = [];
+  function rebuild() {
+    $('mName').textContent = model.name || 'Skica';
+    const B = SC.bounds(model), K = SC.bom(model);
+    $('mSub').textContent = B ? B.size.join(' × ') + ' mm · ' + model.members.length + ' prutů' + (model.plates.length ? ', ' + model.plates.length + ' desek' : '') + ' · ' + nf(K.kg, 1) + ' kg oceli' : 'prázdné plátno – klikni a kresli, nebo vlož šablonu';
+    const N = SC.nodes(model);
+    NODES = Object.values(N).map((n) => ({ p: n.p, n }));
+    MIDS = model.members.map((m) => ({ p: SC.mul(SC.add(m.a, m.b), 0.5), id: m.id }));
+    if (!hasGL) return;
+    disposeGroup(world);
+    Object.keys(meshes).forEach((k) => delete meshes[k]);
+    model.members.forEach((m) => {
+      const g = memberGeo(m); if (!g) return;
+      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: colorOf(m.prof), metalness: 0.25, roughness: 0.6 }));
+      mesh.userData.id = m.id; world.add(mesh); meshes[m.id] = mesh;
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), edgeMat); world.add(e);
+    });
+    model.plates.forEach((p) => {
+      const w = p.x1 - p.x0, d = p.y1 - p.y0; if (w < 1 || d < 1) return;
+      const c = PLATE[p.mat] || PLATE['dřevo'];
+      const g = new THREE.BoxGeometry(w, d, p.t);
+      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: c[0], roughness: 0.75, metalness: p.mat === 'plech' ? 0.4 : 0, transparent: c[1] < 1, opacity: c[1], depthWrite: c[1] >= 1 }));
+      mesh.position.set(p.x0 + w / 2, p.y0 + d / 2, p.z + p.t / 2); mesh.userData.id = p.id; world.add(mesh); meshes[p.id] = mesh;
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), edgeMat); e.position.copy(mesh.position); world.add(e);
+    });
+    Object.keys(model.joints).forEach((k) => {
+      const j = model.joints[k]; if (!j.type) return;
+      const s = new THREE.Mesh(new THREE.OctahedronGeometry(9), new THREE.MeshBasicMaterial({ color: 0xB8440F, depthTest: false })); s.renderOrder = 10; s.scale.setScalar(1 / Math.max(0.05, camera.zoom));
+      s.position.set(...k.split(',').map(Number)); world.add(s);
+    });
+    paintSel(); buildGrid(); render(); overlay();
+  }
+  function paintSel() {
+    if (!hasGL) return;
+    Object.entries(meshes).forEach(([id, mesh]) => {
+      const on = st.sel.has(id);
+      mesh.material.emissive = new THREE.Color(on ? 0xB8440F : 0x000000);
+      mesh.material.emissiveIntensity = on ? 0.55 : 0;
+    });
+    render();
+  }
+
+  /* mřížka a osy v pracovní rovině */
+  function buildGrid() {
+    disposeGroup(gridGroup);
+    const B = SC.bounds(model);
+    const span = Math.max(3000, B ? Math.max(...B.size) * 2 : 0);
+    const c = B ? B.mn.map((x, i) => Math.round((x + B.mx[i]) / 2 / 100) * 100) : [0, 0, 0];
+    const half = Math.ceil(span / 2 / 100) * 100, pts = [], major = [];
+    const ax = st.plane === 'XY' ? [0, 1] : st.plane === 'XZ' ? [0, 2] : [1, 2];
+    const n = st.plane === 'XY' ? 2 : st.plane === 'XZ' ? 1 : 0;
+    const P = (a, b) => { const q = [0, 0, 0]; q[ax[0]] = a; q[ax[1]] = b; q[n] = st.off; return q; };
+    const c0 = c[ax[0]], c1 = c[ax[1]];
+    for (let k = -half; k <= half; k += 100) {
+      const arr = (Math.round((c0 + k)) % 1000 === 0) ? major : pts;
+      arr.push(...P(c0 + k, c1 - half), ...P(c0 + k, c1 + half));
+      const arr2 = (Math.round((c1 + k)) % 1000 === 0) ? major : pts;
+      arr2.push(...P(c0 - half, c1 + k), ...P(c0 + half, c1 + k));
+    }
+    const mk = (arr, col, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false })); };
+    gridGroup.add(mk(pts, 0x8A857C, 0.18)); gridGroup.add(mk(major, 0x5E5A54, 0.32));
+    [0, 1, 2].forEach((i) => { const a = [0, 0, 0], b = [0, 0, 0]; b[i] = 600; const g = new THREE.BufferGeometry().setFromPoints([V(a), V(b)]); gridGroup.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: AXC[i] }))); });
+  }
+
+  /* ---------------- obrazovka ---------------- */
+  function scr(p) {
+    const r = host.getBoundingClientRect(), v = V(p).project(camera);
+    return [(v.x + 1) / 2 * r.width, (1 - v.y) / 2 * r.height];
+  }
+  function ray(mx, my) {
+    const r = host.getBoundingClientRect(), rc = new THREE.Raycaster();
+    rc.setFromCamera(new THREE.Vector2(mx / r.width * 2 - 1, -(my / r.height) * 2 + 1), camera);
+    return rc;
+  }
+  const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  function segDist2(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+    const t = L2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+    return [Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy), t];
+  }
+  /* parametr t na přímce s + t·d nejblíž k paprsku */
+  function lineRayT(s, d, rc) {
+    const o = rc.ray.origin, r = rc.ray.direction;
+    const w0 = [s[0] - o.x, s[1] - o.y, s[2] - o.z], rr = [r.x, r.y, r.z];
+    const a = SC.dot(d, d), b = SC.dot(d, rr), c = SC.dot(rr, rr), dd = SC.dot(d, w0), e = SC.dot(rr, w0);
+    const den = a * c - b * b; if (Math.abs(den) < 1e-9) return null;
+    return (b * e - c * dd) / den;
+  }
+  const snapv = (x) => Math.round(x / st.step) * st.step;
+  function planeHit(mx, my, mode, off) {
+    const rc = ray(mx, my), n = mode === 'XY' ? 2 : mode === 'XZ' ? 1 : 0;
+    const o = rc.ray.origin.toArray(), d = rc.ray.direction.toArray();
+    if (Math.abs(d[n]) < 1e-6) return null;
+    const k = (off - o[n]) / d[n], p = [0, 1, 2].map((i) => o[i] + d[i] * k);
+    return p.map((c, i) => (i === n ? off : snapv(c)));
+  }
+
+  /* přichycení na existující geometrii */
+  function findSnap(mx, my, skip) {
+    const m = [mx, my]; let best = null;
+    const take = (c) => { if (!best || c.d < best.d) best = c; };
+    NODES.forEach((n) => { if (skip && SC.len(SC.sub(n.p, skip)) < 0.5) return; const d = d2(m, scr(n.p)); if (d < 12) take({ p: n.p, kind: 'uzel', d }); });
+    if (best) return best;
+    MIDS.forEach((n) => { const d = d2(m, scr(n.p)); if (d < 10) take({ p: n.p.map((c) => SC.round(c, 1)), kind: 'střed', d, ref: n.id }); });
+    if (best) return best;
+    model.plates.forEach((p) => [[p.x0, p.y0], [p.x1, p.y0], [p.x1, p.y1], [p.x0, p.y1]].forEach(([x, y]) => { const q = [x, y, p.z + p.t]; const d = d2(m, scr(q)); if (d < 10) take({ p: q, kind: 'roh desky', d }); }));
+    if (best) return best;
+    const rc = ray(mx, my);
+    model.members.forEach((mm) => {
+      const [d] = segDist2(m, scr(mm.a), scr(mm.b)); if (d > 8) return;
+      const dir = SC.sub(mm.b, mm.a), L = SC.len(dir); if (L < 1) return;
+      const u = SC.mul(dir, 1 / L), t = lineRayT(mm.a, u, rc); if (t == null) return;
+      const s = Math.max(0, Math.min(L, snapv(t)));
+      if (s < 0.5 || s > L - 0.5) return;
+      take({ p: SC.add(mm.a, SC.mul(u, s)).map((c) => SC.round(c, 1)), kind: 'na prutu', d, ref: mm.id, along: s });
+    });
+    return best;
+  }
+  /* pohyb po ose od bodu s: osa podle myši, zarovnání na uzly */
+  function axisPoint(mx, my, s) {
+    const m = [mx, my], rc = ray(mx, my), s2 = scr(s);
+    let best = null;
+    [0, 1, 2].forEach((i) => {
+      if (st.lock != null && st.lock !== i) return;
+      const d = [0, 0, 0]; d[i] = 1;
+      const e = scr(SC.add(s, SC.mul(d, 1000))), L = d2(s2, e);
+      if (L < 4) return;
+      const dist = Math.abs((e[0] - s2[0]) * (s2[1] - m[1]) - (s2[0] - m[0]) * (e[1] - s2[1])) / L;
+      if (!best || dist < best.dist) best = { i, d, dist };
+    });
+    if (!best) return null;
+    let t = lineRayT(s, best.d, rc); if (t == null) return null;
+    let guide = null;
+    const raw = SC.add(s, SC.mul(best.d, t)), rs = scr(raw);
+    let gb = 9;
+    NODES.forEach((n) => {
+      const tt = n.p[best.i] - s[best.i]; if (Math.abs(tt) < 0.5) return;
+      const q = SC.add(s, SC.mul(best.d, tt)), dd = d2(scr(q), rs);
+      if (dd < gb) { gb = dd; t = tt; guide = n.p; }
+    });
+    if (!guide) t = snapv(t);
+    st.lastAxis = best.i;
+    return { p: SC.add(s, SC.mul(best.d, t)).map((c) => SC.round(c, 1)), axis: best.i, t, guide, kind: guide ? 'zarovnáno' : 'osa ' + 'XYZ'[best.i] };
+  }
+
+  /* ---------------- kreslení ---------------- */
+  function cancelDraw() { st.start = null; st.startSnap = null; st.typed = ''; st.plateCorner = null; st.cand = null; st.lock = null; showTyped(); clearGhost(); overlay(); }
+  function clearGhost() { if (hasGL) { disposeGroup(ghost); render(); } }
+  function ghostMember(a, b) {
+    clearGhost(); if (!a || !b || SC.len(SC.sub(b, a)) < 0.5) return;
+    const g = memberGeo({ a, b, prof: st.prof, roll: st.roll }); if (!g) return;
+    const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xB8440F, transparent: true, opacity: 0.45, depthWrite: false }));
+    ghost.add(mesh); render();
+  }
+  function ghostPlate(c, p) {
+    clearGhost(); if (!c || !p) return;
+    const w = Math.abs(p[0] - c.p[0]), d = Math.abs(p[1] - c.p[1]); if (w < 1 || d < 1) return;
+    const t = +$('plT').value || 20;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, d, t), new THREE.MeshStandardMaterial({ color: 0xB8440F, transparent: true, opacity: 0.35, depthWrite: false }));
+    mesh.position.set((p[0] + c.p[0]) / 2, (p[1] + c.p[1]) / 2, c.z + t / 2); ghost.add(mesh); render();
+  }
+  function startPoint(mx, my) {
+    const s = findSnap(mx, my);
+    if (s) return s;
+    const p = planeHit(mx, my, st.plane, st.off);
+    return p ? { p, kind: 'rovina ' + st.plane } : null;
+  }
+  function endCandidate(mx, my) {
+    if (!st.start) return null;
+    if (st.lock == null) { const s = findSnap(mx, my, st.start); if (s) return s; }
+    return axisPoint(mx, my, st.start);
+  }
+  function placeMember(a, b) {
+    if (SC.len(SC.sub(b, a)) < 0.5) return null;
+    return commit(() => SC.addMember(model, st.prof, a, b, { roll: st.roll }));
+  }
+  function memberHalfV(id) {
+    const m = model.members.find((x) => x.id === id); if (!m) return 0;
+    const p = cat.byId[m.prof]; if (!p) return 0;
+    const f = SC.frame(m.a, m.b, m.roll), [w, h] = SC.extent(p);
+    return Math.abs(f.u[2]) * w / 2 + Math.abs(f.v[2]) * h / 2;
+  }
+  function plateZFrom(s) {
+    if (!s) return 0;
+    if (s.kind === 'roh desky') return s.p[2];
+    if (s.ref) return s.p[2] + memberHalfV(s.ref);
+    if (s.kind === 'uzel') {
+      const n = NODES.find((q) => SC.len(SC.sub(q.p, s.p)) < 0.5);
+      if (n) return s.p[2] + Math.max(0, ...n.n.ends.concat(n.n.on).map((id) => memberHalfV(id)));
+    }
+    return s.p[2];
+  }
+  function planeAtZ(mx, my, z) {
+    const s = findSnap(mx, my); if (s) return [s.p[0], s.p[1], z];
+    const p = planeHit(mx, my, 'XY', z); return p;
+  }
+
+  /* ---------------- výběr ---------------- */
+  function pickAt(mx, my) {
+    const rc = ray(mx, my);
+    const hits = rc.intersectObjects(Object.values(meshes), false);
+    if (hits.length) return hits[0].object.userData.id;
+    let best = null, bd = 8;
+    model.members.forEach((m) => { const [d] = segDist2([mx, my], scr(m.a), scr(m.b)); if (d < bd) { bd = d; best = m.id; } });
+    return best;
+  }
+  function pickNode(mx, my) {
+    let best = null, bd = 14;
+    NODES.forEach((n) => { const d = d2([mx, my], scr(n.p)); if (d < bd) { bd = d; best = n; } });
+    return best;
+  }
+
+  /* ---------------- překryv (kóty, značky) ---------------- */
+  const svg = $('svg'), ovl = $('ovl');
+  function overlay() {
+    if (!hasGL) return;
+    ovl.querySelectorAll('.lbl').forEach((e) => e.remove());
+    let s = '';
+    const lbl = (p, t, cls) => { const [x, y] = scr(p); const d = document.createElement('div'); d.className = 'lbl ' + (cls || ''); d.style.left = x + 'px'; d.style.top = y + 'px'; d.textContent = t; ovl.appendChild(d); };
+    model.members.forEach((m) => { if (st.sel.has(m.id)) lbl(SC.mul(SC.add(m.a, m.b), 0.5), nf(SC.mLen(m)), ''); });
+    model.plates.forEach((p) => { if (st.sel.has(p.id)) lbl([(p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, p.z + p.t], nf(p.x1 - p.x0) + ' × ' + nf(p.y1 - p.y0), ''); });
+    if (st.node) { const [x, y] = scr(st.node.p); s += '<circle cx="' + x + '" cy="' + y + '" r="9" fill="none" stroke="#B8440F" stroke-width="2.5"/>'; }
+    const c = st.cand;
+    if (c) {
+      const [x, y] = scr(c.p);
+      const col = c.axis != null ? AXC[c.axis] : '#B8440F';
+      if (c.kind === 'uzel' || c.kind === 'roh desky') s += '<rect x="' + (x - 6) + '" y="' + (y - 6) + '" width="12" height="12" fill="none" stroke="' + col + '" stroke-width="2"/>';
+      else if (c.kind === 'střed') s += '<path d="M' + x + ' ' + (y - 7) + ' L' + (x + 7) + ' ' + (y + 5) + ' L' + (x - 7) + ' ' + (y + 5) + 'Z" fill="none" stroke="' + col + '" stroke-width="2"/>';
+      else if (c.kind === 'na prutu') s += '<path d="M' + (x - 6) + ' ' + (y - 6) + 'L' + (x + 6) + ' ' + (y + 6) + 'M' + (x + 6) + ' ' + (y - 6) + 'L' + (x - 6) + ' ' + (y + 6) + '" stroke="' + col + '" stroke-width="2"/>';
+      else s += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + col + '"/>';
+      if (c.guide) { const [gx, gy] = scr(c.guide); s += '<line x1="' + x + '" y1="' + y + '" x2="' + gx + '" y2="' + gy + '" stroke="#B8440F" stroke-dasharray="4 4" stroke-width="1.2"/>'; }
+      if (st.start && st.tool === 'draw') {
+        const [sx, sy] = scr(st.start);
+        s += '<line x1="' + sx + '" y1="' + sy + '" x2="' + x + '" y2="' + y + '" stroke="' + col + '" stroke-width="1.5"/>';
+        lbl(SC.mul(SC.add(st.start, c.p), 0.5), nf(SC.len(SC.sub(c.p, st.start))), 'live');
+      }
+      if (st.plateCorner && st.tool === 'plate') lbl([(st.plateCorner.p[0] + c.p[0]) / 2, (st.plateCorner.p[1] + c.p[1]) / 2, st.plateCorner.z], nf(Math.abs(c.p[0] - st.plateCorner.p[0])) + ' × ' + nf(Math.abs(c.p[1] - st.plateCorner.p[1])), 'live');
+    }
+    if (st.start) { const [sx, sy] = scr(st.start); s += '<circle cx="' + sx + '" cy="' + sy + '" r="5" fill="#fff" stroke="#B8440F" stroke-width="2"/>'; }
+    svg.innerHTML = s;
+  }
+  function status(c) {
+    const el = $('status');
+    if (!c) { el.textContent = 'Táhni levým tlačítkem = otáčení, pravým = posun, kolečko = zoom'; return; }
+    const p = c.p;
+    let t = 'X ' + nf(p[0]) + '  Y ' + nf(p[1]) + '  Z ' + nf(p[2]) + ' · ' + c.kind;
+    if (st.start && st.tool === 'draw') t += ' · délka ' + nf(SC.len(SC.sub(p, st.start)));
+    if (st.lock != null) t += ' · zamčeno ' + 'XYZ'[st.lock];
+    el.textContent = t;
+  }
+  function showTyped() {
+    const el = $('typed');
+    if (!st.typed) { el.hidden = true; return; }
+    el.hidden = false; el.innerHTML = esc(st.typed) + ' mm<small>Enter = délka po ose ' + 'XYZ'[st.lock != null ? st.lock : st.lastAxis] + '</small>';
+  }
+
+  /* ---------------- myš ---------------- */
+  let down = null, lastMove = null;
+  if (hasGL) {
+    const cv = renderer.domElement;
+    const pos = (e) => { const r = host.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    cv.addEventListener('pointerdown', (e) => { down = { p: pos(e), b: e.button }; cv.focus(); });
+    cv.addEventListener('pointermove', (e) => {
+      if (e.buttons) return;
+      const [mx, my] = pos(e); lastMove = [mx, my]; hover(mx, my);
+    });
+    cv.addEventListener('pointerleave', () => { st.cand = null; overlay(); status(null); });
+    cv.addEventListener('pointerup', (e) => {
+      if (!down) return; const p = pos(e), moved = d2(p, down.p) > 5, b = down.b; down = null;
+      if (moved) return;
+      if (b === 0) click(p[0], p[1], e);
+      if (b === 2 && (st.start || st.plateCorner)) cancelDraw();
+    });
+    cv.addEventListener('contextmenu', (e) => e.preventDefault());
+    cv.addEventListener('dblclick', () => { if (st.tool === 'draw') cancelDraw(); });
+  }
+  function hover(mx, my) {
+    let c = null;
+    if (st.tool === 'draw') {
+      c = st.start ? endCandidate(mx, my) : startPoint(mx, my);
+      if (st.start && c) ghostMember(st.start, c.p); else clearGhost();
+    } else if (st.tool === 'plate') {
+      if (st.plateCorner) { const p = planeAtZ(mx, my, st.plateCorner.z); c = p ? { p, kind: 'roh desky' } : null; ghostPlate(st.plateCorner, p); }
+      else c = startPoint(mx, my);
+    } else if (st.tool === 'joint') {
+      const n = pickNode(mx, my); c = n ? { p: n.p, kind: 'uzel' } : null;
+    }
+    st.cand = c; overlay(); status(c);
+  }
+  function click(mx, my, e) {
+    if (st.tool === 'draw') {
+      if (!st.start) { const c = startPoint(mx, my); if (c) { st.start = c.p; st.startSnap = c; st.lock = null; } hover(mx, my); return; }
+      const c = endCandidate(mx, my); if (!c) return;
+      if (SC.len(SC.sub(c.p, st.start)) < 0.5) { cancelDraw(); return; }
+      placeMember(st.start, c.p);
+      st.start = c.p; st.typed = ''; st.lock = null; showTyped(); hover(mx, my);
+      return;
+    }
+    if (st.tool === 'plate') {
+      if (!st.plateCorner) { const c = startPoint(mx, my); if (c) st.plateCorner = { p: c.p, z: plateZFrom(c) }; hover(mx, my); return; }
+      const p = planeAtZ(mx, my, st.plateCorner.z); if (!p) return;
+      const c0 = st.plateCorner;
+      if (Math.abs(p[0] - c0.p[0]) < 1 || Math.abs(p[1] - c0.p[1]) < 1) return;
+      commit(() => { const pl = SC.addPlate(model, c0.p, p, c0.z, +$('plT').value || 20, $('plMat').value); st.sel = new Set([pl.id]); });
+      cancelDraw(); return;
+    }
+    if (st.tool === 'select') {
+      const id = pickAt(mx, my);
+      if (!id) { if (!e.shiftKey) st.sel.clear(); }
+      else if (e.shiftKey || e.ctrlKey || e.metaKey) { st.sel.has(id) ? st.sel.delete(id) : st.sel.add(id); }
+      else st.sel = new Set([id]);
+      st.node = null; paintSel(); renderPanel(); overlay(); return;
+    }
+    if (st.tool === 'joint') {
+      const n = pickNode(mx, my); st.node = n ? { p: n.p } : null; renderPanel(); overlay();
+    }
+  }
+
+  /* ---------------- klávesy ---------------- */
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') { if (e.key === 'Escape') e.target.blur(); return; }
+    const k = e.key, ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && (k === 'z' || k === 'Z')) { e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
+    if (ctrl && (k === 'y' || k === 'Y')) { e.preventDefault(); doRedo(); return; }
+    if (ctrl && (k === 'a' || k === 'A')) { e.preventDefault(); setTool('select'); st.sel = new Set(model.members.map((m) => m.id).concat(model.plates.map((p) => p.id))); paintSel(); renderPanel(); overlay(); return; }
+    if (ctrl) return;
+    if (st.tool === 'draw' && st.start && /^[0-9.,]$/.test(k)) { st.typed += k === ',' ? '.' : k; showTyped(); e.preventDefault(); return; }
+    if (st.typed && k === 'Backspace') { st.typed = st.typed.slice(0, -1); showTyped(); e.preventDefault(); return; }
+    if (st.typed && k === 'Enter') {
+      const L = parseFloat(st.typed); const ax = st.lock != null ? st.lock : st.lastAxis;
+      if (L > 0 && st.start) {
+        let sign = 1; if (st.cand && st.cand.p) { const dv = st.cand.p[ax] - st.start[ax]; if (dv < 0) sign = -1; }
+        const end = st.start.slice(); end[ax] = SC.round(end[ax] + sign * L, 1);
+        placeMember(st.start, end); st.start = end;
+      }
+      st.typed = ''; st.lock = null; showTyped(); if (lastMove) hover(...lastMove); e.preventDefault(); return;
+    }
+    switch (k) {
+      case 'Escape': if (st.start || st.plateCorner || st.typed) cancelDraw(); else { st.sel.clear(); st.node = null; paintSel(); renderPanel(); overlay(); } break;
+      case 'd': case 'D': setTool('draw'); break;
+      case 'p': case 'P': setTool('plate'); break;
+      case 'v': case 'V': case 's': case 'S': setTool('select'); break;
+      case 'j': case 'J': setTool('joint'); break;
+      case 'x': case 'X': case 'y': case 'Y': case 'z': case 'Z':
+        if (st.tool === 'draw' && st.start) { const i = 'xyz'.indexOf(k.toLowerCase()); st.lock = st.lock === i ? null : i; showTyped(); if (lastMove) hover(...lastMove); }
+        break;
+      case 'r': case 'R':
+        if (st.sel.size && st.tool === 'select') commit(() => model.members.forEach((m) => { if (st.sel.has(m.id)) m.roll = ((m.roll || 0) + 90) % 180; }));
+        else { st.roll = st.roll ? 0 : 90; renderRoll(); if (lastMove) hover(...lastMove); }
+        break;
+      case '[': case ']': {
+        const i = cat.list.findIndex((p) => p.id === st.prof), n = cat.list.length;
+        if (n) { st.prof = cat.list[((i < 0 ? 0 : i) + (k === ']' ? 1 : -1) + n) % n].id; renderProfs(); if (lastMove) hover(...lastMove); }
+        break;
+      }
+      case 'PageUp': case 'PageDown': setPlane(st.plane, st.off + (k === 'PageUp' ? 1 : -1) * Math.max(st.step, 50)); e.preventDefault(); break;
+      case 'Delete': case 'Backspace': delSel(); e.preventDefault(); break;
+      case 'f': case 'F': setView('fit'); break;
+      case 'Enter': if (st.start) cancelDraw(); break;
+      default: return;
+    }
+  });
+  function delSel() { if (!st.sel.size) return; const ids = [...st.sel]; commit(() => { SC.remove(model, ids); st.sel.clear(); }); }
+
+  /* ---------------- panel ---------------- */
+  const HELP = {
+    draw: 'Klikni začátek a pak konec – kreslí se řetěz. Osa X / Y / Z se vybere podle pohybu myši (klávesou ji zamkneš), konec se přichytí na uzel, střed nebo bod na prutu. Napiš délku a Enter. Esc nebo pravé tlačítko řetěz ukončí.',
+    plate: 'Klikni dva protilehlé rohy. Když první roh klikneš na uzel nebo prut, deska si sedne na horní plochu profilu.',
+    select: 'Klikni prut nebo desku, Shift přidá do výběru. R natočí profil o 90°, Del smaže.',
+    joint: 'Klikni na uzel a napiš, jak se má spoj udělat (pokos, na tupo s průběžným prutem, plný roh…). AI i importér se tím řídí.'
+  };
+  function setTool(t) {
+    if (st.tool !== t) cancelDraw();
+    st.tool = t; st.node = t === 'joint' ? st.node : null;
+    document.querySelectorAll('#tools .tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+    $('toolHelp').textContent = HELP[t];
+    $('plateOpts').hidden = t !== 'plate';
+    if (hasGL) renderer.domElement.style.cursor = t === 'select' ? 'default' : 'crosshair';
+    renderPanel(); overlay();
+  }
+  function setPlane(p, off) {
+    st.plane = p; st.off = SC.round(off, 1);
+    $('planeOff').value = st.off;
+    document.querySelectorAll('#planeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === p)));
+    if (hasGL) { buildGrid(); render(); }
+    if (lastMove) hover(...lastMove);
+  }
+  function renderRoll() { document.querySelectorAll('#rollSeg button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.r === st.roll))); }
+  function renderProfs() {
+    const groups = {};
+    cat.list.forEach((p) => (groups[p.typ] = groups[p.typ] || []).push(p));
+    if (!cat.byId[st.prof] && cat.list.length) st.prof = cat.list[0].id;
+    $('profs').innerHTML = Object.keys(groups).map((g) => '<div class="pgroup"><div class="gl">' + SC.TYPES[g].lab + '</div><div class="pgrid">' +
+      groups[g].map((p) => '<button class="pbtn" data-p="' + esc(p.id) + '" aria-pressed="' + (p.id === st.prof) + '" title="' + esc(SC.profileLabel(p)) + ' · ' + nf(p.kgm, 2) + ' kg/m"><i style="background:' + colorOf(p.id) + '"></i>' + esc(SC.profileLabel(p).replace(/^(jekl|pásovina|trubka|kulatina) /, '')) + '</button>').join('') + '</div></div>').join('');
+  }
+  $('profs').addEventListener('click', (e) => {
+    const b = e.target.closest('.pbtn'); if (!b) return;
+    if (st.tool === 'select' && st.sel.size && model.members.some((m) => st.sel.has(m.id))) {
+      commit(() => model.members.forEach((m) => { if (st.sel.has(m.id)) m.prof = b.dataset.p; }));
+    }
+    st.prof = b.dataset.p; renderProfs();
+  });
+  document.querySelectorAll('#rollSeg button').forEach((b) => b.addEventListener('click', () => { st.roll = +b.dataset.r; renderRoll(); }));
+  document.querySelectorAll('#tools .tool').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.t)));
+  document.querySelectorAll('#planeSeg button').forEach((b) => b.addEventListener('click', () => setPlane(b.dataset.p, st.off)));
+  $('planeOff').addEventListener('change', (e) => setPlane(st.plane, +e.target.value || 0));
+  $('snapSel').addEventListener('change', (e) => { st.step = +e.target.value; });
+  document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => {
+    const v = b.dataset.v; setView(v);
+    if (v === 'front') setPlane('XZ', st.plane === 'XZ' ? st.off : 0);
+    else if (v === 'side') setPlane('YZ', st.plane === 'YZ' ? st.off : 0);
+    else if (v === 'top' || v === 'iso') setPlane('XY', st.plane === 'XY' ? st.off : 0);
+  }));
+
+  function vecIn(id, v) { return '<input class="in n" id="' + id + '" type="number" step="10" value="' + v + '">'; }
+  function renderSel() {
+    const sec = $('selSec');
+    if (st.tool === 'joint' && st.node) {
+      const k = SC.key(st.node.p), N = SC.nodes(model)[k];
+      if (!N) { st.node = null; sec.hidden = true; return; }
+      const j = model.joints[k] || {}, all = N.ends.concat(N.on);
+      sec.hidden = false;
+      sec.innerHTML = '<h2>Uzel <span class="muted">[' + N.p.map((c) => nf(c)).join(', ') + ']</span></h2>' +
+        '<dl class="kv"><dt>Končí tu</dt><dd>' + (N.ends.join(', ') || '–') + '</dd>' + (N.on.length ? '<dt>Leží na</dt><dd>' + N.on.join(', ') + ' (T-spoj)</dd>' : '') + '</dl>' +
+        '<div class="row"><label>Spoj</label><select class="in" id="jType"><option value="">neurčeno – nech na AI</option>' +
+        Object.entries(SC.JOINT_LAB).map(([v, l]) => '<option value="' + v + '"' + (j.type === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
+        '<div class="row"><label>Průběžný prut</label><select class="in" id="jThru"><option value="">–</option>' + all.map((id) => '<option' + (j.thru === id ? ' selected' : '') + '>' + id + '</option>').join('') + '</select></div>' +
+        '<textarea class="in" id="jNote" rows="2" placeholder="Poznámka ke spoji" style="margin-top:8px">' + esc(j.note || '') + '</textarea>' +
+        '<div class="btns"><button class="btn primary" id="jSave">Uložit spoj</button>' + (model.joints[k] ? '<button class="btn ghost" id="jDel">Zrušit</button>' : '') + '</div>';
+      $('jSave').onclick = () => commit(() => { const t = $('jType').value, th = $('jThru').value, no = $('jNote').value.trim(); if (!t && !th && !no) delete model.joints[k]; else model.joints[k] = { type: t, thru: th, note: no }; });
+      if ($('jDel')) $('jDel').onclick = () => commit(() => { delete model.joints[k]; });
+      return;
+    }
+    const ms = model.members.filter((m) => st.sel.has(m.id)), ps = model.plates.filter((p) => st.sel.has(p.id));
+    if (!ms.length && !ps.length) { sec.hidden = true; return; }
+    sec.hidden = false;
+    let h = '<h2>Výběr <span class="muted">' + (ms.length ? ms.length + ' prutů' : '') + (ms.length && ps.length ? ', ' : '') + (ps.length ? ps.length + ' desek' : '') + '</span></h2>';
+    if (ms.length === 1 && !ps.length) {
+      const m = ms[0], p = cat.byId[m.prof];
+      h += '<dl class="kv"><dt>' + m.id + '</dt><dd>' + esc(p ? SC.profileLabel(p) : m.prof) + '</dd><dt>Od</dt><dd>' + m.a.map((c) => nf(c)).join(', ') + '</dd><dt>Do</dt><dd>' + m.b.map((c) => nf(c)).join(', ') + '</dd></dl>' +
+        '<div class="row"><label>Délka osy</label><input class="in n" id="mLen" type="number" value="' + SC.round(SC.mLen(m), 1) + '"><label>mm</label><label>Natočení</label><input class="in n" id="mRoll" type="number" step="90" value="' + (m.roll || 0) + '" style="width:60px"><label>°</label></div>' +
+        '<div class="row"><input class="in w" id="selName" placeholder="Název (noha, madlo…)" value="' + esc(m.name) + '"></div>' +
+        '<div class="row"><label><input type="checkbox" id="mThru"' + (m.thru ? ' checked' : '') + '> průběžný (ostatní na něj dorážejí)</label></div>' +
+        '<textarea class="in" id="mNote" rows="2" placeholder="Poznámka pro AI" style="margin-top:6px">' + esc(m.note) + '</textarea>' +
+        '<div class="btns"><button class="btn" id="mApply">Uložit</button><button class="btn ghost" id="mSplit" title="Rozdělit v polovině">Rozdělit</button><button class="btn ghost" id="mFlip" title="Prohodit začátek a konec – délka se pak mění od druhého konce">Otočit směr</button></div>';
+    } else if (ps.length === 1 && !ms.length) {
+      const p = ps[0];
+      h += '<div class="row"><label>Materiál</label><select class="in" id="pMat">' + Object.keys(PLATE).map((k) => '<option' + (k === p.mat ? ' selected' : '') + '>' + k + '</option>').join('') + '</select><label>tl.</label><input class="in n" id="pT" type="number" value="' + p.t + '" style="width:60px"></div>' +
+        '<div class="row"><label>Rozměr</label><input class="in n" id="pW" type="number" value="' + SC.round(p.x1 - p.x0) + '"><label>×</label><input class="in n" id="pD" type="number" value="' + SC.round(p.y1 - p.y0) + '"></div>' +
+        '<div class="row"><label>Spodek ve výšce</label><input class="in n" id="pZ" type="number" value="' + p.z + '"><label>mm</label></div>' +
+        '<div class="row"><input class="in w" id="pName" placeholder="Název (deska, police…)" value="' + esc(p.name) + '"></div>' +
+        '<div class="btns"><button class="btn" id="pApply">Uložit</button></div>';
+    } else if (ms.length) {
+      const profs = [...new Set(ms.map((m) => m.prof))];
+      h += '<p class="muted">Profily: ' + profs.map(esc).join(', ') + '. Kliknutím na profil v paletě ho změníš všem vybraným.</p>';
+    }
+    h += '<div class="row"><label>Posun</label>' + vecIn('dx', 0) + vecIn('dy', 0) + vecIn('dz', 0) + '</div>' +
+      '<div class="btns"><button class="btn" id="mvGo">Posunout</button><button class="btn" id="cpGo">Kopírovat</button><button class="btn ghost" id="mirX" title="Kopie zrcadlená přes střed celé skici (rovina YZ)">Zrcadlit X</button><button class="btn ghost" id="mirY" title="Kopie zrcadlená přes střed celé skici (rovina XZ)">Zrcadlit Y</button><button class="btn ghost" id="sameP">Stejný profil</button><button class="btn bad" id="delGo">Smazat</button></div>';
+    sec.innerHTML = h;
+    const ids = [...st.sel];
+    const dv = () => [+$('dx').value || 0, +$('dy').value || 0, +$('dz').value || 0];
+    $('mvGo').onclick = () => { const d = dv(); if (d.some((x) => x)) commit(() => SC.move(model, ids, d, false)); };
+    $('cpGo').onclick = () => { const d = dv(); if (!d.some((x) => x)) { toast('Zadej posun kopie'); return; } commit(() => { st.sel = new Set(SC.move(model, ids, d, true)); }); };
+    const mir = (ax) => { const B = SC.bounds(model); if (!B) return; const c = (B.mn[ax] + B.mx[ax]) / 2; commit(() => { const n = SC.mirror(model, ids, ax, c); if (!n.length) toast('Zrcadlová kopie by ležela na sobě'); else st.sel = new Set(ids.concat(n)); }); };
+    $('mirX').onclick = () => mir(0); $('mirY').onclick = () => mir(1);
+    $('sameP').onclick = () => { const pr = new Set(ms.map((m) => m.prof)); st.sel = new Set(model.members.filter((m) => pr.has(m.prof)).map((m) => m.id)); paintSel(); renderPanel(); overlay(); };
+    $('delGo').onclick = delSel;
+    if ($('mApply')) {
+      const m = ms[0];
+      $('mApply').onclick = () => commit(() => {
+        const L = +$('mLen').value; if (L > 0 && Math.abs(L - SC.mLen(m)) > 0.05) m.b = SC.add(m.a, SC.mul(SC.norm(SC.sub(m.b, m.a)), L)).map((c) => SC.round(c, 1));
+        m.roll = (+$('mRoll').value || 0) % 360; m.name = $('selName').value.trim(); m.note = $('mNote').value.trim(); m.thru = $('mThru').checked;
+      });
+      $('mSplit').onclick = () => commit(() => { const n = SC.split(model, m.id, SC.mul(SC.add(m.a, m.b), 0.5)); if (n) st.sel = new Set([m.id, n]); });
+      $('mFlip').onclick = () => commit(() => { const a = m.a; m.a = m.b; m.b = a; });
+    }
+    if ($('pApply')) {
+      const p = ps[0];
+      $('pApply').onclick = () => commit(() => { p.mat = $('pMat').value; p.t = +$('pT').value || p.t; p.x1 = SC.round(p.x0 + (+$('pW').value || p.x1 - p.x0)); p.y1 = SC.round(p.y0 + (+$('pD').value || p.y1 - p.y0)); p.z = +$('pZ').value || 0; p.name = $('pName').value.trim(); });
+    }
+  }
+
+  let tplSel = null;
+  function renderTpl() {
+    $('tpl').innerHTML = SC.TEMPLATES.map((t) => '<button data-t="' + t.id + '" aria-pressed="' + (t.id === tplSel) + '"><b>' + t.lab + '</b><span>' + t.sub + '</span></button>').join('');
+    const f = $('tplForm'), t = SC.TEMPLATES.find((x) => x.id === tplSel);
+    if (!t) { f.hidden = true; return; }
+    f.hidden = false;
+    const opts = (def) => cat.list.map((p) => '<option' + (p.id === def ? ' selected' : '') + '>' + esc(p.id) + '</option>').join('') + (cat.byId[def] ? '' : '<option selected>' + esc(def) + '</option>');
+    f.innerHTML = '<div class="pform">' + t.params.map((p) => '<label for="tp_' + p.k + '">' + p.lab + '</label><span><input class="in n" id="tp_' + p.k + '" type="number" value="' + p.def + '"> ' + (p.k === 'N' ? 'ks' : 'mm') + '</span>').join('') +
+      t.profs.map((p) => '<label for="tp_' + p.k + '">' + p.lab + '</label><select class="in" id="tp_' + p.k + '">' + opts(p.def) + '</select>').join('') + '</div>' +
+      '<div class="btns"><button class="btn primary" id="tplRep">Nahradit skicu</button><button class="btn" id="tplAdd">Přidat do skici</button></div>';
+    const vals = () => { const o = {}; t.params.concat(t.profs).forEach((p) => { o[p.k] = $('tp_' + p.k).value; }); return o; };
+    $('tplAdd').onclick = () => commit(() => { st.sel = new Set(SC.applyTemplate(model, t.id, vals())); setTool('select'); });
+    $('tplRep').onclick = () => {
+      if ((model.members.length || model.plates.length) && !confirm('Smazat současnou skicu a vložit šablonu?')) return;
+      commit(() => { model.members = []; model.plates = []; model.joints = {}; model.seq = 1; model.name = t.lab; SC.applyTemplate(model, t.id, vals()); st.sel.clear(); });
+      setView('iso');
+    };
+  }
+  $('tpl').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; tplSel = tplSel === b.dataset.t ? null : b.dataset.t; renderTpl(); });
+
+  function renderBom() {
+    const K = SC.bom(model);
+    $('bomTot').textContent = K.per.length ? nf(K.m, 1) + ' m · ' + nf(K.kg, 1) + ' kg' : '';
+    if (!K.rows.length && !K.plates.length) { $('bom').innerHTML = '<p class="muted">Zatím nic.</p>'; $('checks').innerHTML = ''; return; }
+    let h = '<table class="bom"><thead><tr><th>Profil</th><th class="r">m</th><th class="r">ks</th><th class="r">kg</th></tr></thead><tbody>' +
+      K.per.map((r) => '<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:' + colorOf(r.prof) + '"></i>' + esc(r.label) + '</td><td class="r">' + nf(r.m, 2) + '</td><td class="r">' + r.ks + '</td><td class="r">' + nf(r.kg, 1) + '</td></tr>').join('') + '</tbody></table>';
+    h += '<details><summary>Délky po kusech (osové)</summary><table class="bom"><tbody>' + K.rows.map((r) => '<tr><td>' + esc(r.prof) + '</td><td class="r">' + nf(r.len) + ' mm</td><td class="r">' + r.ks + '×</td></tr>').join('') + '</tbody></table></details>';
+    if (K.plates.length) h += '<table class="bom" style="margin-top:8px"><tbody>' + K.plates.map((p) => '<tr><td>' + p.id + ' ' + esc(p.mat) + '</td><td class="r">' + nf(p.w) + ' × ' + nf(p.d) + ' × ' + p.t + '</td></tr>').join('') + '</tbody></table>';
+    $('bom').innerHTML = h;
+    const C = SC.checks(model);
+    $('checks').innerHTML = C.slice(0, 8).map((c) => '<div class="msg ' + c.lvl + '">' + esc(c.msg) + '</div>').join('') + (C.length > 8 ? '<p class="muted">… a dalších ' + (C.length - 8) + '</p>' : '');
+  }
+  function renderSaved() {
+    const s = store.get(LS.saved, {});
+    $('openSel').innerHTML = '<option value="">Otevřít uloženou…</option>' + Object.keys(s).sort().map((k) => '<option>' + esc(k) + '</option>').join('');
+  }
+  function renderPanel() {
+    renderSel(); renderBom(); renderProfs();
+    if (document.activeElement !== $('nameIn')) $('nameIn').value = model.name || '';
+    if (document.activeElement !== $('noteIn')) $('noteIn').value = model.note || '';
+  }
+
+  /* ---------------- soubor ---------------- */
+  $('nameIn').addEventListener('change', (e) => commit(() => { model.name = e.target.value.trim() || 'Skica'; }));
+  $('noteIn').addEventListener('change', (e) => commit(() => { model.note = e.target.value.trim(); }));
+  const fname = () => (model.name || 'skica').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'skica';
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+  $('dlJson').onclick = () => download(fname() + '.skica.json', new Blob([JSON.stringify(SC.exportJSON(model), null, 1)], { type: 'application/json' }));
+  $('aiCopy').onclick = async () => {
+    if (!model.members.length && !model.plates.length) { toast('Skica je prázdná'); return; }
+    const t = SC.aiText(model);
+    try { await navigator.clipboard.writeText(t); toast('Zkopírováno – vlož to AI spolu s obrázkem PNG'); }
+    catch (e) { download(fname() + '.pro-ai.md', new Blob([t], { type: 'text/markdown' })); toast('Schránka nejde – stáhl jsem soubor'); }
+  };
+  $('dlPng').onclick = () => {
+    if (!hasGL) return;
+    const sel = st.sel; st.sel = new Set(); paintSel(); clearGhost(); render();
+    renderer.domElement.toBlob((b) => { download(fname() + '.png', b); st.sel = sel; paintSel(); });
+  };
+  $('saveLocal').onclick = () => {
+    const n = prompt('Uložit skicu pod názvem:', model.name || 'Skica'); if (!n) return;
+    const s = store.get(LS.saved, {}); s[n] = model; if (!store.set(LS.saved, s)) { toast('Nepodařilo se uložit (plné úložiště prohlížeče?)'); return; }
+    if (model.name !== n) commit(() => { model.name = n; });
+    renderSaved(); toast('Uloženo v tomto prohlížeči');
+  };
+  $('openSel').onchange = (e) => {
+    const s = store.get(LS.saved, {}), m = s[e.target.value]; e.target.value = ''; if (!m) return;
+    commit(() => { model = JSON.parse(JSON.stringify(m)); model.joints = model.joints || {}; model.plates = model.plates || []; st.sel.clear(); });
+    setView('iso');
+  };
+  $('loadJson').onclick = () => $('fileIn').click();
+  $('fileIn').onchange = (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    f.text().then((t) => { const m = SC.importJSON(JSON.parse(t)); commit(() => { model = m; st.sel.clear(); }); setView('iso'); toast('Načteno: ' + m.name); })
+      .catch((err) => toast('Nejde načíst: ' + err.message));
+  };
+  $('newSk').onclick = () => {
+    if ((model.members.length || model.plates.length) && !confirm('Začít novou skicu? Současná zůstane jen v Zpět (Ctrl+Z).')) return;
+    commit(() => { const c = model.catalog; model = freshModel(); model.catalog = c; st.sel.clear(); });
+    cancelDraw(); setView('iso');
+  };
+  $('helpLink').onclick = (e) => { e.preventDefault(); $('keysSec').scrollIntoView({ behavior: 'smooth' }); };
+
+  /* katalog */
+  $('catDet').addEventListener('toggle', () => { if ($('catDet').open) $('catText').value = model.catalog; });
+  $('catApply').onclick = () => {
+    const c = SC.parseCatalog($('catText').value);
+    $('catMsg').innerHTML = c.bad.length ? '<div class="msg warn">Nerozumím: ' + c.bad.map(esc).join(', ') + '</div>' : '<div class="msg ok">' + c.list.length + ' profilů</div>';
+    if (!c.list.length) return;
+    commit(() => { model.catalog = $('catText').value; });
+  };
+  $('catDefault').onclick = () => { store.set(LS.catalog, $('catText').value || model.catalog); toast('Katalog uložen jako výchozí pro nové skici'); };
+
+  /* ---------------- start ---------------- */
+  renderRoll(); renderTpl(); renderSaved(); setTool('draw');
+  if (hasGL) { resize(); changed(); setView('iso'); } else { changed(); }
+  window.__skica = { get model() { return model; }, st, SC, setView, click, hover, setTool };
+})();
+</script>
+</body></html>

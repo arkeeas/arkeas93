@@ -11,6 +11,8 @@ Konfigurátor ocelových podnoží stolů. Má dvě části, mezi kterými se p�
   - *Postup* – naklikáš pořadí skládání (nebo „Navrhnout pořadí“), krokuješ / přehráváš. Díl přijede ze směru, kterým ho jde fyzicky nasadit: zámky dávají směr přesně, dosedací plochy (pokosy, tupé spoje, výřezy) ho omezují – třeba spodní příčku mezi dvěma pokosy jde zasunout jen bokem. Když díl tímhle pořadím nejde nasadit (zámky proti dosedacím plochám, zaklíněný díl) nebo cestou na místo narazí do už položeného dílu, stránka to označí a řekne, který díl položit dřív. „Vzhůru nohama“ = rám leží na stole.
   - *Svářečka* – každý svar se vyhodnotí v kroku, kdy vzniká: ~50 směrů hořáku (kužel trysky + válec, rozměry nastavitelné, MIG/TIG) proti už položeným dílům a stolu. Zelená / oranžová / červená + příčina (ostrý úhel, stůl, konkrétní díl, který překáží). Kliknutím kamkoli ukáže volný kužel přístupu a hořák v nejlepším směru.
 
+- **Skicář** (`skica.html`, záložka v horním přepínači): rychlé skici z profilů pro prototypy zábradlí, stolů, stolků a poliček. Kreslí se **osy profilů** jako řetěz čar: osa X / Y / Z se vybere podle pohybu myši (klávesa X / Y / Z ji zamkne), konec se přichytí na uzel, střed, bod na prutu nebo se zarovná na výšku existujícího uzlu, délka jde napsat z klávesnice + Enter. Profil se vybírá z palety (katalog jde upravit – jeden profil na řádek, např. `jekl 40x40x2`, `pas 40x5`, `L 40x40x4`, `U 50x25x4`, `trubka 33.7x2`, `kulatina 12`), natočení 0° / 90°. Dále desky (dřevo, sklo, kámen, plech), výběr s úpravou délky, posunem, kopií a zrcadlením, záměr spoje v uzlu (pokos, na tupo s průběžným prutem, plný roh…), šablony (stůl, konferenční stolek, polička / regál, rovné zábradlí), kusovník (osové délky, hmotnost) a upozornění (překryvy, nulové pruty). **Export pro AI**: *Kopírovat pro AI* dá do schránky zadání + JSON, *Obrázek PNG* aktuální pohled. Styky, zkrácení a zámečky skicář záměrně neřeší – to doladí AI ve FreeCADu. Makro `freecad/skica_import.py` z JSONu postaví tělesa profilů a desky a udělá jen jednoznačné styky (pokos ve 2-prutovém uzlu, plný roh, zkrácení k líci průběžného prutu u T-spoje).
+
 **Online:** https://arkeeas.github.io/arkeas93/ (po zapnutí GitHub Pages, viz níže)
 
 ## Jak testovat
@@ -41,6 +43,8 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `zabradli-core.js` | zábradlí bez 3D: trasa, díly typu 01 a 02 (port generátorů ze skillu sldprt-zabradli), zámky, kotvy, tělesa, kusovník, cena (běží i v Node) |
 | `zabradli-viewer.js` | 3D náhled zábradlí se stavbou (deska, fasáda) |
 | `zabradli-dilna.js` | dílna – záložka *Zábradlí – podklady*: kusovník, 3D, ZIP (sestava STEP, `dily/K2` jekly, `dily/pasovina`, `dily/C2` plotny a patky, kusovník PDF, **řezný plán PDF**, doklad), ceník zábradlí |
+| `skica.html`, `skica-core.js` | Skicář: plátno a jádro bez 3D (profily, osy, kusovník, export / import JSON, šablony – běží i v Node) |
+| `freecad/skica_import.py` | import skici (`*.skica.json`) do FreeCADu, mimo FreeCAD jen kontrola a kusovník |
 | `lokal.js` | náhrada databáze a stahování mimo Claude (localStorage) |
 | `modebar.css` | horní přepínač Zákazník / Dílna |
 | `tests/` | kontrola STEP bez CAD, zámků a drážek, stránky Testing |
@@ -64,6 +68,12 @@ Pravidla v `core.js` (build): zámek se dává jen na stěny dílu, ze kterých 
 node tests/kontrola-montaz.js 1600 800 750 -v
 ```
 Pro každý tvar: díly, zámky, svary, navržené pořadí (bez konfliktu nasazení a bez nárazu cestou na místo), směr nasazení u zámků a přístup hořáku ke každému svaru.
+
+### Kontrola Skicáře (Node.js 18+, volitelně python3)
+```bash
+node tests/kontrola-skica.js -v
+```
+Katalog profilů a hmotnosti, báze průřezu (nezávisí na směru kreslení), šablony bez upozornění, export → import beze změny, úpravy (rozdělení, kopie, zrcadlení) a s python3 i importér do FreeCADu (zkrácení příčky k líci rámu).
 
 ## Zapnutí odkazu (jednorázově)
 GitHub → **Settings → Pages** → *Deploy from a branch* → `main` / `(root)` → **Save**.
