@@ -133,6 +133,7 @@
   .nojs { padding: 24px; color: var(--muted); }
   .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .btn.small { height: 38px; font-size: 14px; padding: 0 14px; }
+  .flats .wide { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -151,7 +152,7 @@
     <div id="viz"></div>
     <div class="stage-head">
       <div>
-        <div class="model-name">Dva články</div>
+        <div class="model-name">Řetěz</div>
         <div class="model-sub" id="mSub"></div>
       </div>
       <div class="stage-side"><div class="chip" id="ohChip"></div></div>
@@ -172,21 +173,20 @@
         <h2><small>Krok 1</small>Tvar článků</h2>
         <div class="grid g4" id="angles"></div>
         <div class="grid" style="gap:16px;margin-top:16px">
-          <div class="field"><div class="row"><label for="foot">Rozteč noh dole i nahoře</label><span class="num"><input id="footn" type="number" inputmode="numeric" aria-label="Rozteč noh v mm"> mm</span></div><input id="foot" type="range" min="20" max="200" step="5"></div>
-          <div class="field"><div class="row"><label for="overlap">Překryv článků</label><span class="num"><input id="overlapn" type="number" inputmode="decimal" step="0.01" aria-label="Překryv článků"> ×</span></div><input id="overlap" type="range" min="0.1" max="0.8" step="0.01"></div>
-          <div class="note">Dole dvě nohy na plotně, nahoře dvě pod deskou. Články jsou do sebe zavěšené jako články řetězu. Překryv říká, jak hluboko do sebe zasahují.</div>
-          <div><button type="button" class="btn small" id="best">Najít nejlepší překryv</button></div>
+          <div class="field"><div class="row"><label for="spread">Rozteč noh</label><span class="num"><input id="spreadn" type="number" inputmode="numeric" aria-label="Rozteč noh v mm"> mm</span></div><input id="spread" type="range" min="60" max="500" step="10"></div>
+          <div class="note">Tři články zavěšené do sebe jako řetěz: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Velikost kosočtverce se dopočítá tak, aby do sebe články právě zapadly.</div>
         </div>
       </div>
 
       <div class="step">
         <h2><small>Krok 2</small>Rozměry stolku</h2>
         <div class="grid" style="gap:16px">
-          <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="700" step="10"></div>
-          <div class="field"><div class="row"><label for="topD">Průměr desky</label><span class="num"><input id="topDn" type="number" inputmode="numeric" aria-label="Průměr desky v mm"> mm</span></div><input id="topD" type="range" min="400" max="1200" step="10"></div>
+          <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="800" step="10"></div>
+          <div class="field"><div class="row"><label for="topD">Průměr desky</label><span class="num"><input id="topDn" type="number" inputmode="numeric" aria-label="Průměr desky v mm"> mm</span></div><input id="topD" type="range" min="400" max="1400" step="10"></div>
           <div class="field"><div class="row"><label for="topT">Tloušťka desky</label><span class="num"><input id="topTn" type="number" inputmode="numeric" aria-label="Tloušťka desky v mm"> mm</span></div><input id="topT" type="range" min="10" max="60" step="1"></div>
-          <div class="field"><div class="row"><label for="baseW">Plotna dole (čtverec)</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="600" step="10"></div>
-          <div class="field"><div class="row"><label for="baseT">Tloušťka plotny</label><span class="num"><input id="baseTn" type="number" inputmode="numeric" aria-label="Tloušťka plotny v mm"> mm</span></div><input id="baseT" type="range" min="3" max="25" step="1"></div>
+          <div class="field"><div class="row"><label for="baseW">Plotna dole (čtverec)</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="700" step="10"></div>
+          <div class="field"><div class="row"><label for="baseT">Tloušťka plotny</label><span class="num"><input id="baseTn" type="number" inputmode="numeric" aria-label="Tloušťka plotny v mm"> mm</span></div><input id="baseT" type="range" min="4" max="25" step="1"></div>
+          <div class="field"><div class="row"><label for="plT">Plech pod deskou</label><span class="num"><input id="plTn" type="number" inputmode="numeric" aria-label="Tloušťka plechu pod deskou v mm"> mm</span></div><input id="plT" type="range" min="3" max="12" step="1"></div>
         </div>
       </div>
 
@@ -199,9 +199,11 @@
       <div class="step">
         <h2><small>Krok 4</small>Zámečky pro laser</h2>
         <div class="grid" style="gap:16px">
-          <div class="field"><div class="row"><label for="clear">Vůle výřezu</label><span class="num"><input id="clearn" type="number" inputmode="decimal" step="0.05" aria-label="Vůle výřezu v mm"> mm</span></div><input id="clear" type="range" min="0" max="0.5" step="0.05"></div>
+          <div class="field"><div class="row"><label for="clear">Vůle výřezu pro čep</label><span class="num"><input id="clearn" type="number" inputmode="decimal" step="0.05" aria-label="Vůle výřezu v mm"> mm</span></div><input id="clear" type="range" min="0" max="0.5" step="0.05"></div>
           <div class="field"><div class="row"><label for="tabMargin">Okraj čepu od hrany</label><span class="num"><input id="tabMarginn" type="number" inputmode="numeric" aria-label="Okraj čepu v mm"> mm</span></div><input id="tabMargin" type="range" min="1" max="8" step="1"></div>
-          <div class="note">Čepy a výřezy v rozích srovnají jekly při svařování. Tam, kde se nohy kříží, má jeden jekl zářez v přední stěně a druhý v zadní do půl hloubky.</div>
+          <div class="field"><div class="row"><label for="holeClear">Vůle otvorů v plechu</label><span class="num"><input id="holeClearn" type="number" inputmode="decimal" step="0.1" aria-label="Vůle otvorů v mm"> mm</span></div><input id="holeClear" type="range" min="0" max="2" step="0.1"></div>
+          <div class="field"><div class="row"><label for="weldGap">Vůle v háčku</label><span class="num"><input id="weldGapn" type="number" inputmode="decimal" step="0.5" aria-label="Vůle v háčku v mm"> mm</span></div><input id="weldGap" type="range" min="0" max="3" step="0.5"></div>
+          <div class="note">V rozích zapadne čep jednoho jeklu do výřezu druhého. Nohy se zasunou do otvorů v plotně a v plechu pod deskou. Vůle v háčku 0 = články se dotknou a svaří se v tom místě.</div>
         </div>
       </div>
 
@@ -212,37 +214,32 @@
       </div>
 
       <details class="dil">
-        <summary><small>Pro dílnu</small>Podklady pro Bodor K2</summary>
+        <summary><small>Pro dílnu</small>Podklady pro Bodor K2 a plechy</summary>
         <div class="tblw"><table id="cut"></table></div>
         <div class="flats" id="flats"></div>
         <div class="btnrow" id="dl"></div>
         <ol id="steps"></ol>
-        <p class="note">Plotna a deska nejdou na K2 – řežou se zvlášť. Stěnu s čepem a výřezem K2 vyřízne stejně vpředu i vzadu, zářez ve zkřížení jen v jedné stěně.</p>
       </details>
     </div>
   </section>
 </main>
 
-<script src="stolecky-core.js?v=20261008b"></script>
+<script src="stolecky-core.js?v=20261009a"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function () {
   'use strict';
   const S = window.Stolecky, $ = (id) => document.getElementById(id);
-  const RANGES = ['foot', 'overlap', 'H', 'topD', 'topT', 'baseW', 'baseT', 'clear', 'tabMargin'];
+  const RANGES = ['spread', 'H', 'topD', 'topT', 'baseW', 'baseT', 'plT', 'clear', 'tabMargin', 'holeClear', 'weldGap'];
   const ANGLES = [[35, 'Štíhlý', '35°'], [40, 'Střední', '40°'], [45, 'Široký', '45°'], [50, 'Velmi široký', '50°']];
   let cfg = S.normalize(S.DEFAULT_CFG);
-  try { const st = JSON.parse(localStorage.getItem('stolecky') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
+  try { const st = JSON.parse(localStorage.getItem('stolecky-retez') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
   const fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const optBtn = (id, on, l, s) => '<button type="button" class="opt" data-id="' + id + '" aria-pressed="' + on + '"><span class="l">' + l + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</button>';
-  function group(el, html, pick) {
-    el.innerHTML = html;
-    el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.id)));
-  }
-  function set(p) { cfg = S.normalize(Object.assign({}, cfg, p)); try { localStorage.setItem('stolecky', JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } render(); }
-
+  function group(el, html, pick) { el.innerHTML = html; el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.id))); }
+  function set(p) { cfg = S.normalize(Object.assign({}, cfg, p)); try { localStorage.setItem('stolecky-retez', JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } render(); }
   function bindRange(k) {
     const r = $(k), n = $(k + 'n');
     r.addEventListener('input', () => set({ [k]: Number(r.value) }));
@@ -251,55 +248,75 @@
   function syncForm() {
     RANGES.forEach((k) => { if (document.activeElement !== $(k + 'n')) $(k + 'n').value = cfg[k]; $(k).value = cfg[k]; });
     group($('angles'), ANGLES.map(([g, l, s]) => optBtn(g, cfg.gamma === g, l, s)).join(''), (id) => set({ gamma: Number(id) }));
-    group($('profs'), S.PROFILES.map((p) => optBtn(p.id, p.id === cfg.prof, p.id.replace(/x/g, '×'), p.hp + '×' + p.hd + ', stěna ' + p.wall)).join(''), (id) => set({ prof: id }));
+    group($('profs'), S.PROFILES.map((p) => optBtn(p.id, p.id === cfg.prof, p.id.replace(/x/g, '×'), p.hp + ' v rovině · ' + p.hd + ' hloubka')).join(''), (id) => set({ prof: id }));
     const P = S.PROFILES.find((p) => p.id === cfg.prof);
-    $('profNote').textContent = 'První rozměr (' + P.hp + ' mm) je šířka jeklu v rovině článku, druhý (' + P.hd + ' mm) jeho hloubka.';
+    $('profNote').textContent = 'Široká strana (' + P.hp + ' mm) je vidět zepředu na článku, úzká (' + P.hd + ' mm) je jeho tloušťka. Stěna ' + P.wall + ' mm.';
   }
 
   /* ---------- podklady pro dílnu ---------- */
-  const poly = (pts, attr) => '<polygon points="' + pts.map((p) => p[0] + ',' + p[1]).join(' ') + '" ' + attr + '/>';
-  function flatSvg(B, part) {
-    const f = B.flats[part.bar], shapes = f.slot ? f.slot.pieces : [f.contour];
-    const all = shapes.flat().concat(f.notch || []);
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const poly = (pts, attr) => '<polygon points="' + pts.map((p) => r2(p[0]) + ',' + r2(p[1])).join(' ') + '" ' + attr + '/>';
+  function svgBox(all, pad, extraH) {
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
-    const x0 = Math.min(...xs) - 8, x1 = Math.max(...xs) + 8, y0 = Math.min(...ys) - 8, y1 = Math.max(...ys) + 22;
-    const P = (p) => [Math.round((p[0] - x0) * 100) / 100, Math.round((p[1] - y0) * 100) / 100];
-    return '<figure><svg viewBox="0 0 ' + (x1 - x0) + ' ' + (y1 - y0) + '" role="img" aria-label="Díl ' + part.id + '" font-family="sans-serif">' +
-      shapes.map((s) => poly(s.map(P), 'fill="#EEE9DF" stroke="#17181A" stroke-width="0.7" stroke-linejoin="round"')).join('') +
-      (f.notch ? poly(f.notch.map(P), 'fill="none" stroke="#B8440F" stroke-width="0.4" stroke-dasharray="2 1.5"') : '') +
-      '<text x="' + (x1 - x0) / 2 + '" y="' + (y1 - y0 - 6) + '" text-anchor="middle" font-size="7" fill="#5E5A54">' + esc(part.ends[0]) + ' → ' + esc(part.ends[1]) + '</text></svg>' +
-      '<figcaption><b>Díl ' + part.id + '</b> ' + part.qty + '×, ' + fmt(part.lo) + ' / ' + fmt(part.li) + ' mm' + (f.slot ? ', zářez v ' + f.slot.wall + ' stěně (' + fmt(f.slot.len) + ' mm dlouhý, do hloubky ' + fmt(f.slot.depth) + ' mm)' : '') + '</figcaption></figure>';
+    const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, w = Math.max(...xs) + pad - x0, h = Math.max(...ys) + pad + extraH - y0;
+    return { x0, y0, w, h, P: (p) => [p[0] - x0, p[1] - y0] };
+  }
+  function partSvg(p) {
+    const f = p.flat, all = f.contour.concat(f.notch || []), b = svgBox(all, 8, 14);
+    return '<figure><svg viewBox="0 0 ' + r2(b.w) + ' ' + r2(b.h) + '" role="img" aria-label="Díl ' + p.id + '" font-family="sans-serif">' +
+      poly(f.contour.map(b.P), 'fill="#EEE9DF" stroke="#17181A" stroke-width="0.7" stroke-linejoin="round"') +
+      (f.notch ? poly(f.notch.map(b.P), 'fill="none" stroke="#B8440F" stroke-width="0.5" stroke-dasharray="2 1.5"') : '') +
+      '<text x="' + r2(b.w / 2) + '" y="' + r2(b.h - 4) + '" text-anchor="middle" font-size="7" fill="#5E5A54">' + esc(p.ends[0]) + ' → ' + esc(p.ends[1]) + '</text></svg>' +
+      '<figcaption><b>' + p.id + ' – ' + esc(p.name) + '</b>, ' + p.qty + ' ks, ' + fmt(p.lo) + ' / ' + fmt(p.li) + ' mm</figcaption></figure>';
+  }
+  function plateSvg(pl) {
+    const all = pl.outline, b = svgBox(all, 6, 0), fl = (q) => q.map((p) => b.P([p[0], -p[1]]));
+    return '<figure><svg viewBox="0 0 ' + r2(b.w) + ' ' + r2(b.h) + '" role="img" aria-label="' + pl.name + '">' +
+      poly(fl(pl.outline), 'fill="#DAD6CE" stroke="#17181A" stroke-width="1.2"') +
+      pl.holes.map((h) => poly(fl(h), 'fill="#FBFAF7" stroke="#17181A" stroke-width="1"')).join('') +
+      pl.circles.map((c) => { const q = b.P([c[0], -c[1]]); return '<circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="' + c[2] + '" fill="#FBFAF7" stroke="#17181A" stroke-width="1"/>'; }).join('') +
+      '</svg><figcaption><b>' + pl.name + '</b> ' + pl.w + ' × ' + pl.w + ' × ' + pl.t + ' mm, ' + pl.holes.length + ' otvory pro nohy' + (pl.circles.length ? ', ' + pl.circles.length + ' díry Ø 7 na vruty do desky' : '') + ' (laser na plech)</figcaption></figure>';
   }
   function download(name, text, type) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   function dilna(B) {
-    const row = (p) => '<tr><td><b>' + p.id + '</b></td><td>' + p.qty + '×</td><td>' + cfg.prof.replace(/x/g, '×') + '</td><td>' + fmt(p.lo) + ' / ' + fmt(p.li) + '</td><td>' + esc(p.ends[0]) + '</td><td>' + esc(p.ends[1]) + '</td><td>' + (p.tab ? 'čep' : '') + (p.notch ? (p.tab ? ' + výřez' : 'výřez') : '') + (p.slot ? ' · zářez ' + p.slot.wall : '') + '</td></tr>';
-    $('cut').innerHTML = '<tr><th>Díl</th><th>Ks</th><th>Jekl</th><th>Délka venku / uvnitř</th><th>Začátek</th><th>Konec</th><th>Zámečky</th></tr>' + B.parts.map(row).join('') +
-      '<tr><td colspan="7" style="color:var(--muted)">Celkem 8 jeklů, hmotnost ' + fmt(B.kg) + ' kg. Pokos je úhel řezu proti ose jeklu.</td></tr>';
-    $('flats').innerHTML = B.parts.map((p) => flatSvg(B, p)).join('');
-    $('dl').innerHTML = B.parts.map((p) => '<button type="button" class="btn small" data-dxf="' + p.id + '">DXF díl ' + p.id + '</button>').join('') + '<button type="button" class="btn small" id="fc">Makro pro FreeCAD</button>';
+    const row = (p) => '<tr><td><b>' + p.id + '</b></td><td>' + esc(p.name) + '</td><td>' + p.qty + '×</td><td>' + fmt(p.lo) + ' / ' + fmt(p.li) + '</td><td>' + esc(p.ends[0]) + '</td><td>' + esc(p.ends[1]) + '</td></tr>';
+    $('cut').innerHTML = '<tr><th>Díl</th><th>Popis</th><th>Ks</th><th>Délka venku / uvnitř</th><th>Začátek</th><th>Konec</th></tr>' + B.parts.map(row).join('') +
+      '<tr><td colspan="6" style="color:var(--muted)">Jekl ' + cfg.prof.replace(/x/g, '×') + ', celkem ' + B.parts.reduce((s, p) => s + p.qty, 0) + ' kusů. Pokos = úhel řezu proti ose jeklu. Čep i výřez je v přední i zadní stěně.</td></tr>';
+    $('flats').innerHTML = B.parts.map(partSvg).join('') + plateSvg(B.plates.base) + plateSvg(B.plates.top);
+    $('dl').innerHTML = B.parts.map((p) => '<button type="button" class="btn small" data-dxf="' + p.id + '">DXF ' + p.id + '</button>').join('') +
+      '<button type="button" class="btn small" data-pl="base">DXF plotna</button><button type="button" class="btn small" data-pl="top">DXF plech pod deskou</button><button type="button" class="btn small" id="fc">Makro FreeCAD</button>';
     $('dl').querySelectorAll('[data-dxf]').forEach((b) => b.addEventListener('click', () => {
-      const p = B.parts.find((q) => q.id === b.dataset.dxf), f = B.flats[p.bar];
-      const shapes = [{ layer: 'STENA', polys: [f.contour] }];
-      if (f.slot) shapes.push({ layer: 'ZAREZ_' + f.slot.wall.toUpperCase(), polys: f.slot.pieces, dy: -60 });
-      download('stolek-dil-' + p.id + '.dxf', S.dxf(shapes), 'application/dxf');
+      const p = B.parts.find((q) => q.id === b.dataset.dxf);
+      download('stolek-dil-' + p.id + '.dxf', S.dxf([{ layer: 'STENA', polys: [p.flat.contour] }]), 'application/dxf');
     }));
-    $('fc').addEventListener('click', () => download('stolek.FCMacro', S.freecadMacro(cfg), 'text/plain'));
+    $('dl').querySelectorAll('[data-pl]').forEach((b) => b.addEventListener('click', () => {
+      const pl = B.plates[b.dataset.pl];
+      download('stolek-' + (b.dataset.pl === 'base' ? 'plotna' : 'plech-pod-deskou') + '.dxf', S.dxf([{ layer: 'OBRYS', polys: [pl.outline] }, { layer: 'OTVORY', polys: pl.holes, circles: pl.circles }]), 'application/dxf');
+    }));
+    $('fc').addEventListener('click', () => download('stolek-retez.FCMacro', S.freecadMacro(cfg), 'text/plain'));
+    const G = B.G, midTip = G.zm - G.b - G.hp / (2 * Math.sin(G.g));
+    const ids = (mid) => B.parts.filter((p) => (p.frame === 'mid') === mid).map((p) => p.qty + '× ' + p.id).join(', ');
     $('steps').innerHTML = [
-      'Svař dolní článek: krátké jekly A, B a dlouhé C, D srazíš čepy do výřezů na rovném stole a svaříš pokosy. Dlouhé jekly C a D zasuň přes sebe zářezy v místě zkřížení a sváři.',
-      'Horní článek je stejný, jen otočený. Nesvařuj ho do uzavřeného okruhu: nejdřív ho provlékni dolním článkem (viz vůle ' + fmt(B.gap) + ' mm), až potom srazíš poslední roh.',
-      'Nohy dolního článku přivaříš na plotnu, nohy horního článku na desku (vodorovný řez ' + fmt(B.footCut) + '°).',
-      'Před zinkováním zkontroluj vůli mezi články – zinek spojí díly, které se dotýkají.'
+      'Kosočtverec: 4 jekly (' + ids(true) + ') srazíš čepy do výřezů na rovném stole a svaříš všechny čtyři pokosy.',
+      'Nohy: ze 4 jeklů (' + ids(false) + ') svaříš dvě „V“ – v hrotu zapadne čep do výřezu.',
+      'Obě „V“ provlékni kosočtvercem: volný konec nohy prostrčíš otvorem kosočtverce a posuneš, až je hrot uvnitř. Dolní je hrotem nahoru („Λ“), horní hrotem dolů.',
+      'Dolní nohy zasuň do otvorů v plotně (' + fmt(G.ins) + ' mm hluboko) a zavař zespodu v otvoru. Kosočtverec podlož pod spodní špičkou podložkou ' + fmt(midTip - cfg.baseT) + ' mm nad plotnou – tím se spodní špička kosočtverce opře zespodu o hrot dolního „Λ“ (háček).',
+      'Plech pod deskou podepři ' + fmt(cfg.H - cfg.topT - cfg.plT - cfg.baseT) + ' mm nad plotnou, horní nohy zasuň do jeho otvorů (lícují s horní plochou plechu) a zavař.',
+      'Svař články v místech, kde se dotýkají (dole i nahoře vždy dva styky po ' + fmt(G.hd) + ' mm). Řetěz sám v tlaku nedrží – bez těchto svarů by se pod deskou sesunul.',
+      'Desku přišroubuj k plechu vruty přes 4 díry Ø 7.'
     ].map((t) => '<li>' + t + '</li>').join('');
   }
 
   function facts(B) {
     $('mSub').textContent = 'Výška ' + cfg.H + ' mm · deska Ø ' + cfg.topD + ' mm · jekl ' + cfg.prof.replace(/x/g, '×');
-    $('ohChip').textContent = 'Rozteč noh ' + 2 * cfg.foot + ' mm';
-    $('facts').innerHTML = [['Šířka článku', fmt(2 * B.L.a + 2 * B.L.hp) + ' mm'], ['Vůle mezi články', fmt(B.gap) + ' mm'], ['Hmotnost jeklů', fmt(B.kg) + ' kg'], ['Délka nohy (svisle)', fmt(B.L.hl) + ' mm']]
+    $('ohChip').textContent = 'Rozteč noh ' + cfg.spread + ' mm';
+    $('facts').innerHTML = [['Kosočtverec (výška × šířka)', fmt(B.size.midH) + ' × ' + fmt(B.size.midW) + ' mm'], ['Výška noh', fmt(B.size.legH) + ' mm'],
+      ['Mezi články', B.gap < 0.05 ? 'dosedají' : fmt(B.gap) + ' mm'], ['Hmotnost (jekly + plechy)', fmt(B.kgBars) + ' + ' + fmt(B.kgPlates) + ' kg']]
       .map(([a, b]) => '<div class="fact">' + a + '<b>' + b + '</b></div>').join('');
-    $('msgs').innerHTML = B.warn.length ? B.warn.map((w) => '<div class="msg ' + (B.gap < 0 ? 'bad' : 'warn') + '" style="margin-bottom:8px">' + esc(w) + '</div>').join('') : '<div class="msg ok">Články do sebe zapadají, zámečky drží, výška sedí.</div>';
+    $('msgs').innerHTML = B.warn.length ? B.warn.map((w) => '<div class="msg warn" style="margin-bottom:8px">' + esc(w) + '</div>').join('')
+      : '<div class="msg ok">Články do sebe zapadají a nikde se neprotínají, zámečky drží, výška sedí.</div>';
   }
 
   /* ---------- 3D ---------- */
@@ -307,13 +324,13 @@
   const VIEWS = { iso: [-0.62, -1, 0.5], front: [0, -1, 0.08], side: [1, 0, 0.08], top: [0, -0.0001, 1], bottom: [-0.55, -1, -0.62] };
   function init3d() {
     const host = $('viz');
-    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL). Podklady pro dílnu dole fungují i tak.</p>'; return; }
+    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL). Podklady pro dílnu fungují i tak.</p>'; return; }
     try {
       const r = new THREE.WebGLRenderer({ antialias: true });
       r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
       host.appendChild(r.domElement);
       const scene = new THREE.Scene(); scene.background = new THREE.Color('#F1EFEA');
-      const cam = new THREE.PerspectiveCamera(32, 1, 1, 6000); cam.up.set(0, 0, 1);
+      const cam = new THREE.PerspectiveCamera(32, 1, 1, 8000); cam.up.set(0, 0, 1);
       scene.add(new THREE.HemisphereLight(0xffffff, 0x888078, 0.9));
       const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(-400, -600, 900); scene.add(sun);
       const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true;
@@ -322,47 +339,43 @@
       const size = () => { const w = host.clientWidth || 600, h = host.clientHeight || 400; r.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); };
       window.addEventListener('resize', size); size();
       (function loop() { ctl.update(); r.render(scene, cam); requestAnimationFrame(loop); })();
-    } catch (e) { host.innerHTML = '<p class="nojs">3D náhled nejde spustit (WebGL). Podklady pro dílnu dole fungují i tak.</p>'; T = null; }
+    } catch (e) { host.innerHTML = '<p class="nojs">3D náhled nejde spustit (WebGL). Podklady pro dílnu fungují i tak.</p>'; T = null; }
   }
   function view(v) {
     document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
     if (!T) return;
     const c = cfg, m = new THREE.Vector3(0, 0, c.H * 0.45), d = Math.max(c.H, c.topD) * 2.4;
-    const n = new THREE.Vector3(...VIEWS[v]).normalize().multiplyScalar(d);
-    T.cam.position.copy(m).add(n); T.ctl.target.copy(m); T.ctl.update();
+    T.cam.position.copy(m).add(new THREE.Vector3(...VIEWS[v]).normalize().multiplyScalar(d)); T.ctl.target.copy(m); T.ctl.update();
   }
   function build3d(B) {
     if (!T) return;
     const { grp } = T; while (grp.children.length) { const o = grp.children.pop(); o.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
-    const c = B.cfg, L = B.L;
+    const c = B.cfg, G = B.G;
     const steel = new THREE.MeshStandardMaterial({ color: 0x26272A, metalness: 0.35, roughness: 0.5 });
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x1B1C1E, roughness: 0.6 });
     const wood = new THREE.MeshStandardMaterial({ color: 0xB88E5A, roughness: 0.7 });
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
     const bars = (polys, plane, zc) => polys.forEach((q) => {
       let pts = q.map((p) => new THREE.Vector2(p[0], p[1])); if (THREE.ShapeUtils.isClockWise(pts)) pts = pts.reverse();
-      const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: L.hd, bevelEnabled: false });
-      g.translate(0, 0, -L.hd / 2);
+      const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: G.hd, bevelEnabled: false });
+      g.translate(0, 0, -G.hd / 2);
       const m = new THREE.Matrix4();
       if (plane === 'xz') m.set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, zc, 0, 0, 0, 1);
       else m.set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, zc, 0, 0, 0, 1);
       g.applyMatrix4(m);
       grp.add(new THREE.Mesh(g, steel), new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
     });
-    bars(B.polysA, 'xz', B.zA); bars(B.polysB, 'yz', B.zB);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(c.baseW, c.baseW, c.baseT), new THREE.MeshStandardMaterial({ color: 0x17181A, roughness: 0.6 }));
-    base.position.set(0, 0, c.baseT / 2); grp.add(base);
+    bars(G.lam.polys, 'xz', G.zl); bars(G.mid.polys, 'yz', G.zm); bars(G.vee.polys, 'xz', G.zu);
+    const box = (w, t, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), mat); o.position.set(0, 0, z + t / 2); grp.add(o); };
+    box(c.baseW, c.baseT, 0, plateMat); box(B.plates.top.w, c.plT, c.H - c.topT - c.plT, plateMat);
     const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, c.topT, 72), wood);
     top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); grp.add(top);
     if (!T.fitted) { view('iso'); T.fitted = true; }
   }
 
-  function render() {
-    const B = S.build(cfg);
-    syncForm(); facts(B); dilna(B); build3d(B);
-  }
+  function render() { const B = S.build(cfg); syncForm(); facts(B); dilna(B); build3d(B); }
 
   RANGES.forEach(bindRange);
-  $('best').addEventListener('click', () => set({ overlap: S.bestOverlap(cfg).overlap }));
   document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => view(b.dataset.view)));
   init3d(); render();
 })();
