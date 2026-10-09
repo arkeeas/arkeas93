@@ -131,6 +131,9 @@
   .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; background: var(--line-soft); padding: 10px; border-radius: 4px; user-select: all; }
   .dil h3 { margin: 18px 0 10px; font-weight: 500; font-size: 16px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 700px) { .g3 { grid-template-columns: minmax(0, 1fr); } }
+  .opt.join svg { width: 44px; height: 32px; }
   .wipbar { padding: 10px 24px; background: var(--warn-bg); color: var(--warn-ink); border-bottom: 1px solid var(--line); font-size: 14px; }
   .dil { margin-top: 8px; }
   .dil summary { cursor: pointer; font-weight: 500; font-size: 20px; list-style: none; }
@@ -235,9 +238,18 @@
       </div>
 
       <div class="step">
-        <h2><small>Krok 5</small>Deska</h2>
+        <h2><small>Krok 5</small>Deska a horní část</h2>
         <div class="field"><div class="row"><label for="topT">Tloušťka vaší desky</label><span id="topTv"></span></div><input id="topT" type="range" min="10" max="60" step="2"></div>
-        <p class="note" style="margin:10px 0 0">Kulatou desku dodáváte sami, pod deskou je ocelový plech se 4 dírami na vruty. Desky z našeho e-shopu připravujeme.</p>
+        <p class="note" style="margin:10px 0 14px">Kulatou desku dodáváte sami. Desky z našeho e-shopu připravujeme.</p>
+        <div class="note" style="font-weight:600;color:var(--ink);margin-bottom:8px">Horní část – na čem leží deska</div>
+        <div class="grid g3" id="tops"></div>
+      </div>
+
+      <div class="step">
+        <h2><small>Krok 6</small>Uchycení k desce</h2>
+        <p class="note" style="margin:0 0 10px">Vyberte, jak stolek k desce připevní váš truhlář. Podle volby připravíme díry v plechu a přibalíme spojovací materiál.</p>
+        <div class="grid g2" id="mounts"></div>
+        <div class="box" id="mountHow" style="margin-top:10px;flex-direction:column;gap:6px"></div>
       </div>
     </div>
 
@@ -280,7 +292,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="stolecky-core.js?v=20261009d"></script>
+<script src="stolecky-core.js?v=20261009e"></script>
+<script src="stolecky-viewer.js?v=20261009e"></script>
 <script>
 (function () {
   'use strict';
@@ -291,7 +304,6 @@
   /* profily seskupené podle rozměru (šířka × hloubka), tloušťka stěny zvlášť – jako u podnoží */
   const SIZES = [];
   S.PROFILES.forEach((p) => { const k = p.hp + 'x' + p.hd; let z = SIZES.find((q) => q.id === k); if (!z) SIZES.push(z = { id: k, hp: p.hp, hd: p.hd, walls: [] }); z.walls.push(p.wall); });
-  const METAL = { black: [0x26272A, 0.35, 0.55], anth: [0x3E444B, 0.4, 0.5], white: [0xE9E9E4, 0.1, 0.6], raw: [0x8A847B, 0.75, 0.38] };
   let cfg = S.normalize(S.DEFAULT_CFG), rates = S.DEFAULT_RATES, B = null, db = null, uid = null, ui = { showDesk: true, see: false, person: null, view: 'iso' };
   try { const st = JSON.parse(localStorage.getItem('stolecky-retez') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
   const nf = (n) => Number(n).toLocaleString('cs-CZ', { maximumFractionDigits: 0 });
@@ -322,6 +334,9 @@
       (id) => { const z = SIZES.find((q) => q.id === id); set({ prof: profOf(z, P.wall).id }); });
     $('thkLab').textContent = 'Tloušťka stěny jeklu ' + Z.hp + '×' + Z.hd;
     group($('thks'), Z.walls.map((w) => '<button type="button" class="pill" data-id="' + w + '" aria-pressed="' + (w === P.wall) + '">' + w + ' mm</button>').join(''), (id) => set({ prof: profOf(Z, Number(id)).id }));
+    const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
+    group($('tops'), S.TOPS.map((o) => card(o, o.id === cfg.top)).join(''), (id) => set({ top: id }));
+    group($('mounts'), S.MOUNTS.map((m) => card(m, m.id === cfg.mount, m.minTd && cfg.topT < m.minTd ? '<span class="c"><strong>Deska ' + cfg.topT + ' mm je na to tenká.</strong></span>' : '')).join(''), (id) => set({ mount: id }));
     group($('fins'), S.FIN.map((f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>').join(''), (id) => set({ fin: id }));
     $('see').checked = ui.see; $('showDesk').checked = ui.showDesk;
     $('person').value = ui.person ? ui.person.kind + '-' + ui.person.pose : '';
@@ -339,91 +354,25 @@
     $('price').textContent = nf(X.total) + ' Kč';
     $('priceSub').textContent = 's DPH' + (cfg.qty > 1 ? ' za ' + cfg.qty + ' ks · ' + nf(X.vat) + ' Kč / ks' : '') + ' · ' + nf(X.price * cfg.qty) + ' Kč bez DPH';
     $('qty').textContent = cfg.qty + ' ks';
+    const kit = B.mount;
+    $('mountHow').innerHTML = '<strong>Pro truhláře – ' + esc(kit.M.lab.toLowerCase()) + ', deska ' + cfg.topT + ' mm</strong>' +
+      '<ol style="margin:0;padding-left:20px">' + kit.steps.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
+      (kit.hw.length ? '<div><strong>Přibalíme:</strong> ' + kit.hw.map((h) => h.q + '× ' + esc(h.name)).join(', ') + (kit.studs ? ', ' + kit.studs + '× svorník M8×20 navařený na plechu' : '') + '</div>' : '');
     /* kontrola ve stejném rámečku jako nosnost u podnoží */
     const bad = B.warn.some((w) => /nevejdou|potkaly|vyčuhuje|širší než deska/.test(w)), lvl = bad ? 'bad' : B.warn.length ? 'warn' : 'ok';
     $('load').className = 'load lvl-' + lvl;
     $('load').innerHTML = '<div class="head"><span>Hmotnost podnože ≈ ' + fmt(B.kg) + ' kg</span><span style="font-weight:400;font-size:13px">' + { ok: 'Vhodné pro konferenční stolek', warn: 'Zkontrolujte upozornění', bad: 'Tuto kombinaci nevyrábíme' }[lvl] + '</span></div>' +
       (B.warn.length ? B.warn.map((w) => '<p>' + esc(w) + '</p>').join('') : '<p>Články do sebe zapadají v zámečcích a nikde se neprotínají, výška sedí, nohy míří do rohů plotny.</p>') +
-      '<p class="fine">Jekly ' + cfg.prof.replace(/x/g, '×') + ' (8 ks) se v háčcích svaří, plotna ' + cfg.baseW + ' × ' + cfg.baseW + ' × ' + cfg.baseT + ' mm a plech pod deskou ' + B.plates.top.w + ' × ' + B.plates.top.w + ' × ' + cfg.plT + ' mm. Ocel S235.</p>';
+      '<p class="fine">Jekly ' + cfg.prof.replace(/x/g, '×') + ' (8 ks) se v háčcích svaří, plotna ' + cfg.baseW + ' × ' + cfg.baseW + ' × ' + cfg.baseT + ' mm, ' + B.plates.top.name.toLowerCase() + ' ' + B.plates.top.w + ' mm, tloušťka ' + cfg.plT + ' mm. Ocel S235.</p>';
     $('ask').disabled = bad;
     $('ask').title = bad ? 'Tahle kombinace nejde vyrobit – upravte rozměry nebo profil' : '';
   }
 
-  /* ---------- 3D ---------- */
-  let T = null;
-  const VIEWS = { iso: [-0.62, -1, 0.5], front: [0, -1, 0.08], side: [1, 0, 0.08], top: [0, -0.0001, 1], bottom: [-0.55, -1, -0.62] };
-  function init3d() {
-    const host = $('viz');
-    if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL).</p>'; $('hint').hidden = true; return; }
-    try {
-      /* stejné světlo, stín a barvy jako náhled podnoží (viewer.js) */
-      const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-      r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.outputEncoding = THREE.sRGBEncoding;
-      host.appendChild(r.domElement); r.domElement.style.display = 'block'; r.domElement.style.touchAction = 'none';
-      const scene = new THREE.Scene();
-      const cam = new THREE.PerspectiveCamera(32, 1, 1, 12000); cam.up.set(0, 0, 1);
-      scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b2a6, 0.75));
-      const sun = new THREE.DirectionalLight(0xffffff, 0.85); sun.position.set(-1500, -2200, 3200); sun.castShadow = true;
-      sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -1600, right: 1600, top: 1600, bottom: -1600, near: 100, far: 9000 }); scene.add(sun);
-      const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(2000, 1500, 800); scene.add(fill);
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.ShadowMaterial({ opacity: 0.16 })); ground.receiveShadow = true; scene.add(ground);
-      const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true;
-      const grp = new THREE.Group(); scene.add(grp);
-      T = { r, scene, cam, ctl, grp, host };
-      const size = () => { const w = host.clientWidth || 600, h = host.clientHeight || 400; r.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); };
-      window.addEventListener('resize', size); size();
-      (function loop() { ctl.update(); r.render(scene, cam); requestAnimationFrame(loop); })();
-    } catch (e) { host.innerHTML = '<p class="nojs">3D náhled nejde spustit (WebGL).</p>'; $('hint').hidden = true; T = null; }
-  }
-  function view(v) {
-    ui.view = v;
-    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
-    if (!T) return;
-    const c = cfg, hh = ui.person ? Math.max(c.H, ui.person.S * (ui.person.pose === 'sit' ? 0.75 : 1)) : c.H;
-    const m = new THREE.Vector3(0, ui.person ? -c.topD * 0.35 : 0, hh * 0.45), d = Math.max(hh, c.topD) * 2.4;
-    T.cam.position.copy(m).add(new THREE.Vector3(...VIEWS[v]).normalize().multiplyScalar(d)); T.ctl.target.copy(m); T.ctl.update();
-  }
-  /* postava z figure.js (stejná jako u podnoží) – potřebuje jen obrys desky a výšku */
-  function personBodies(c) {
-    if (!ui.person || !window.Postava) return [];
-    const A = { cfg: { shape: 'circle', H: c.H, size: 0 }, DL: c.topD, DW: c.topD, build: { dims: { Hf: c.H - c.topT } } };
-    try { return Postava.build(A, ui.person).bodies; } catch (e) { return []; }
-  }
-  function bodyMesh(b) {
-    const pos = [];
-    b.faces.forEach((f) => { const o = f.outer; for (let i = 1; i + 1 < o.length; i++) [o[0], o[i], o[i + 1]].forEach((k) => pos.push(...b.verts[k])); });
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: b.color || '#B7BEC6', roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide }));
-    m.castShadow = true; return m;
-  }
-  function build3d(B) {
-    if (!T) return;
-    const { grp } = T; while (grp.children.length) { const o = grp.children.pop(); o.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
-    const c = B.cfg, G = B.G;
-    const M = METAL[c.fin] || METAL.black;
-    const steel = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2] });
-    const wood = new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0, transparent: ui.see, opacity: ui.see ? 0.32 : 1, depthWrite: !ui.see });
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
-    const bars = (polys, plane, zc) => polys.forEach((q) => {
-      let pts = q.map((p) => new THREE.Vector2(p[0], p[1])); if (THREE.ShapeUtils.isClockWise(pts)) pts = pts.reverse();
-      const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: G.hd, bevelEnabled: false });
-      g.translate(0, 0, -G.hd / 2);
-      const m = new THREE.Matrix4();
-      if (plane === 'xz') m.set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, zc, 0, 0, 0, 1);
-      else m.set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, zc, 0, 0, 0, 1);
-      g.applyMatrix4(m);
-      const mesh = new THREE.Mesh(g, steel); mesh.castShadow = true;
-      grp.add(mesh, new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
-    });
-    bars(B.cut.lam, 'xz', G.zl); bars(B.cut.mid, 'yz', G.zm); bars(B.cut.vee, 'xz', G.zu);
-    const box = (w, t, z, rot) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), steel); o.position.set(0, 0, z + t / 2); o.rotation.z = (rot || 0) * Math.PI / 180; o.castShadow = true; grp.add(o); };
-    box(c.baseW, c.baseT, 0, B.plates.base.rot); box(B.plates.top.w, c.plT, c.H - c.topT - c.plT);
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, c.topT, 72), wood);
-    top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); top.visible = ui.showDesk; top.castShadow = !ui.see; grp.add(top);
-    personBodies(c).forEach((b) => grp.add(bodyMesh(b)));
-    if (!T.fitted) { view('iso'); T.fitted = true; }
-  }
+  /* ---------- 3D (stolecky-viewer.js) ---------- */
+  const viewer = StoViewer.create($('viz'));
+  if (!viewer) $('hint').hidden = true;
+  const view = (v) => { ui.view = v; document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v))); if (viewer) viewer.view(v); };
+  const build3d = (B) => { if (viewer) viewer.update(B, { showDesk: ui.showDesk, see: ui.see, person: ui.person }); };
 
   function render() { B = S.build(cfg); syncForm(); facts(B); build3d(B); }
 
@@ -482,7 +431,7 @@
     }
   });
 
-  init3d(); render();
+  render();
   (async function connect() {
     if (!window.claude || !claude.use) return;
     const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]);

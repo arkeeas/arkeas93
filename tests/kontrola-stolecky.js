@@ -5,7 +5,7 @@
  *  - ponoření se zámečky: skutečné obrysy jeklů se zářezy se v háčku nepřekrývají a dosednou na plošku (svislé řezy obrysy)
  *  - nohy Λ míří do rohů plotny otočené o 45°
  *  - zámečky: čep ≥ 4 mm v každém rohu, obrys stěny = stěna + čep − výřez
- *  - díly: 8 jeklů ve 4 typech (zámeček v háčku je jen u špičky, takže ani čtverec při 45° nemá shodné strany), otvory v plechu jsou mimo okraj, makro FreeCAD je platný Python
+ *  - díly: 8 jeklů ve 2 typech (noha, článek), rohy jen pokos bez čepu, otvory v plechu jsou mimo okraj, makro FreeCAD je platný Python
  */
 'use strict';
 const path = require('path'), cp = require('child_process'), fs = require('fs'), os = require('os');
@@ -39,7 +39,8 @@ S.PROFILES.forEach((p) => [40, 45, 50].forEach((g) => [180, 240].forEach((sp) =>
     const sum = S.area(f.body) + (f.tab ? S.area(f.tab) : 0) - (f.notch ? S.area(f.notch) : 0) - f.biteArea;
     check(Math.abs(S.area(f.contour) - sum) < 0.5, id + ': obrys stěny ' + i);
   });
-  check(b.parts.reduce((n, q) => n + q.qty, 0) === 8 && b.parts.length === 4, id + ': 8 jeklů, ' + b.parts.length + ' typy');
+  check(b.parts.reduce((n, q) => n + q.qty, 0) === 8 && b.parts.length <= 2, id + ': 8 jeklů, ' + b.parts.length + ' typy (4 nohy, 4 články)');
+  check(b.parts.every((q) => !q.flat.tab && !q.flat.notch), id + ': rohy bez čepu – nic nepřečuhuje přes konec jeklu');
   const pt = b.plates.top; check(pt.holes.length === 2 && pt.holes.flat().every((q) => Math.abs(q[0]) < pt.w / 2 && Math.abs(q[1]) < pt.w / 2), id + ': otvory v plechu pod deskou');
   const pb = b.plates.base, R = pb.w / Math.SQRT2;
   check(pb.rot === 45 && pb.outline.every((q) => Math.abs(Math.hypot(q[0], q[1]) - R) < 1e-6) && Math.abs(pb.outline[1][1]) < 1e-9 && pb.outline[1][0] > 0, id + ': plotna otočená o 45°, roh na ose nohou');
@@ -51,10 +52,17 @@ const gapped = S.build({ weldGap: 2, sink: 0 });
 check(gapped.clash.lm > 0.3 && gapped.clash.vm > 0.3, 'vůle v háčku oddálí články (' + gapped.clash.lm.toFixed(2) + ' mm)');
 check(S.build({ sink: 3 }).warn.some((w) => /mělčí než stěna/.test(w)), 'mělký zámeček v háčku se ohlásí');
 check(S.normalize({ sink: 4, weldGap: 2 }).weldGap === 0, 'zámeček v háčku zruší vůli');
-check(/rot\)|, 45\)/.test(S.freecadMacro({})), 'makro FreeCAD otočí plotnu o 45°');
+check(/plech\("Plotna", \[\[0,-/.test(S.freecadMacro({})), 'makro FreeCAD má plotnu otočenou o 45° (roh na ose nohou)');
 check(S.build({ spread: 500 }).warn.some((w) => /potkaly|malá|vyčuhuje/.test(w)), 'příliš velká rozteč noh se ohlásí');
 check(S.dxf([{ layer: 'X', polys: [d.parts[0].flat.contour] }]).split('\n').filter((x) => x === 'LINE').length === d.parts[0].flat.contour.length, 'DXF: úsečka na každou hranu');
 check(S.dxf([{ layer: 'O', polys: [], circles: d.plates.top.circles }]).split('\n').filter((x) => x === 'CIRCLE').length === 4, 'DXF: 4 díry na vruty');
+S.TOPS.forEach((t) => S.MOUNTS.forEach((m) => {
+  const b = S.build({ top: t.id, mount: m.id, topT: 30, plT: 6 }), pl = b.plates.top, id = t.lab + ' + ' + m.lab;
+  check(pl.shape === t.id && pl.holes.length === 2 && pl.circles.length === (m.none ? 0 : 4) && pl.studs.length === (m.studs ? 4 : 0), id + ': otvory a svorníky');
+  const inside = (q) => S.inPoly(pl.outline, q);
+  check(pl.holes.flat().every(inside) && pl.circles.every((c) => inside([c[0], c[1]])), id + ': otvory leží v plechu');
+  check(b.mount.steps.length >= 3 && b.mount.hw.length >= 1, id + ': postup pro truhláře');
+}));
 const mac = S.freecadMacro({});
 check(/distToShape/.test(mac) && /Stred_%d/.test(mac), 'makro FreeCAD obsahuje tělesa i kontrolu');
 try { const f = path.join(os.tmpdir(), 'stolek-makro.py'); fs.writeFileSync(f, mac); cp.execFileSync('python3', ['-c', 'import ast,sys;ast.parse(open(sys.argv[1]).read())', f]); check(true, 'makro FreeCAD je platný Python'); } catch (e) { if (e.code !== 'ENOENT') check(false, 'makro FreeCAD není platný Python'); }

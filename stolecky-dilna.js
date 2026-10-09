@@ -10,10 +10,10 @@
   const LS = 'stolecky-retez';
   const FIELDS = [
     ['sink', 'Ponoření v háčku (prázdné = auto)', 0, 12, 1], ['weldGap', 'Vůle v háčku (jen bez ponoření)', 0, 3, 0.5],
-    ['clear', 'Vůle výřezu pro čep', 0, 0.5, 0.05], ['tabMargin', 'Okraj čepu od hrany', 1, 8, 1],
+    ['clear', 'Vůle zámečku v háčku', 0, 0.5, 0.05], 
     ['holeClear', 'Vůle otvorů v plechu', 0, 2, 0.1], ['baseT', 'Tloušťka plotny', 4, 25, 1], ['plT', 'Plech pod deskou', 3, 12, 1]
   ];
-  let cfg = S.normalize({}), current = null, dls = null, rates = null, built = false;
+  let cfg = S.normalize({}), current = null, dls = null, rates = null, built = false, viewer = null, see = false;
   try { const st = JSON.parse(localStorage.getItem(LS) || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
 
   /* ---------- výkresy ---------- */
@@ -37,8 +37,9 @@
     return '<figure><svg viewBox="0 0 ' + r2(b.w) + ' ' + r2(b.h) + '" role="img" aria-label="' + pl.name + '">' +
       poly(fl(pl.outline), 'fill="#DAD6CE" stroke="#17181A" stroke-width="1.2"') +
       pl.holes.map((h) => poly(fl(h), 'fill="#FBFAF7" stroke="#17181A" stroke-width="1"')).join('') +
-      pl.circles.map((c) => { const q = b.P([c[0], -c[1]]); return '<circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="' + c[2] + '" fill="#FBFAF7" stroke="#17181A" stroke-width="1"/>'; }).join('') +
-      '</svg><figcaption><b>' + pl.name + '</b> ' + pl.w + ' × ' + pl.w + ' × ' + pl.t + ' mm' + (pl.rot ? ' otočená o ' + pl.rot + '° (nohy do rohů)' : '') + ', ' + pl.holes.length + ' otvory pro nohy' + (pl.circles.length ? ', ' + pl.circles.length + ' díry Ø 7 na vruty do desky' : '') + ' (laser na plech)</figcaption></figure>';
+      pl.circles.map((c) => { const q = b.P([c[0], -c[1]]); return (pl.csk ? '<circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="' + pl.csk / 2 + '" fill="none" stroke="#B8440F" stroke-width="0.8" stroke-dasharray="2 1.5"/>' : '') + '<circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="' + c[2] + '" fill="#FBFAF7" stroke="#17181A" stroke-width="1"/>'; }).join('') +
+      (pl.studs || []).map((c) => { const q = b.P([c[0], -c[1]]); return '<g stroke="#B8440F" stroke-width="1"><circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="4" fill="none"/><path d="M' + r2(q[0] - 7) + ' ' + r2(q[1]) + ' h14 M' + r2(q[0]) + ' ' + r2(q[1] - 7) + ' v14"/></g>'; }).join('') +
+      '</svg><figcaption><b>' + pl.name + '</b> ' + (pl.shape === 'kruh' ? 'Ø ' + pl.w + ' × ' + pl.t : pl.shape === 'kriz' ? pl.w + ' × ' + pl.w + ' (kříž) × ' + pl.t : pl.w + ' × ' + pl.w + ' × ' + pl.t) + ' mm' + (pl.rot ? ' otočená o ' + pl.rot + '° (nohy do rohů)' : '') + ', ' + pl.holes.length + ' otvory pro nohy' + (pl.circles.length ? ', ' + pl.circles.length + ' díry Ø ' + fmt(pl.circles[0][2] * 2) + (pl.csk ? ' se zahloubením Ø ' + fmt(pl.csk) + ' (90°)' : '') + ' na uchycení desky' : '') + (pl.studs && pl.studs.length ? ', ' + pl.studs.length + '× navařit svorník M8×20' : '') + ' (laser na plech)</figcaption></figure>';
   }
   async function download(name, text, type) {
     if (dls && dls.save) { try { await dls.save({ filename: name, data: new Blob([text], { type }) }); return; } catch (e) { /* zkusím obyčejné stažení */ } }
@@ -48,14 +49,14 @@
     const G = B.G, c = B.cfg, midTip = G.zm - G.b - G.hp / (2 * Math.sin(G.g));
     const ids = (mid) => B.parts.filter((p) => (p.frame === 'mid') === mid).map((p) => p.qty + '× ' + p.id).join(', ');
     return [
-      'Kosočtverec: 4 jekly (' + ids(true) + ') srazíš čepy do výřezů na rovném stole a svaříš všechny čtyři pokosy.',
-      'Nohy: ze 4 jeklů (' + ids(false) + ') svaříš dvě „V“ – v hrotu zapadne čep do výřezu.',
+      'Kosočtverec: 4 jekly (' + ids(true) + ') slož na rovném stole pokosy k sobě (zámečky v háčku na špičkách) a svař všechny čtyři pokosy.',
+      'Nohy: ze 4 jeklů (' + ids(false) + ') svař dvě „V“ – pokosy k sobě, zámečky na vnitřní straně hrotu.',
       'Obě „V“ provlékni kosočtvercem: volný konec nohy prostrčíš otvorem kosočtverce a posuneš, až je hrot uvnitř. Dolní je hrotem nahoru („Λ“), horní hrotem dolů.',
       'Dolní nohy zasuň do otvorů v plotně (' + fmt(G.ins) + ' mm hluboko, plotna je otočená o 45°, nohy míří do rohů) a zavař zespodu v otvoru. Kosočtverec podlož pod spodní špičkou podložkou ' + fmt(midTip - c.baseT) + ' mm nad plotnou.',
       'Plech pod deskou podepři ' + fmt(c.H - c.topT - c.plT - c.baseT) + ' mm nad plotnou, horní nohy zasuň do jeho otvorů (lícují s horní plochou plechu) a zavař.',
       (B.sink > 0 ? 'V háčcích zapadnou články do zámečků (ponoření ' + fmt(B.sink) + ' mm) a dosednou na rovnou plošku – tam je svař, dole i nahoře.'
         : 'Svař články v místech, kde se dotýkají (dole i nahoře vždy dva styky po ' + fmt(G.hd) + ' mm).') + ' Řetěz sám v tlaku nedrží – bez těchto svarů by se pod deskou sesunul.',
-      'Desku přišroubuj k plechu vruty přes 4 díry Ø 7.'
+      (B.plates.top.studs.length ? 'Před povrchovou úpravou navař na horní plech ' + B.plates.top.studs.length + ' svorníky M8×20 (značky na výkresu).' : 'Uchycení desky: ' + B.mount.M.lab.toLowerCase() + ' – postup pro truhláře je na zákaznické stránce, materiál: ' + B.mount.hw.map((h) => h.q + '× ' + h.name).join(', ') + '.')
     ].map((t) => '<li>' + t + '</li>').join('');
   }
 
@@ -69,6 +70,9 @@
       cfg = S.normalize(Object.assign({}, cfg, { [k]: k === 'sink' && v === '' ? 'auto' : Number(v) })); render();
     }));
     $('sEdit').addEventListener('click', () => { try { localStorage.setItem(LS, JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } location.href = 'stolecky.html'; });
+    if (root.StoViewer) viewer = root.StoViewer.create($('sviz'));
+    document.querySelectorAll('[data-sview]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.sview === 'top' || b.dataset.sview === 'bottom') { see = true; $('sSee').checked = true; render(); } if (viewer) viewer.view(b.dataset.sview); }));
+    $('sSee').addEventListener('change', (e) => { see = e.target.checked; render(); });
     $('sCodeLoad').addEventListener('click', () => {
       try {
         const t = $('sCodeIn').value.trim().replace(/^STOLEK:/, '');
@@ -94,7 +98,7 @@
       .map(([a, b]) => '<div class="fact"><b>' + b + '</b><span>' + a + '</span></div>').join('');
     $('sWarns').innerHTML = B.warn.map((w) => '<div>' + esc(w) + '</div>').join('');
     $('sCut').innerHTML = B.parts.map((p) => '<tr><td class="mono">' + p.id + '</td><td>' + esc(p.name) + '</td><td class="num">' + p.qty * c.qty + '</td><td class="num">' + fmt(p.lo) + ' / ' + fmt(p.li) + '</td><td>' + esc(p.ends[0]) + '</td><td>' + esc(p.ends[1]) + '</td></tr>').join('') +
-      '<tr><td colspan="6" style="color:var(--muted)">Jekl ' + c.prof.replace(/x/g, '×') + ', celkem ' + B.parts.reduce((s, p) => s + p.qty, 0) * c.qty + ' kusů' + (c.qty > 1 ? ' (' + c.qty + ' stolky)' : '') + '. Pokos = úhel řezu proti ose jeklu. Čep i výřez je v přední i zadní stěně' + (B.sink > 0 ? ', zámeček v háčku přes celou hloubku jeklu' : '') + '.</td></tr>';
+      '<tr><td colspan="6" style="color:var(--muted)">Jekl ' + c.prof.replace(/x/g, '×') + ', celkem ' + B.parts.reduce((s, p) => s + p.qty, 0) * c.qty + ' kusů' + (c.qty > 1 ? ' (' + c.qty + ' stolky)' : '') + '. Pokos = úhel řezu proti ose jeklu, rohy jsou jen pokos (nic nepřečuhuje)' + (B.sink > 0 ? ', zámeček v háčku = zářez přes celou hloubku jeklu' : '') + '.</td></tr>';
     $('sFlats').innerHTML = B.parts.map(partSvg).join('') + plateSvg(B.plates.base) + plateSvg(B.plates.top);
     $('sDl').innerHTML = B.parts.map((p) => '<button type="button" class="btn" data-dxf="' + p.id + '">DXF ' + p.id + '</button>').join('') +
       '<button type="button" class="btn" data-pl="base">DXF plotna</button><button type="button" class="btn" data-pl="top">DXF plech pod deskou</button><button type="button" class="btn" data-fc="1">Makro FreeCAD</button>';
@@ -108,6 +112,7 @@
     }));
     $('sDl').querySelector('[data-fc]').addEventListener('click', () => download('stolek-retez.FCMacro', S.freecadMacro(c), 'text/plain'));
     $('sSteps').innerHTML = steps(B);
+    if (viewer) { viewer.update(B, { see, showDesk: true }); requestAnimationFrame(() => viewer.view()); }
   }
 
   function open(it) { current = it; cfg = S.normalize(it.config); render(); }

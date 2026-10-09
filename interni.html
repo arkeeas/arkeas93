@@ -229,6 +229,12 @@
   <section class="card" id="p-sto" role="tabpanel" aria-labelledby="t-sto" hidden>
     <div class="ed">
       <div>
+        <div class="viz"><div id="sviz" style="position:absolute;inset:0"></div>
+          <div class="vbar" id="sVbar">
+            <button type="button" data-sview="iso">3D</button><button type="button" data-sview="front">Zepředu</button><button type="button" data-sview="side">Zboku</button><button type="button" data-sview="top">Shora</button><button type="button" data-sview="bottom">Zespodu</button>
+            <label for="sSee"><input type="checkbox" id="sSee"> průhledná deska</label>
+          </div>
+        </div>
         <div class="facts" id="sFacts"></div>
         <div class="warns" id="sWarns"></div>
         <h2>Řezný plán – jekly pro Bodor K2</h2>
@@ -314,8 +320,9 @@
 <script src="zabradli-core.js?v=20261008g"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script src="zabradli-dilna.js?v=20261006a"></script>
-<script src="stolecky-core.js?v=20261009d"></script>
-<script src="stolecky-dilna.js?v=20261009d"></script>
+<script src="stolecky-core.js?v=20261009e"></script>
+<script src="stolecky-viewer.js?v=20261009e"></script>
+<script src="stolecky-dilna.js?v=20261009e"></script>
 <script>
 (function () {
   const K = Podnoze, G = Generator, $ = (id) => document.getElementById(id);
