@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="cs">
 <head>
-<link rel="stylesheet" href="modebar.css?v=20261008a">
+<link rel="stylesheet" href="modebar.css?v=20261005d">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Konferenční stolečky</title>
@@ -18,7 +18,7 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { background: var(--ground); color: var(--ink); }
-  body { font: 15px/1.5 var(--sans); }
+  body { margin: 0; font: 15px/1.5 var(--sans); }
   button, input, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
@@ -111,9 +111,26 @@
   .btn.primary:hover { background: var(--accent-ink); }
   .btn.primary:disabled { opacity: .45; background: var(--accent); }
   .btn.ghost:disabled { opacity: .5; }
-  .steps .grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .steps .grid.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (min-width: 560px) { .steps .grid.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .buy { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  @media (min-width: 1000px) { .buy { padding-left: 40px; padding-right: 40px; } }
+  .price { font-family: var(--serif); font-size: 36px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .price-sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .qty { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 4px; }
+  .qty button { width: 40px; height: 46px; border: 0; background: transparent; font-size: 18px; }
+  .qty span { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .foot { padding: 20px 24px 28px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .modal { position: fixed; inset: 0; background: rgba(23,24,26,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
+  .sheet { background: var(--surface); border-radius: 8px; width: min(560px, 100%); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+  .sheet h3 { font-family: var(--serif); font-weight: 400; font-size: 32px; margin: 0; line-height: 1.1; }
+  .sheet label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .sheet input, .sheet textarea { padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .sheet .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 520px) { .sheet .two { grid-template-columns: minmax(0, 1fr); } }
+  .summary { background: var(--line-soft); border-radius: 4px; padding: 12px 14px; font-size: 14px; }
+  .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; background: var(--line-soft); padding: 10px; border-radius: 4px; user-select: all; }
+  .dil h3 { margin: 18px 0 10px; font-weight: 500; font-size: 16px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   .dil { margin-top: 8px; }
   .dil summary { cursor: pointer; font-weight: 500; font-size: 20px; list-style: none; }
   .dil summary small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
@@ -137,13 +154,15 @@
 </style>
 </head>
 <body>
+<div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="stolecky.html" aria-current="page">Zákazník</a><a href="interni.html">Dílna</a><a href="montaz.html">Testing</a><a href="skica.html">Skicář</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
 <header class="top">
   <div class="brand">[NÁZEV FIRMY]</div>
   <nav aria-label="Hlavní menu">
     <a href="index.html">Podnože</a>
     <a href="vyvoj.html">Umělecké</a>
     <a href="zabradli.html">Zábradlí</a>
-    <a href="stolecky.html" aria-current="page">Konferenční stolečky</a>
+    <a href="#konfigurator" aria-current="page">Konferenční stolečky</a>
+    <span class="soon">Stoly – připravujeme</span>
   </nav>
 </header>
 
@@ -152,10 +171,13 @@
     <div id="viz"></div>
     <div class="stage-head">
       <div>
-        <div class="model-name">Řetěz</div>
+        <div class="model-name" id="mName">Řetěz</div>
         <div class="model-sub" id="mSub"></div>
       </div>
-      <div class="stage-side"><div class="chip" id="ohChip"></div></div>
+      <div class="stage-side">
+        <div class="chip" id="ohChip"></div>
+        <label class="check" for="showDesk"><input id="showDesk" type="checkbox" checked> Zobrazit desku</label>
+      </div>
     </div>
     <div class="views" role="group" aria-label="Pohled">
       <button data-view="iso" aria-pressed="true">3D</button>
@@ -164,7 +186,7 @@
       <button data-view="top" aria-pressed="false">Shora</button>
       <button data-view="bottom" aria-pressed="false">Zespodu</button>
     </div>
-    <div class="hint">Tažením myši otáčíte, kolečkem přibližujete</div>
+    <div class="hint" id="hint">Tažením myši otáčíte, kolečkem přibližujete</div>
   </section>
 
   <section class="panel" aria-label="Nastavení">
@@ -197,14 +219,9 @@
       </div>
 
       <div class="step">
-        <h2><small>Krok 4</small>Zámečky pro laser</h2>
-        <div class="grid" style="gap:16px">
-          <div class="field"><div class="row"><label for="clear">Vůle výřezu pro čep</label><span class="num"><input id="clearn" type="number" inputmode="decimal" step="0.05" aria-label="Vůle výřezu v mm"> mm</span></div><input id="clear" type="range" min="0" max="0.5" step="0.05"></div>
-          <div class="field"><div class="row"><label for="tabMargin">Okraj čepu od hrany</label><span class="num"><input id="tabMarginn" type="number" inputmode="numeric" aria-label="Okraj čepu v mm"> mm</span></div><input id="tabMargin" type="range" min="1" max="8" step="1"></div>
-          <div class="field"><div class="row"><label for="holeClear">Vůle otvorů v plechu</label><span class="num"><input id="holeClearn" type="number" inputmode="decimal" step="0.1" aria-label="Vůle otvorů v mm"> mm</span></div><input id="holeClear" type="range" min="0" max="2" step="0.1"></div>
-          <div class="field"><div class="row"><label for="weldGap">Vůle v háčku</label><span class="num"><input id="weldGapn" type="number" inputmode="decimal" step="0.5" aria-label="Vůle v háčku v mm"> mm</span></div><input id="weldGap" type="range" min="0" max="3" step="0.5"></div>
-          <div class="note">V rozích zapadne čep jednoho jeklu do výřezu druhého. Nohy se zasunou do otvorů v plotně a v plechu pod deskou. Vůle v háčku 0 = články se dotknou a svaří se v tom místě.</div>
-        </div>
+        <h2><small>Krok 4</small>Povrchová úprava</h2>
+        <div class="grid g4" id="fins"></div>
+        <p class="note" style="margin:10px 0 0">Desku dodáváte sami, plech pod deskou má 4 díry na vruty. Desky z našeho e-shopu připravujeme.</p>
       </div>
 
       <div class="step">
@@ -213,18 +230,62 @@
         <div class="facts" id="facts"></div>
       </div>
 
-      <details class="dil">
+      <details class="dil" id="dil" hidden>
         <summary><small>Pro dílnu</small>Podklady pro Bodor K2 a plechy</summary>
+      <div>
+          <h3>Zámečky pro laser</h3>
+          <div class="grid" style="gap:16px">
+            <div class="field"><div class="row"><label for="clear">Vůle výřezu pro čep</label><span class="num"><input id="clearn" type="number" inputmode="decimal" step="0.05" aria-label="Vůle výřezu v mm"> mm</span></div><input id="clear" type="range" min="0" max="0.5" step="0.05"></div>
+            <div class="field"><div class="row"><label for="tabMargin">Okraj čepu od hrany</label><span class="num"><input id="tabMarginn" type="number" inputmode="numeric" aria-label="Okraj čepu v mm"> mm</span></div><input id="tabMargin" type="range" min="1" max="8" step="1"></div>
+            <div class="field"><div class="row"><label for="holeClear">Vůle otvorů v plechu</label><span class="num"><input id="holeClearn" type="number" inputmode="decimal" step="0.1" aria-label="Vůle otvorů v mm"> mm</span></div><input id="holeClear" type="range" min="0" max="2" step="0.1"></div>
+            <div class="field"><div class="row"><label for="weldGap">Vůle v háčku</label><span class="num"><input id="weldGapn" type="number" inputmode="decimal" step="0.5" aria-label="Vůle v háčku v mm"> mm</span></div><input id="weldGap" type="range" min="0" max="3" step="0.5"></div>
+            <div class="note">V rozích zapadne čep jednoho jeklu do výřezu druhého. Nohy se zasunou do otvorů v plotně a v plechu pod deskou. Vůle v háčku 0 = články se dotknou a svaří se v tom místě.</div>
+          </div>
+        </div>
+        <h3>Řezný plán a plechy</h3>
         <div class="tblw"><table id="cut"></table></div>
         <div class="flats" id="flats"></div>
         <div class="btnrow" id="dl"></div>
         <ol id="steps"></ol>
       </details>
     </div>
+
+    <div class="buy">
+      <div>
+        <div class="price" id="price"></div>
+        <div class="price-sub" id="priceSub"></div>
+      </div>
+      <div class="actions">
+        <div class="qty"><button type="button" id="dec" aria-label="Méně kusů">−</button><span id="qty"></span><button type="button" id="inc" aria-label="Více kusů">+</button></div>
+        <button class="btn primary" id="ask" type="button">Nezávazně poptat</button>
+        <button class="btn ghost" type="button" disabled title="Platba online – připravujeme">Koupit</button>
+      </div>
+    </div>
+    <div class="foot"><span>Ceny jsou orientační, bez desky. Finální potvrdíme v odpovědi na poptávku.</span><a href="interni.html" target="_self" id="staffLink" hidden>Pro dílnu</a></div>
   </section>
 </main>
 
-<script src="stolecky-core.js?v=20261009a"></script>
+<div class="modal" id="modal" hidden>
+  <form class="sheet" id="form" novalidate>
+    <h3 id="formTitle">Poptávka stolku</h3>
+    <div class="summary" id="formSummary"></div>
+    <div class="two">
+      <label for="fName">Jméno a příjmení<input id="fName" required autocomplete="name"></label>
+      <label for="fEmail">E-mail<input id="fEmail" type="email" required autocomplete="email"></label>
+      <label for="fPhone">Telefon<input id="fPhone" type="tel" autocomplete="tel"></label>
+      <label for="fAddr">Město / adresa dodání<input id="fAddr" autocomplete="street-address"></label>
+    </div>
+    <label for="fNote">Poznámka<textarea id="fNote" rows="3"></textarea></label>
+    <div class="msg" id="formMsg" hidden></div>
+    <div class="actions" style="justify-content:flex-end">
+      <button class="btn" type="button" id="cancel">Zpět</button>
+      <button class="btn primary" type="submit" id="send">Odeslat poptávku</button>
+    </div>
+  </form>
+</div>
+
+<script src="lokal.js?v=20261005d"></script>
+<script src="stolecky-core.js?v=20261009b"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
@@ -233,11 +294,16 @@
   const S = window.Stolecky, $ = (id) => document.getElementById(id);
   const RANGES = ['spread', 'H', 'topD', 'topT', 'baseW', 'baseT', 'plT', 'clear', 'tabMargin', 'holeClear', 'weldGap'];
   const ANGLES = [[35, 'Štíhlý', '35°'], [40, 'Střední', '40°'], [45, 'Široký', '45°'], [50, 'Velmi široký', '50°']];
-  let cfg = S.normalize(S.DEFAULT_CFG);
+  const METAL = { black: [0x26272A, 0.35, 0.55], anth: [0x3E444B, 0.4, 0.5], white: [0xE9E9E4, 0.1, 0.6], raw: [0x8A847B, 0.75, 0.38] };
+  let cfg = S.normalize(S.DEFAULT_CFG), rates = S.DEFAULT_RATES, B = null, db = null, uid = null, ui = { showDesk: true };
   try { const st = JSON.parse(localStorage.getItem('stolecky-retez') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
+  const nf = (n) => Number(n).toLocaleString('cs-CZ', { maximumFractionDigits: 0 });
   const fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const optBtn = (id, on, l, s) => '<button type="button" class="opt" data-id="' + id + '" aria-pressed="' + on + '"><span class="l">' + l + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</button>';
+  const optBtn = (id, on, l, s, ic) => '<button type="button" class="opt" data-id="' + id + '" aria-pressed="' + on + '">' + (ic ? '<svg viewBox="0 0 64 48" aria-hidden="true"><path d="' + ic + '"></path></svg>' : '') + '<span class="l">' + l + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</button>';
+  /* ikona řetězu: dolní Λ, kosočtverec, horní V – šířka podle úhlu */
+  const chainIcon = (g) => { const w = Math.round(13 * Math.tan(g * Math.PI / 180) / Math.tan(40 * Math.PI / 180) * 10) / 10, a = 32 - w, b = 32 + w;
+    return 'M' + a + ' 46 L32 30 L' + b + ' 46 M32 13 L' + b + ' 24 L32 35 L' + a + ' 24 Z M' + a + ' 2 L32 18 L' + b + ' 2'; };
   function group(el, html, pick) { el.innerHTML = html; el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.id))); }
   function set(p) { cfg = S.normalize(Object.assign({}, cfg, p)); try { localStorage.setItem('stolecky-retez', JSON.stringify(cfg)); } catch (e) { /* bez paměti */ } render(); }
   function bindRange(k) {
@@ -247,7 +313,9 @@
   }
   function syncForm() {
     RANGES.forEach((k) => { if (document.activeElement !== $(k + 'n')) $(k + 'n').value = cfg[k]; $(k).value = cfg[k]; });
-    group($('angles'), ANGLES.map(([g, l, s]) => optBtn(g, cfg.gamma === g, l, s)).join(''), (id) => set({ gamma: Number(id) }));
+    group($('angles'), ANGLES.map(([g, l, s]) => optBtn(g, cfg.gamma === g, l, s, chainIcon(g))).join(''), (id) => set({ gamma: Number(id) }));
+    group($('fins'), S.FIN.map((f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>').join(''), (id) => set({ fin: id }));
+    $('showDesk').checked = ui.showDesk;
     group($('profs'), S.PROFILES.map((p) => optBtn(p.id, p.id === cfg.prof, p.id.replace(/x/g, '×'), p.hp + ' v rovině · ' + p.hd + ' hloubka')).join(''), (id) => set({ prof: id }));
     const P = S.PROFILES.find((p) => p.id === cfg.prof);
     $('profNote').textContent = 'Široká strana (' + P.hp + ' mm) je vidět zepředu na článku, úzká (' + P.hd + ' mm) je jeho tloušťka. Stěna ' + P.wall + ' mm.';
@@ -310,7 +378,12 @@
   }
 
   function facts(B) {
-    $('mSub').textContent = 'Výška ' + cfg.H + ' mm · deska Ø ' + cfg.topD + ' mm · jekl ' + cfg.prof.replace(/x/g, '×');
+    const F = S.FIN.find((f) => f.id === cfg.fin), X = S.price(B, rates);
+    $('mName').textContent = 'Řetěz ' + cfg.gamma + '°';
+    $('mSub').textContent = 'Výška ' + cfg.H + ' mm · deska Ø ' + cfg.topD + ' mm · jekl ' + cfg.prof.replace(/x/g, '×') + ' · ' + F.lab;
+    $('price').textContent = nf(X.total) + ' Kč';
+    $('priceSub').textContent = 's DPH' + (cfg.qty > 1 ? ' za ' + cfg.qty + ' ks · ' + nf(X.vat) + ' Kč / ks' : '') + ' · ' + nf(X.price * cfg.qty) + ' Kč bez DPH';
+    $('qty').textContent = cfg.qty + ' ks';
     $('ohChip').textContent = 'Rozteč noh ' + cfg.spread + ' mm';
     $('facts').innerHTML = [['Kosočtverec (výška × šířka)', fmt(B.size.midH) + ' × ' + fmt(B.size.midW) + ' mm'], ['Výška noh', fmt(B.size.legH) + ' mm'],
       ['Mezi články', B.gap < 0.05 ? 'dosedají' : fmt(B.gap) + ' mm'], ['Hmotnost (jekly + plechy)', fmt(B.kgBars) + ' + ' + fmt(B.kgPlates) + ' kg']]
@@ -326,13 +399,18 @@
     const host = $('viz');
     if (!window.THREE || !THREE.OrbitControls) { host.innerHTML = '<p class="nojs">3D náhled se nenačetl (chybí připojení k internetu nebo WebGL). Podklady pro dílnu fungují i tak.</p>'; return; }
     try {
-      const r = new THREE.WebGLRenderer({ antialias: true });
+      /* stejné světlo, stín a barvy jako náhled podnoží (viewer.js) */
+      const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-      host.appendChild(r.domElement);
-      const scene = new THREE.Scene(); scene.background = new THREE.Color('#F1EFEA');
+      r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.outputEncoding = THREE.sRGBEncoding;
+      host.appendChild(r.domElement); r.domElement.style.display = 'block'; r.domElement.style.touchAction = 'none';
+      const scene = new THREE.Scene();
       const cam = new THREE.PerspectiveCamera(32, 1, 1, 8000); cam.up.set(0, 0, 1);
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x888078, 0.9));
-      const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(-400, -600, 900); scene.add(sun);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b2a6, 0.75));
+      const sun = new THREE.DirectionalLight(0xffffff, 0.85); sun.position.set(-1500, -2200, 3200); sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -1200, right: 1200, top: 1200, bottom: -1200, near: 100, far: 9000 }); scene.add(sun);
+      const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(2000, 1500, 800); scene.add(fill);
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.ShadowMaterial({ opacity: 0.16 })); ground.receiveShadow = true; scene.add(ground);
       const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true;
       const grp = new THREE.Group(); scene.add(grp);
       T = { r, scene, cam, ctl, grp, host };
@@ -351,9 +429,10 @@
     if (!T) return;
     const { grp } = T; while (grp.children.length) { const o = grp.children.pop(); o.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
     const c = B.cfg, G = B.G;
-    const steel = new THREE.MeshStandardMaterial({ color: 0x26272A, metalness: 0.35, roughness: 0.5 });
-    const plateMat = new THREE.MeshStandardMaterial({ color: 0x1B1C1E, roughness: 0.6 });
-    const wood = new THREE.MeshStandardMaterial({ color: 0xB88E5A, roughness: 0.7 });
+    const M = METAL[c.fin] || METAL.black;
+    const steel = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2] });
+    const plateMat = steel;
+    const wood = new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0 });
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
     const bars = (polys, plane, zc) => polys.forEach((q) => {
       let pts = q.map((p) => new THREE.Vector2(p[0], p[1])); if (THREE.ShapeUtils.isClockWise(pts)) pts = pts.reverse();
@@ -363,21 +442,75 @@
       if (plane === 'xz') m.set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, zc, 0, 0, 0, 1);
       else m.set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, zc, 0, 0, 0, 1);
       g.applyMatrix4(m);
-      grp.add(new THREE.Mesh(g, steel), new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
+      const mesh = new THREE.Mesh(g, steel); mesh.castShadow = true;
+      grp.add(mesh, new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
     });
     bars(G.lam.polys, 'xz', G.zl); bars(G.mid.polys, 'yz', G.zm); bars(G.vee.polys, 'xz', G.zu);
-    const box = (w, t, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), mat); o.position.set(0, 0, z + t / 2); grp.add(o); };
+    const box = (w, t, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), mat); o.position.set(0, 0, z + t / 2); o.castShadow = true; grp.add(o); };
     box(c.baseW, c.baseT, 0, plateMat); box(B.plates.top.w, c.plT, c.H - c.topT - c.plT, plateMat);
     const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, c.topT, 72), wood);
-    top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); grp.add(top);
+    top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); top.visible = ui.showDesk; top.castShadow = true; grp.add(top);
     if (!T.fitted) { view('iso'); T.fitted = true; }
   }
 
-  function render() { const B = S.build(cfg); syncForm(); facts(B); dilna(B); build3d(B); }
+  function render() { B = S.build(cfg); syncForm(); facts(B); dilna(B); build3d(B); }
 
   RANGES.forEach(bindRange);
   document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => view(b.dataset.view)));
+  $('showDesk').addEventListener('change', (e) => { ui.showDesk = e.target.checked; render(); });
+  $('inc').addEventListener('click', () => set({ qty: cfg.qty + 1 }));
+  $('dec').addEventListener('click', () => set({ qty: cfg.qty - 1 }));
+
+  /* ---------- poptávka ---------- */
+  const code = () => 'STOLEK:' + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  function msg(html, kind) { const m = $('formMsg'); m.hidden = false; m.innerHTML = html; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
+  $('ask').addEventListener('click', () => {
+    const X = S.price(B, rates);
+    $('formTitle').textContent = 'Poptávka stolku';
+    $('formSummary').innerHTML = '<strong>' + esc(S.describe(cfg)) + '</strong><br>' + cfg.qty + ' ks · ' + nf(X.total) + ' Kč s DPH (orientačně, bez desky)';
+    $('formMsg').hidden = true; $('form').querySelectorAll('input,textarea,#send').forEach((x) => { x.disabled = false; });
+    $('modal').hidden = false; $('fName').focus();
+  });
+  $('cancel').addEventListener('click', () => { $('modal').hidden = true; $('ask').focus(); });
+  $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal').hidden) $('modal').hidden = true; });
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('fName').value.trim(), email = $('fEmail').value.trim();
+    if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg('Vyplňte jméno a platný e-mail, ať vám můžeme poslat nabídku.', 'bad'); return; }
+    const now = new Date(), p2 = (n) => String(n).padStart(2, '0'), X = S.price(B, rates);
+    const id = 'S' + String(now.getFullYear()).slice(2) + p2(now.getMonth() + 1) + p2(now.getDate()) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    const item = { id, product: 'stolecek', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim(), address: $('fAddr').value.trim() }, note: $('fNote').value.trim(),
+      config: cfg, price: X.price, vat: X.vat, total: X.total };
+    if (!db || !uid) { msg('Poptávku se teď nepodařilo odeslat. Zkopírujte prosím tento kód a pošlete ho e-mailem na [E-MAIL FIRMY]:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad'); return; }
+    $('send').disabled = true; msg('Odesílám…');
+    try {
+      const ref = db.doc('poptavky/' + uid), snap = await ref.get();
+      const items = snap.exists ? (snap.data().items || []).slice() : [];
+      items.push(item);
+      await ref.set({ uid, updated: now.toISOString(), items });
+      $('form').querySelectorAll('input,textarea').forEach((x) => { x.disabled = true; });
+      $('formTitle').textContent = 'Děkujeme, poptávka je odeslaná';
+      msg('Číslo poptávky <strong>' + id + '</strong>. Ozveme se vám na ' + esc(email) + ' s finální cenou a termínem.' + (window.claude && claude.lokalni ? '<br><br><strong>Test:</strong> poptávku teď uvidíš v záložce <a href="interni.html">Dílna → Poptávky</a>.' : ''), 'ok');
+    } catch (err) {
+      $('send').disabled = false;
+      msg('Odeslání se nepovedlo (' + esc(err && err.code || 'chyba') + '). Zkuste to prosím znovu, nebo pošlete kód e-mailem:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad');
+    }
+  });
+
   init3d(); render();
+  if (location.hash === '#dilna') { $('dil').open = true; }
+  (async function connect() {
+    if (!window.claude || !claude.use) return;
+    const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]);
+    db = d;
+    if (u) {
+      try { uid = await u.id(); } catch (e) { uid = null; }
+      const staff = !!u.canEdit(); $('staffLink').hidden = !staff; $('dil').hidden = !staff;
+      if (staff && location.hash === '#dilna') $('dil').scrollIntoView();
+    }
+    if (db) db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = Object.assign({}, S.DEFAULT_RATES, s.data()); render(); } }, () => {});
+  })();
 })();
 </script>
 </body>
