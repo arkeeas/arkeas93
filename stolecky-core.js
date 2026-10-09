@@ -27,7 +27,7 @@
   ];
   const DEFAULT_CFG = {
     H: 450, topD: 700, topT: 30, baseW: 340, baseT: 10, plT: 6,
-    prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, sink: 8, clear: 0.15, tabMargin: 3, holeClear: 0.5,
+    prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, sink: 'auto', clear: 0.15, tabMargin: 3, holeClear: 0.5,
     fin: 'black', qty: 1
   };
   /* povrch a sazby – stejné jako u podnoží (core.js), ceník se bere z nastaveni/cenik */
@@ -133,9 +133,9 @@
     const o = Object.assign({}, DEFAULT_CFG, c || {});
     const num = (k, lo, hi) => { const v = Number(o[k]); o[k] = Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : DEFAULT_CFG[k])); };
     num('H', 300, 800); num('topD', 400, 1400); num('topT', 10, 60); num('baseW', 150, 700); num('baseT', 4, 25); num('plT', 3, 12);
-    num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); num('sink', 0, 12); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
+    num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); if (o.sink !== 'auto') num('sink', 0, 12); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
     if (!PROFILES.some((p) => p.id === o.prof)) o.prof = DEFAULT_CFG.prof;
-    if (o.sink > 0) o.weldGap = 0;                                  // zámeček v háčku a vůle se vylučují
+    if (o.sink === 'auto' || o.sink > 0) o.weldGap = 0;             // zámeček v háčku a vůle se vylučují
     if (!FIN.some((f) => f.id === o.fin)) o.fin = DEFAULT_CFG.fin;
     o.qty = Math.min(99, Math.max(1, Math.round(Number(o.qty)) || 1));
     return o;
@@ -295,8 +295,11 @@
   }
 
   /* zářezy v háčcích (rámové souřadnice článku): obdélník šířky hd + 2 vůle, z jedné strany roviny dosednutí */
-  function hookCuts(G, cfg) {
-    if (!(cfg.sink > 0)) return { lam: [], vee: [], mid: [] };
+  /* nejmenší ponoření, při kterém zářez v háčku projde celou stěnou jeklu (+0,5 mm) */
+  const sinkMinOf = (cfg) => { const P = PROFILES.find((p) => p.id === cfg.prof); return Math.ceil(2 * (P.wall + 0.5) / Math.sin(rad(cfg.gamma))); };
+  const sinkOf = (cfg) => (cfg.sink === 'auto' ? sinkMinOf(cfg) : cfg.sink);
+  function hookCuts(G, cfg, sink) {
+    if (!(sink > 0)) return { lam: [], vee: [], mid: [] };
     const w = G.hd / 2 + cfg.clear, big = 400, R = (v0, v1) => [[-w, v0], [w, v0], [w, v1], [-w, v1]];
     return {
       lam: [R(G.zcB - G.zl - big, G.zcB - G.zl)],                  // Λ drží nad rovinou
@@ -321,9 +324,9 @@
     if (!tipsOk) warn.push('Nohy jsou na tuhle výšku moc dlouhé – hroty dolního a horního článku by se potkaly. Zmenši rozteč noh nebo zvětši úhel.');
     let ov0 = seat(cfg);
     if (ov0 === null) { if (tipsOk) warn.push('Články se do sebe nevejdou – zvol užší jekl nebo širší úhel.'); ov0 = 120; }
-    const G = geom(cfg, ov0 + cfg.weldGap - cfg.sink), cl = clash(G);
-    const gp = cfg.sink > 0 ? -cfg.sink : Math.min(cl.lm, cl.vm);
-    const frames = { lam: G.lam, vee: G.vee, mid: G.mid }, hc0 = hookCuts(G, cfg);
+    const sink = sinkOf(cfg), G = geom(cfg, ov0 + cfg.weldGap - sink), cl = clash(G);
+    const gp = sink > 0 ? -sink : Math.min(cl.lm, cl.vm);
+    const frames = { lam: G.lam, vee: G.vee, mid: G.mid }, hc0 = hookCuts(G, cfg, sink);
     const lk = {}, flats = {}, cut = {};
     Object.keys(frames).forEach((k) => {
       lk[k] = locks(frames[k], cfg);
@@ -331,11 +334,11 @@
       /* těleso jeklu pro 3D a FreeCAD: obrys bez čepů, se zářezy v háčku */
       cut[k] = frames[k].polys.map((q) => hc0[k].reduce((P, K) => (clipConvex(P, K).length >= 3 && area(clipConvex(P, K)) > 1e-3 ? subConvex(P, K) || P : P), q));
     });
-    if (cfg.sink > 0) {
-      const sinkMin = Math.ceil(2 * (G.P.wall + 0.5) / Math.sin(G.g));
+    if (sink > 0) {
+      const sinkMin = sinkMinOf(cfg);
       if (Object.values(flats).some((fs) => fs.some((f) => !f.biteOk))) warn.push('Zámeček v háčku nejde vyříznout – zmenši ponoření.');
       else if (Object.values(flats).some((fs) => fs.some((f) => f.biteMerged))) warn.push('Zámeček v háčku se spojí se zámečkem v rohu – úzký proužek stěny odpadne. Zmenši ponoření nebo okraj čepu, případně zvol nižší jekl.');
-      if (cfg.sink < sinkMin) warn.push('Zámeček v háčku je mělčí než stěna jeklu (' + G.P.wall + ' mm) – laser ho přes stěnu nepropálí. Ponoř články aspoň o ' + sinkMin + ' mm.');
+      if (sink < sinkMin) warn.push('Zámeček v háčku je mělčí než stěna jeklu (' + G.P.wall + ' mm) – laser ho přes stěnu nepropálí. Ponoř články aspoň o ' + sinkMin + ' mm.');
     }
 
     /* díly: stejný obrys stěny = stejný díl */
@@ -391,7 +394,7 @@
     if (G.mid.polys.some((q) => q.some((p) => Math.abs(p[0]) > cfg.topD / 2 - 20))) warn.push('Prostřední článek je širší než deska.');
 
     return {
-      cfg, G, ov: G.ov, ovSeat: ov0, gap: gp, clash: cl, clashSeat: clash(geom(cfg, ov0)), frames, cut, lk, flats, parts, plates, warn,
+      cfg, G, sink, ov: G.ov, ovSeat: ov0, gap: gp, clash: cl, clashSeat: clash(geom(cfg, ov0)), frames, cut, lk, flats, parts, plates, warn,
       kgBars, kgPlates, kg: kgBars + kgPlates, footCut,
       size: { midH: 2 * G.b + G.hp / Math.sin(G.g), midW: 2 * G.a + G.hp / Math.cos(G.g), legH: G.h, spread: cfg.spread }
     };
@@ -429,7 +432,7 @@
       '    vol = sum(x.Shape.common(y.Shape).Volume for x in a for y in b)',
       '    dist = min(x.Shape.distToShape(y.Shape)[0] for x in a for y in b)',
       '    print(jm, "průnik %.2f mm3, nejmenší vzdálenost %.2f mm" % (vol, dist))',
-      '# se zámečky v háčku (ponoření ' + cfg.sink + ' mm) má být průnik 0 a vzdálenost 0 – články dosednou na plošku',
+      '# se zámečky v háčku (ponoření ' + B.sink + ' mm) má být průnik 0 a vzdálenost 0 – články dosednou na plošku',
       'kontrola(L, M, "Dolní Λ × kosočtverec:")',
       'kontrola(V, M, "Horní V × kosočtverec:")',
       'kontrola(L, V, "Dolní Λ × horní V:")',
@@ -456,7 +459,7 @@
   }
 
   const API = {
-    FIN, DEFAULT_RATES, price, describe, subConvex, clipConvex, inPoly, hookCuts,
+    FIN, DEFAULT_RATES, price, describe, sinkMinOf, sinkOf, subConvex, clipConvex, inPoly, hookCuts,
     PROFILES, DEFAULT_CFG, kgm, dxf, area, normalize, frame, locks, barFlat, geom, clash, seat, build, freecadMacro, orient, rad, deg, r1
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
