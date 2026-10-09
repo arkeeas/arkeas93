@@ -6,6 +6,10 @@
  *   nahoře „V“ – dvě nohy pod deskou, hrot dole, rovina XZ
  * Řetěz v tlaku sám nedrží, proto hrot Λ dosedá do spodního žlábku kosočtverce a hrot V do horního – tam se články svaří.
  * Výška kosočtverce se dopočítá tak, aby oba hroty právě dosedly (nejmenší zaklesnutí, kdy se tělesa neprotínají).
+ * Ponoření (sink): články se v háčku zasunou o sink mm hlouběji do sebe. Průnik se rozdělí vodorovnou rovinou napůl:
+ * oba jekly dostanou zářez přes celou hloubku jeklu (šířka = tloušťka druhého jeklu + vůle) – zámeček, který drží
+ * články v ose X i Y, a články pak dosednou na rovnou plošku, kde se svaří.
+ * Plotna dole je otočená o 45° – nohy Λ míří do jejích rohů.
  *
  * Zámečky pro Bodor K2: v každém rohu (pokosu) má jeden jekl čep (prodloužená přední i zadní stěna) a sousední výřez.
  * Nohy se zasunou do otvorů v plotně a v plechu pod deskou (laser na plech) do hloubky plechu pod deskou – to je zámek pro nohy;
@@ -23,7 +27,7 @@
   ];
   const DEFAULT_CFG = {
     H: 450, topD: 700, topT: 30, baseW: 340, baseT: 10, plT: 6,
-    prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, clear: 0.15, tabMargin: 3, holeClear: 0.5,
+    prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, sink: 8, clear: 0.15, tabMargin: 3, holeClear: 0.5,
     fin: 'black', qty: 1
   };
   /* povrch a sazby – stejné jako u podnoží (core.js), ceník se bere z nastaveni/cenik */
@@ -70,12 +74,68 @@
     return out;
   }
 
+  function inPoly(poly, p) {                                         // paprsek doprava, sudý počet průsečíků = venku
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i], b = poly[j];
+      if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+    }
+    return c;
+  }
+  function clipConvex(poly, K) {                                    // průnik s konvexním K (K libovolně orientované)
+    const sg = orient(K) > 0 ? 1 : -1;
+    let out = poly;
+    K.forEach((a, i) => { if (!out.length) return; const b = K[(i + 1) % K.length], e = sub(b, a); out = clipHalf(out, a, mul([-e[1], e[0]], sg)); });
+    return out;
+  }
+  /* obrys P minus konvexní K (Weiler–Atherton): venku z K jdu po P, uvnitř po hranici K pozpátku.
+   * Vrátí největší zbylý kus (zářez rozdělí obrys nanejvýš na odštěpky), null = K obrys celý pohltí. */
+  function subConvex(P0, K0) {
+    const P = orient(P0) > 0 ? P0 : P0.slice().reverse(), K = orient(K0) > 0 ? K0 : K0.slice().reverse();
+    const ins = (p) => inConvex(K, p, 1e-7), X = [];
+    P.forEach((a, i) => {
+      const d = sub(P[(i + 1) % P.length], a);
+      K.forEach((c, k) => {
+        const e = sub(K[(k + 1) % K.length], c), den = d[0] * e[1] - d[1] * e[0];
+        if (Math.abs(den) < 1e-12) return;
+        const t = ((c[0] - a[0]) * e[1] - (c[1] - a[1]) * e[0]) / den, u = ((c[0] - a[0]) * d[1] - (c[1] - a[1]) * d[0]) / den;
+        if (t > 1e-9 && t < 1 - 1e-9 && u > -1e-9 && u < 1 + 1e-9) X.push({ i, t, k, u, p: add(a, mul(d, t)) });
+      });
+    });
+    if (!X.length) return P.some(ins) ? null : P0;
+    const LP = [], LK = [];
+    P.forEach((a, i) => { LP.push({ p: a }); X.filter((x) => x.i === i).sort((x, y) => x.t - y.t).forEach((x) => { x.ip = LP.length; LP.push({ p: x.p, x }); }); });
+    K.forEach((c, k) => { LK.push({ p: c }); X.filter((x) => x.k === k).sort((x, y) => x.u - y.u).forEach((x) => { x.ik = LK.length; LK.push({ p: x.p, x }); }); });
+    X.forEach((x) => { x.enter = ins(mul(add(x.p, LP[(x.ip + 1) % LP.length].p), 0.5)); });
+    const pieces = [];
+    X.filter((x) => !x.enter).forEach((x0) => {
+      if (x0.used) return;
+      const out = [];
+      let x = x0, guard = 0;
+      do {
+        x.used = true;
+        let i = x.ip;                                                 // po P od výstupu k dalšímu vstupu
+        do { out.push(LP[i].p); i = (i + 1) % LP.length; } while (!LP[i].x && ++guard < 1e4);
+        const xe = LP[i].x; xe.used = true;
+        let k = xe.ik;                                                // po K pozpátku od vstupu k dalšímu výstupu
+        do { out.push(LK[k].p); k = (k + LK.length - 1) % LK.length; } while (!LK[k].x && ++guard < 1e4);
+        x = LK[k].x;
+      } while (x !== x0 && guard < 1e4);
+      if (out.length >= 3) pieces.push(out);
+    });
+    if (!pieces.length) return null;
+    const best = pieces.sort((a, b) => area(b) - area(a))[0], res = orient(P0) > 0 ? best : best.reverse();
+    res.pieces = pieces.length;
+    return res;
+  }
+
   function normalize(c) {
     const o = Object.assign({}, DEFAULT_CFG, c || {});
     const num = (k, lo, hi) => { const v = Number(o[k]); o[k] = Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : DEFAULT_CFG[k])); };
     num('H', 300, 800); num('topD', 400, 1400); num('topT', 10, 60); num('baseW', 150, 700); num('baseT', 4, 25); num('plT', 3, 12);
-    num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
+    num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); num('sink', 0, 12); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
     if (!PROFILES.some((p) => p.id === o.prof)) o.prof = DEFAULT_CFG.prof;
+    if (o.sink > 0) o.weldGap = 0;                                  // zámeček v háčku a vůle se vylučují
     if (!FIN.some((f) => f.id === o.fin)) o.fin = DEFAULT_CFG.fin;
     o.qty = Math.min(99, Math.max(1, Math.round(Number(o.qty)) || 1));
     return o;
@@ -126,7 +186,7 @@
   }
 
   /* plochý tvar přední (= zadní) stěny jeklu i: s podél osy od bodu C[i], t napříč */
-  function barFlat(F, lk, cfg, i) {
+  function barFlat(F, lk, cfg, i, ks) {
     const d = F.dir[i], nn = [d[1], -d[0]], o = F.C[i], c = cfg.clear;
     const to2 = (p) => { const q = sub(p, o); return [dot(q, d), dot(q, nn)]; };
     const body = F.polys[i].map(to2);
@@ -150,8 +210,18 @@
       const pk = near(body[3], [[nb0, nt0], [nb1, nt1]]);
       pts.push(pk[0][0], pk[0][1], pk[1][1], pk[1][0]);
     }
+    /* zámečky v háčku: zářez přes celou hloubku jeklu (obě široké stěny stejně, úzká stěna mezi nimi se vyřízne) */
+    let contour = pts, ok = true, biteArea = 0, merged = false;
+    const bites = [];
+    (ks || []).forEach((K) => {
+      const Kf = K.map(to2), part = clipConvex(body, Kf);
+      if (part.length < 3 || area(part) < 1e-3) return;
+      const r = subConvex(contour, Kf);
+      if (!r) { ok = false; return; }
+      biteArea += area(contour) - area(r); if (r.pieces > 1) merged = true; contour = r; bites.push(part);
+    });
     const rr = (poly) => poly.map((p) => [r2(p[0]), r2(p[1])]);
-    return { body: rr(body), tab: tab && rr(tab), notch: notch && rr(notch), contour: rr(pts) };
+    return { body: rr(body), tab: tab && rr(tab), notch: notch && rr(notch), bites: bites.map(rr), biteArea, biteOk: ok, biteMerged: merged, contour: rr(contour) };
   }
 
   /* DXF (R12, mm): shapes = [{ layer, polys: [[x,y]...], circles: [[x,y,r]], dx, dy }] */
@@ -201,7 +271,9 @@
     const lam = frame([[-dl * tg, -dl], [0, 0], [dl * tg, -dl]], false, hp);
     const vee = frame([[du * tg, du], [0, 0], [-du * tg, du]], false, hp);
     const mid = frame([[0, b], [a, 0], [0, -b], [-a, 0]], true, hp);
-    return { P, g, tg, hp, hd, f, h, Hs, b, a, zl, zm, zu, ov, ins, lam, vee, mid };
+    const s2 = hp / (2 * Math.sin(g));                              // vnitřní roh hrotu je o s2 nad/pod osou
+    const zcB = (zl - s2 + zm - b + s2) / 2, zcT = (zu + s2 + zm + b - s2) / 2;   // rovina dosednutí v dolním a horním háčku
+    return { P, g, tg, hp, hd, f, h, Hs, b, a, zl, zm, zu, ov, ins, lam, vee, mid, zcB, zcT };
   }
   function clash(G) {
     const L = G.lam.polys.map((q) => prism(q, G.hd, 'xz', G.zl));
@@ -222,6 +294,17 @@
     return hi;
   }
 
+  /* zářezy v háčcích (rámové souřadnice článku): obdélník šířky hd + 2 vůle, z jedné strany roviny dosednutí */
+  function hookCuts(G, cfg) {
+    if (!(cfg.sink > 0)) return { lam: [], vee: [], mid: [] };
+    const w = G.hd / 2 + cfg.clear, big = 400, R = (v0, v1) => [[-w, v0], [w, v0], [w, v1], [-w, v1]];
+    return {
+      lam: [R(G.zcB - G.zl - big, G.zcB - G.zl)],                  // Λ drží nad rovinou
+      vee: [R(G.zcT - G.zu, G.zcT - G.zu + big)],                  // V drží pod rovinou
+      mid: [R(G.zcB - G.zm, 0), R(0, G.zcT - G.zm)]                // kosočtverec dole pod rovinou, nahoře nad ní
+    };
+  }
+
   /* otvor v plechu pro nohu: obrys jeklu oříznutý tloušťkou plechu (z0..z1), + vůle */
   function hole(poly, zc, z0, z1, hd, c) {
     let p = poly.map((q) => [q[0], q[1] + zc]);
@@ -238,14 +321,22 @@
     if (!tipsOk) warn.push('Nohy jsou na tuhle výšku moc dlouhé – hroty dolního a horního článku by se potkaly. Zmenši rozteč noh nebo zvětši úhel.');
     let ov0 = seat(cfg);
     if (ov0 === null) { if (tipsOk) warn.push('Články se do sebe nevejdou – zvol užší jekl nebo širší úhel.'); ov0 = 120; }
-    const G = geom(cfg, ov0 + cfg.weldGap), cl = clash(G);
-    const gp = Math.min(cl.lm, cl.vm);
-    const frames = { lam: G.lam, vee: G.vee, mid: G.mid };
-    const lk = {}, flats = {};
+    const G = geom(cfg, ov0 + cfg.weldGap - cfg.sink), cl = clash(G);
+    const gp = cfg.sink > 0 ? -cfg.sink : Math.min(cl.lm, cl.vm);
+    const frames = { lam: G.lam, vee: G.vee, mid: G.mid }, hc0 = hookCuts(G, cfg);
+    const lk = {}, flats = {}, cut = {};
     Object.keys(frames).forEach((k) => {
       lk[k] = locks(frames[k], cfg);
-      flats[k] = frames[k].polys.map((_, i) => barFlat(frames[k], lk[k], cfg, i));
+      flats[k] = frames[k].polys.map((_, i) => barFlat(frames[k], lk[k], cfg, i, hc0[k]));
+      /* těleso jeklu pro 3D a FreeCAD: obrys bez čepů, se zářezy v háčku */
+      cut[k] = frames[k].polys.map((q) => hc0[k].reduce((P, K) => (clipConvex(P, K).length >= 3 && area(clipConvex(P, K)) > 1e-3 ? subConvex(P, K) || P : P), q));
     });
+    if (cfg.sink > 0) {
+      const sinkMin = Math.ceil(2 * (G.P.wall + 0.5) / Math.sin(G.g));
+      if (Object.values(flats).some((fs) => fs.some((f) => !f.biteOk))) warn.push('Zámeček v háčku nejde vyříznout – zmenši ponoření.');
+      else if (Object.values(flats).some((fs) => fs.some((f) => f.biteMerged))) warn.push('Zámeček v háčku se spojí se zámečkem v rohu – úzký proužek stěny odpadne. Zmenši ponoření nebo okraj čepu, případně zvol nižší jekl.');
+      if (cfg.sink < sinkMin) warn.push('Zámeček v háčku je mělčí než stěna jeklu (' + G.P.wall + ' mm) – laser ho přes stěnu nepropálí. Ponoř články aspoň o ' + sinkMin + ' mm.');
+    }
 
     /* díly: stejný obrys stěny = stejný díl */
     const footCut = 90 - cfg.gamma;
@@ -282,8 +373,9 @@
     const topW = Math.ceil((2 * reach + 2 * 45) / 10) * 10, inset = 20;
     const screws = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [sx * (topW / 2 - inset), sy * (topW / 2 - inset), 3.5]);
     const sq = (w) => [[-w / 2, -w / 2], [w / 2, -w / 2], [w / 2, w / 2], [-w / 2, w / 2]];
+    const dia = (w) => { const d = w / Math.SQRT2; return [[0, -d], [d, 0], [0, d], [-d, 0]]; };   // čtverec otočený o 45°, rohy na ose nohou
     const plates = {
-      base: { name: 'Plotna', w: cfg.baseW, t: cfg.baseT, outline: sq(cfg.baseW), holes: baseHoles, circles: [] },
+      base: { name: 'Plotna', w: cfg.baseW, t: cfg.baseT, rot: 45, outline: dia(cfg.baseW), holes: baseHoles, circles: [] },
       top: { name: 'Plech pod deskou', w: topW, t: cfg.plT, outline: sq(topW), holes: topHoles, circles: screws }
     };
     const plateKg = (pl) => (pl.w * pl.w - pl.holes.reduce((s, h) => s + area(h), 0)) * pl.t * STEEL;
@@ -292,13 +384,14 @@
     const kgBars = kgm(G.P) * barLen / 1000, kgPlates = plateKg(plates.base) + plateKg(plates.top);
 
     if (Object.values(lk).some((m) => Object.values(m).some((x) => !x.ok))) warn.push('V některém rohu je čep kratší než 4 mm – zámeček nedrží. Zvol širší jekl nebo menší okraj čepu.');
-    const baseReach = Math.max(...baseHoles.flat().map((p) => Math.abs(p[0])));
-    if (baseReach > cfg.baseW / 2 - 15) warn.push('Plotna ' + cfg.baseW + ' mm je pro tuhle rozteč noh malá – potřebuje aspoň ' + Math.ceil((2 * baseReach + 30) / 10) * 10 + ' mm.');
+    /* nohy míří do rohů plotny: otvor musí být aspoň 15 mm od obou šikmých hran */
+    const baseReach = Math.max(...baseHoles.flat().map((p) => Math.abs(p[0]) + Math.abs(p[1])));
+    if (baseReach > cfg.baseW / Math.SQRT2 - 15 * Math.SQRT2) warn.push('Plotna ' + cfg.baseW + ' mm je pro tuhle rozteč noh malá – potřebuje aspoň ' + Math.ceil((baseReach * Math.SQRT2 + 30) / 10) * 10 + ' mm.');
     if (Math.hypot(topW / 2, topW / 2) > cfg.topD / 2 - 15) warn.push('Plech pod deskou (' + topW + ' mm) vyčuhuje z desky Ø ' + cfg.topD + ' – zmenši rozteč noh nebo zvětši desku.');
     if (G.mid.polys.some((q) => q.some((p) => Math.abs(p[0]) > cfg.topD / 2 - 20))) warn.push('Prostřední článek je širší než deska.');
 
     return {
-      cfg, G, ov: G.ov, ovSeat: ov0, gap: gp, clash: cl, frames, lk, flats, parts, plates, warn,
+      cfg, G, ov: G.ov, ovSeat: ov0, gap: gp, clash: cl, clashSeat: clash(geom(cfg, ov0)), frames, cut, lk, flats, parts, plates, warn,
       kgBars, kgPlates, kg: kgBars + kgPlates, footCut,
       size: { midH: 2 * G.b + G.hp / Math.sin(G.g), midW: 2 * G.a + G.hp / Math.cos(G.g), legH: G.h, spread: cfg.spread }
     };
@@ -317,17 +410,18 @@
       '    if plane == "yz": v = [App.Vector(-HD/2, u, z + zc) for u, z in poly]; ex = App.Vector(HD, 0, 0)',
       '    else: v = [App.Vector(u, -HD/2, z + zc) for u, z in poly]; ex = App.Vector(0, HD, 0)',
       '    o = doc.addObject("Part::Feature", name); o.Shape = Part.Face(Part.makePolygon(v + [v[0]])).extrude(ex); return o',
-      'def plech(name, w, t, z0, holes, screws):',
+      'def plech(name, w, t, z0, holes, screws, rot=0):',
       '    s = Part.makeBox(w, w, t, App.Vector(-w/2, -w/2, z0))',
+      '    if rot: s.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), rot)',
       '    for h in holes:',
       '        x0 = min(p[0] for p in h); x1 = max(p[0] for p in h); y0 = min(p[1] for p in h); y1 = max(p[1] for p in h)',
       '        s = s.cut(Part.makeBox(x1 - x0, y1 - y0, t + 2, App.Vector(x0, y0, z0 - 1)))',
       '    for x, y, r in screws: s = s.cut(Part.makeCylinder(r, t + 2, App.Vector(x, y, z0 - 1)))',
       '    o = doc.addObject("Part::Feature", name); o.Shape = s; return o',
-      'L = [jekl("Dolni_%d" % i, q, ' + r2(G.zl) + ', "xz") for i, q in enumerate(' + poly(G.lam.polys) + ')]',
-      'M = [jekl("Stred_%d" % i, q, ' + r2(G.zm) + ', "yz") for i, q in enumerate(' + poly(G.mid.polys) + ')]',
-      'V = [jekl("Horni_%d" % i, q, ' + r2(G.zu) + ', "xz") for i, q in enumerate(' + poly(G.vee.polys) + ')]',
-      'plech("Plotna", ' + cfg.baseW + ', ' + cfg.baseT + ', 0, ' + holes(B.plates.base.holes) + ', [])',
+      'L = [jekl("Dolni_%d" % i, q, ' + r2(G.zl) + ', "xz") for i, q in enumerate(' + poly(B.cut.lam) + ')]',
+      'M = [jekl("Stred_%d" % i, q, ' + r2(G.zm) + ', "yz") for i, q in enumerate(' + poly(B.cut.mid) + ')]',
+      'V = [jekl("Horni_%d" % i, q, ' + r2(G.zu) + ', "xz") for i, q in enumerate(' + poly(B.cut.vee) + ')]',
+      'plech("Plotna", ' + cfg.baseW + ', ' + cfg.baseT + ', 0, ' + holes(B.plates.base.holes) + ', [], 45)',
       'plech("Plech_pod_deskou", ' + B.plates.top.w + ', ' + cfg.plT + ', ' + (cfg.H - cfg.topT - cfg.plT) + ', ' + holes(B.plates.top.holes) + ', ' + JSON.stringify(B.plates.top.circles) + ')',
       'd = doc.addObject("Part::Cylinder", "Deska"); d.Radius = ' + cfg.topD / 2 + '; d.Height = ' + cfg.topT + '; d.Placement.Base = App.Vector(0, 0, ' + (cfg.H - cfg.topT) + ')',
       'doc.recompute()',
@@ -335,6 +429,7 @@
       '    vol = sum(x.Shape.common(y.Shape).Volume for x in a for y in b)',
       '    dist = min(x.Shape.distToShape(y.Shape)[0] for x in a for y in b)',
       '    print(jm, "průnik %.2f mm3, nejmenší vzdálenost %.2f mm" % (vol, dist))',
+      '# se zámečky v háčku (ponoření ' + cfg.sink + ' mm) má být průnik 0 a vzdálenost 0 – články dosednou na plošku',
       'kontrola(L, M, "Dolní Λ × kosočtverec:")',
       'kontrola(V, M, "Horní V × kosočtverec:")',
       'kontrola(L, V, "Dolní Λ × horní V:")',
@@ -361,7 +456,7 @@
   }
 
   const API = {
-    FIN, DEFAULT_RATES, price, describe,
+    FIN, DEFAULT_RATES, price, describe, subConvex, clipConvex, inPoly, hookCuts,
     PROFILES, DEFAULT_CFG, kgm, dxf, area, normalize, frame, locks, barFlat, geom, clash, seat, build, freecadMacro, orient, rad, deg, r1
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

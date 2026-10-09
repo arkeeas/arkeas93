@@ -196,7 +196,7 @@
         <div class="grid g4" id="angles"></div>
         <div class="grid" style="gap:16px;margin-top:16px">
           <div class="field"><div class="row"><label for="spread">Rozteč noh</label><span class="num"><input id="spreadn" type="number" inputmode="numeric" aria-label="Rozteč noh v mm"> mm</span></div><input id="spread" type="range" min="60" max="500" step="10"></div>
-          <div class="note">Tři články zavěšené do sebe jako řetěz: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Velikost kosočtverce se dopočítá tak, aby do sebe články právě zapadly.</div>
+          <div class="note">Tři články zavěšené do sebe jako řetěz: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Velikost kosočtverce se dopočítá tak, aby do sebe články zapadly. Plotna dole je otočená o 45°, nohy míří do jejích rohů.</div>
         </div>
       </div>
 
@@ -206,7 +206,7 @@
           <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="800" step="10"></div>
           <div class="field"><div class="row"><label for="topD">Průměr desky</label><span class="num"><input id="topDn" type="number" inputmode="numeric" aria-label="Průměr desky v mm"> mm</span></div><input id="topD" type="range" min="400" max="1400" step="10"></div>
           <div class="field"><div class="row"><label for="topT">Tloušťka desky</label><span class="num"><input id="topTn" type="number" inputmode="numeric" aria-label="Tloušťka desky v mm"> mm</span></div><input id="topT" type="range" min="10" max="60" step="1"></div>
-          <div class="field"><div class="row"><label for="baseW">Plotna dole (čtverec)</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="700" step="10"></div>
+          <div class="field"><div class="row"><label for="baseW">Plotna dole (čtverec otočený o 45°)</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="700" step="10"></div>
           <div class="field"><div class="row"><label for="baseT">Tloušťka plotny</label><span class="num"><input id="baseTn" type="number" inputmode="numeric" aria-label="Tloušťka plotny v mm"> mm</span></div><input id="baseT" type="range" min="4" max="25" step="1"></div>
           <div class="field"><div class="row"><label for="plT">Plech pod deskou</label><span class="num"><input id="plTn" type="number" inputmode="numeric" aria-label="Tloušťka plechu pod deskou v mm"> mm</span></div><input id="plT" type="range" min="3" max="12" step="1"></div>
         </div>
@@ -238,8 +238,9 @@
             <div class="field"><div class="row"><label for="clear">Vůle výřezu pro čep</label><span class="num"><input id="clearn" type="number" inputmode="decimal" step="0.05" aria-label="Vůle výřezu v mm"> mm</span></div><input id="clear" type="range" min="0" max="0.5" step="0.05"></div>
             <div class="field"><div class="row"><label for="tabMargin">Okraj čepu od hrany</label><span class="num"><input id="tabMarginn" type="number" inputmode="numeric" aria-label="Okraj čepu v mm"> mm</span></div><input id="tabMargin" type="range" min="1" max="8" step="1"></div>
             <div class="field"><div class="row"><label for="holeClear">Vůle otvorů v plechu</label><span class="num"><input id="holeClearn" type="number" inputmode="decimal" step="0.1" aria-label="Vůle otvorů v mm"> mm</span></div><input id="holeClear" type="range" min="0" max="2" step="0.1"></div>
-            <div class="field"><div class="row"><label for="weldGap">Vůle v háčku</label><span class="num"><input id="weldGapn" type="number" inputmode="decimal" step="0.5" aria-label="Vůle v háčku v mm"> mm</span></div><input id="weldGap" type="range" min="0" max="3" step="0.5"></div>
-            <div class="note">V rozích zapadne čep jednoho jeklu do výřezu druhého. Nohy se zasunou do otvorů v plotně a v plechu pod deskou. Vůle v háčku 0 = články se dotknou a svaří se v tom místě.</div>
+            <div class="field"><div class="row"><label for="sink">Ponoření v háčku (zámeček)</label><span class="num"><input id="sinkn" type="number" inputmode="numeric" aria-label="Ponoření v háčku v mm"> mm</span></div><input id="sink" type="range" min="0" max="12" step="1"></div>
+            <div class="field" id="weldGapF"><div class="row"><label for="weldGap">Vůle v háčku (jen bez ponoření)</label><span class="num"><input id="weldGapn" type="number" inputmode="decimal" step="0.5" aria-label="Vůle v háčku v mm"> mm</span></div><input id="weldGap" type="range" min="0" max="3" step="0.5"></div>
+            <div class="note">V rozích zapadne čep jednoho jeklu do výřezu druhého. Nohy se zasunou do otvorů v plotně a v plechu pod deskou. Ponoření: články se v háčku zasunou o tolik mm do sebe a oba jekly dostanou malý zářez přes celou hloubku – zapadnou do sebe, nepohnou se do stran a dosednou na rovnou plošku, kde se svaří. Ponoření 0 = bez zámečku, články se jen dotknou (pak jde nastavit vůle).</div>
           </div>
         </div>
         <h3>Řezný plán a plechy</h3>
@@ -285,14 +286,14 @@
 </div>
 
 <script src="lokal.js?v=20261005d"></script>
-<script src="stolecky-core.js?v=20261009b"></script>
+<script src="stolecky-core.js?v=20261009c"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function () {
   'use strict';
   const S = window.Stolecky, $ = (id) => document.getElementById(id);
-  const RANGES = ['spread', 'H', 'topD', 'topT', 'baseW', 'baseT', 'plT', 'clear', 'tabMargin', 'holeClear', 'weldGap'];
+  const RANGES = ['spread', 'H', 'topD', 'topT', 'baseW', 'baseT', 'plT', 'clear', 'tabMargin', 'holeClear', 'sink', 'weldGap'];
   const ANGLES = [[35, 'Štíhlý', '35°'], [40, 'Střední', '40°'], [45, 'Široký', '45°'], [50, 'Velmi široký', '50°']];
   const METAL = { black: [0x26272A, 0.35, 0.55], anth: [0x3E444B, 0.4, 0.5], white: [0xE9E9E4, 0.1, 0.6], raw: [0x8A847B, 0.75, 0.38] };
   let cfg = S.normalize(S.DEFAULT_CFG), rates = S.DEFAULT_RATES, B = null, db = null, uid = null, ui = { showDesk: true };
@@ -316,6 +317,7 @@
     group($('angles'), ANGLES.map(([g, l, s]) => optBtn(g, cfg.gamma === g, l, s, chainIcon(g))).join(''), (id) => set({ gamma: Number(id) }));
     group($('fins'), S.FIN.map((f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>').join(''), (id) => set({ fin: id }));
     $('showDesk').checked = ui.showDesk;
+    $('weldGapF').hidden = cfg.sink > 0;
     group($('profs'), S.PROFILES.map((p) => optBtn(p.id, p.id === cfg.prof, p.id.replace(/x/g, '×'), p.hp + ' v rovině · ' + p.hd + ' hloubka')).join(''), (id) => set({ prof: id }));
     const P = S.PROFILES.find((p) => p.id === cfg.prof);
     $('profNote').textContent = 'Široká strana (' + P.hp + ' mm) je vidět zepředu na článku, úzká (' + P.hd + ' mm) je jeho tloušťka. Stěna ' + P.wall + ' mm.';
@@ -343,7 +345,7 @@
       poly(fl(pl.outline), 'fill="#DAD6CE" stroke="#17181A" stroke-width="1.2"') +
       pl.holes.map((h) => poly(fl(h), 'fill="#FBFAF7" stroke="#17181A" stroke-width="1"')).join('') +
       pl.circles.map((c) => { const q = b.P([c[0], -c[1]]); return '<circle cx="' + r2(q[0]) + '" cy="' + r2(q[1]) + '" r="' + c[2] + '" fill="#FBFAF7" stroke="#17181A" stroke-width="1"/>'; }).join('') +
-      '</svg><figcaption><b>' + pl.name + '</b> ' + pl.w + ' × ' + pl.w + ' × ' + pl.t + ' mm, ' + pl.holes.length + ' otvory pro nohy' + (pl.circles.length ? ', ' + pl.circles.length + ' díry Ø 7 na vruty do desky' : '') + ' (laser na plech)</figcaption></figure>';
+      '</svg><figcaption><b>' + pl.name + '</b> ' + pl.w + ' × ' + pl.w + ' × ' + pl.t + ' mm' + (pl.rot ? ' otočená o ' + pl.rot + '° (nohy do rohů)' : '') + ', ' + pl.holes.length + ' otvory pro nohy' + (pl.circles.length ? ', ' + pl.circles.length + ' díry Ø 7 na vruty do desky' : '') + ' (laser na plech)</figcaption></figure>';
   }
   function download(name, text, type) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -372,7 +374,8 @@
       'Obě „V“ provlékni kosočtvercem: volný konec nohy prostrčíš otvorem kosočtverce a posuneš, až je hrot uvnitř. Dolní je hrotem nahoru („Λ“), horní hrotem dolů.',
       'Dolní nohy zasuň do otvorů v plotně (' + fmt(G.ins) + ' mm hluboko) a zavař zespodu v otvoru. Kosočtverec podlož pod spodní špičkou podložkou ' + fmt(midTip - cfg.baseT) + ' mm nad plotnou – tím se spodní špička kosočtverce opře zespodu o hrot dolního „Λ“ (háček).',
       'Plech pod deskou podepři ' + fmt(cfg.H - cfg.topT - cfg.plT - cfg.baseT) + ' mm nad plotnou, horní nohy zasuň do jeho otvorů (lícují s horní plochou plechu) a zavař.',
-      'Svař články v místech, kde se dotýkají (dole i nahoře vždy dva styky po ' + fmt(G.hd) + ' mm). Řetěz sám v tlaku nedrží – bez těchto svarů by se pod deskou sesunul.',
+      (cfg.sink > 0 ? 'V háčcích zapadnou články do zámečků (ponoření ' + fmt(cfg.sink) + ' mm) a dosednou na rovnou plošku – tam je svař, dole i nahoře.'
+        : 'Svař články v místech, kde se dotýkají (dole i nahoře vždy dva styky po ' + fmt(G.hd) + ' mm).') + ' Řetěz sám v tlaku nedrží – bez těchto svarů by se pod deskou sesunul.',
       'Desku přišroubuj k plechu vruty přes 4 díry Ø 7.'
     ].map((t) => '<li>' + t + '</li>').join('');
   }
@@ -386,10 +389,10 @@
     $('qty').textContent = cfg.qty + ' ks';
     $('ohChip').textContent = 'Rozteč noh ' + cfg.spread + ' mm';
     $('facts').innerHTML = [['Kosočtverec (výška × šířka)', fmt(B.size.midH) + ' × ' + fmt(B.size.midW) + ' mm'], ['Výška noh', fmt(B.size.legH) + ' mm'],
-      ['Mezi články', B.gap < 0.05 ? 'dosedají' : fmt(B.gap) + ' mm'], ['Hmotnost (jekly + plechy)', fmt(B.kgBars) + ' + ' + fmt(B.kgPlates) + ' kg']]
+      ['V háčku', cfg.sink > 0 ? 'zámeček, ponoření ' + fmt(cfg.sink) + ' mm' : B.gap < 0.05 ? 'dosedají' : 'vůle ' + fmt(B.gap) + ' mm'], ['Hmotnost (jekly + plechy)', fmt(B.kgBars) + ' + ' + fmt(B.kgPlates) + ' kg']]
       .map(([a, b]) => '<div class="fact">' + a + '<b>' + b + '</b></div>').join('');
     $('msgs').innerHTML = B.warn.length ? B.warn.map((w) => '<div class="msg warn" style="margin-bottom:8px">' + esc(w) + '</div>').join('')
-      : '<div class="msg ok">Články do sebe zapadají a nikde se neprotínají, zámečky drží, výška sedí.</div>';
+      : '<div class="msg ok">Články do sebe zapadají' + (cfg.sink > 0 ? ' v zámečcích' : '') + ' a nikde se neprotínají, zámečky drží, výška sedí, nohy míří do rohů plotny.</div>';
   }
 
   /* ---------- 3D ---------- */
@@ -445,9 +448,9 @@
       const mesh = new THREE.Mesh(g, steel); mesh.castShadow = true;
       grp.add(mesh, new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edgeMat));
     });
-    bars(G.lam.polys, 'xz', G.zl); bars(G.mid.polys, 'yz', G.zm); bars(G.vee.polys, 'xz', G.zu);
-    const box = (w, t, z, mat) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), mat); o.position.set(0, 0, z + t / 2); o.castShadow = true; grp.add(o); };
-    box(c.baseW, c.baseT, 0, plateMat); box(B.plates.top.w, c.plT, c.H - c.topT - c.plT, plateMat);
+    bars(B.cut.lam, 'xz', G.zl); bars(B.cut.mid, 'yz', G.zm); bars(B.cut.vee, 'xz', G.zu);
+    const box = (w, t, z, mat, rot) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), mat); o.position.set(0, 0, z + t / 2); o.rotation.z = (rot || 0) * Math.PI / 180; o.castShadow = true; grp.add(o); return o; };
+    box(c.baseW, c.baseT, 0, plateMat, B.plates.base.rot); box(B.plates.top.w, c.plT, c.H - c.topT - c.plT, plateMat);
     const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, c.topT, 72), wood);
     top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - c.topT / 2); top.visible = ui.showDesk; top.castShadow = true; grp.add(top);
     if (!T.fitted) { view('iso'); T.fitted = true; }
