@@ -71,6 +71,11 @@
   .files { font-family: var(--mono); font-size: 12px; background: var(--line-soft); border-radius: 5px; padding: 10px 12px; white-space: pre; overflow-x: auto; }
   .msg { padding: 10px 12px; border-radius: 5px; font-size: 13px; }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .flats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0 16px; }
+  .flats svg { width: 100%; height: auto; display: block; background: #F1EFEA; border-radius: 4px; }
+  .flats figure { margin: 0; } .flats figcaption { font-size: 12px; color: var(--muted); }
+  @media (max-width: 700px) { .flats { grid-template-columns: minmax(0, 1fr); } }
+  ol.steps { padding-left: 20px; } ol.steps li { margin: 4px 0; }
   .rates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   @media (max-width: 800px) { .rates { grid-template-columns: repeat(2, minmax(0, 1fr)); } fieldset.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
@@ -85,6 +90,7 @@
   <button role="tab" id="t-pop" aria-selected="true" aria-controls="p-pop">Poptávky<span class="count" id="popCount" hidden></span></button>
   <button role="tab" id="t-obj" aria-selected="false" aria-controls="p-obj">Objednávka a podklady</button>
   <button role="tab" id="t-zab" aria-selected="false" aria-controls="p-zab">Zábradlí – podklady</button>
+  <button role="tab" id="t-sto" aria-selected="false" aria-controls="p-sto">Stolečky – podklady</button>
   <button role="tab" id="t-aud" aria-selected="false" aria-controls="p-aud">Audit konstrukce</button>
   <button role="tab" id="t-cen" aria-selected="false" aria-controls="p-cen">Ceník a nastavení</button>
 </div>
@@ -220,6 +226,51 @@
     </div>
   </section>
 
+  <section class="card" id="p-sto" role="tabpanel" aria-labelledby="t-sto" hidden>
+    <div class="ed">
+      <div>
+        <div class="facts" id="sFacts"></div>
+        <div class="warns" id="sWarns"></div>
+        <h2>Řezný plán – jekly pro Bodor K2</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Díl</th><th>Popis</th><th class="num">Ks</th><th class="num">Délka venku / uvnitř</th><th>Začátek</th><th>Konec</th></tr></thead>
+          <tbody id="sCut"></tbody>
+        </table></div>
+        <h2 style="margin-top:18px">Stěny jeklů a plechy</h2>
+        <div class="flats" id="sFlats"></div>
+        <h2>Postup svařování</h2>
+        <ol class="steps" id="sSteps"></ol>
+      </div>
+      <form class="cfg" id="sForm" novalidate onsubmit="return false">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Poptávka</div>
+          <div style="font-size:14px" id="sOrder"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Konfigurace</div>
+          <div style="font-size:14px" id="sCfg"></div>
+          <button class="btn" type="button" id="sEdit" style="margin-top:8px">Upravit v konfigurátoru stolečků</button>
+        </div>
+        <fieldset id="sFields"><legend>Zámečky a plechy</legend></fieldset>
+        <div>
+          <div style="font-size:12px;color:var(--muted)">Cena (podle ceníku podnoží, bez desky)</div>
+          <div class="mono" style="font-size:18px" id="sPrice"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Podklady</div>
+          <div class="row" id="sDl"></div>
+        </div>
+        <details>
+          <summary>Vložit kód konfigurace (poslaný e-mailem)</summary>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <label class="f" for="sCodeIn">Kód začínající STOLEK:<textarea id="sCodeIn" rows="3"></textarea></label>
+            <div class="row"><button class="btn" type="button" id="sCodeLoad">Načíst</button><span id="sCodeMsg" style="font-size:13px"></span></div>
+          </div>
+        </details>
+      </form>
+    </div>
+  </section>
+
   <section class="card" id="p-aud" role="tabpanel" aria-labelledby="t-aud" hidden>
     <h2>Audit všech tvarů</h2>
     <p style="margin:0 0 12px;color:var(--muted)">Prutový model celé podnože (svary tuhé, nohy kloubově na zemi, deska se nepočítá). Zkoušky podle EN 12521: bodová síla 1000 N na horní rám, boční síla 400 N se zátěží 500 N, převržení svislou silou 50 mm od hrany desky. Ocel S235, dovolené napětí 157 MPa, svary 180 MPa. Výrobní kontroly pro Bodor K2 (jekl 8–230 mm, tyč 6,5 m) a C2.</p>
@@ -263,7 +314,8 @@
 <script src="zabradli-core.js?v=20261008g"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script src="zabradli-dilna.js?v=20261006a"></script>
-<script src="stolecky-core.js?v=20261009c"></script>
+<script src="stolecky-core.js?v=20261009d"></script>
+<script src="stolecky-dilna.js?v=20261009d"></script>
 <script>
 (function () {
   const K = Podnoze, G = Generator, $ = (id) => document.getElementById(id);
@@ -275,11 +327,12 @@
   const today = () => { const d = new Date(); return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); };
 
   /* ---------- záložky ---------- */
-  const tabs = ['pop', 'obj', 'zab', 'aud', 'cen'];
+  const tabs = ['pop', 'obj', 'zab', 'sto', 'aud', 'cen'];
   function tab(name) {
     tabs.forEach((t) => { $('t-' + t).setAttribute('aria-selected', String(t === name)); $('p-' + t).hidden = t !== name; });
     if (name === 'obj') render();
     if (name === 'zab') ZabDilna.render();
+    if (name === 'sto') StoDilna.render();
   }
   tabs.forEach((t) => $('t-' + t).addEventListener('click', () => tab(t)));
 
@@ -401,7 +454,7 @@
   function openPop(x) {
     const it = x.it, c = it.customer || {};
     if (it.product === 'zabradli') { tab('zab'); ZabDilna.open(it); return; }
-    if (it.product === 'stolecek') { try { localStorage.setItem('stolecky-retez', JSON.stringify(Stolecky.normalize(it.config))); } catch (e) { /* bez paměti */ } location.href = 'stolecky.html#dilna'; return; }
+    if (it.product === 'stolecek') { tab('sto'); StoDilna.open(it); return; }
     current = it; cfg = K.normalize(it.config);
     $('oNum').value = 'OBJ-' + String(it.id).replace(/^P/, ''); $('oDate').value = today();
     $('cName').value = c.name || ''; $('cEmail').value = c.email || ''; $('cPhone').value = c.phone || ''; $('cAddr').value = c.address || ''; $('oNote').value = it.note || '';
@@ -444,15 +497,18 @@
   fillRates();
   $('oNum').value = 'OBJ-TEST-01'; $('oDate').value = today(); $('cName').value = 'Jan Novák';
   render();
+  StoDilna.setRates(rates);
+  if (location.hash === '#stolecky') tab('sto');
 
   (async function connect() {
     if (!window.claude || !claude.use) { renderPop(); return; }
     const [d, u, dl] = await Promise.all([claude.use('db'), claude.use('user'), claude.use('downloads')]);
     db = d; dls = dl; canEdit = !!(u && u.canEdit());
     ZabDilna.init({ db: d, dls: dl, canEdit });
+    StoDilna.init({ dls: dl });
     if (!canEdit) { const n = $('access'); n.hidden = false; n.textContent = 'Tuhle stránku může plně používat jen editor artefaktu. Poptávky a ceník se ti nezobrazí ani neuloží.'; }
     if (!db) { renderPop(); return; }
-    db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = K.rates0(s.data()); fillRates(); render(); } }, () => {});
+    db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = K.rates0(s.data()); StoDilna.setRates(rates); fillRates(); render(); } }, () => {});
     db.collection('poptavky').onSnapshot((snap) => { docs = snap.docs.filter((x) => x.exists).map((x) => Object.assign({ id: x.id }, x.data())); renderPop(); }, () => { docs = []; renderPop(); });
   })();
 })();
