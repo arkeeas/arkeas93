@@ -263,6 +263,7 @@
 <script src="zabradli-core.js?v=20261008g"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script src="zabradli-dilna.js?v=20261006a"></script>
+<script src="stolecky-core.js?v=20261009b"></script>
 <script>
 (function () {
   const K = Podnoze, G = Generator, $ = (id) => document.getElementById(id);
@@ -389,7 +390,7 @@
       const it = x.it, c = it.customer || {}, dt = new Date(it.created);
       return '<tr><td class="mono">' + esc(it.id) + '</td><td>' + (isNaN(dt) ? '' : dt.toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })) + '</td>' +
         '<td>' + esc(c.name) + '<br><span style="color:var(--muted);font-size:12px">' + esc(c.email) + (c.phone ? ' · ' + esc(c.phone) : '') + '</span></td>' +
-        '<td>' + (it.product === 'zabradli' ? esc(ZabDilna.describe(it.config)) + (it.services && it.services.length ? '<br><span style="color:var(--muted);font-size:12px">+ ' + esc(it.services.map((x) => x.lab.split(' (')[0]).join(', ')) + '</span>' : '') : esc(K.describe(K.normalize(it.config))) + ' · ' + (it.config && it.config.qty || 1) + ' ks') + (it.note ? '<br><span style="color:var(--muted);font-size:12px">„' + esc(it.note) + '“</span>' : '') + '</td>' +
+        '<td>' + (it.product === 'stolecek' ? esc(Stolecky.describe(it.config)) + ' · ' + (it.config && it.config.qty || 1) + ' ks' : it.product === 'zabradli' ? esc(ZabDilna.describe(it.config)) + (it.services && it.services.length ? '<br><span style="color:var(--muted);font-size:12px">+ ' + esc(it.services.map((x) => x.lab.split(' (')[0]).join(', ')) + '</span>' : '') : esc(K.describe(K.normalize(it.config))) + ' · ' + (it.config && it.config.qty || 1) + ' ks') + (it.note ? '<br><span style="color:var(--muted);font-size:12px">„' + esc(it.note) + '“</span>' : '') + '</td>' +
         '<td class="num">' + K.nf(it.total || it.vat || 0) + ' Kč</td>' +
         '<td><select data-n="' + n + '" aria-label="Stav poptávky ' + esc(it.id) + '">' + Object.keys(ST).map((k) => '<option value="' + k + '"' + (k === it.status ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select></td>' +
         '<td><button class="btn" type="button" data-open="' + n + '">Otevřít</button></td></tr>';
@@ -400,6 +401,7 @@
   function openPop(x) {
     const it = x.it, c = it.customer || {};
     if (it.product === 'zabradli') { tab('zab'); ZabDilna.open(it); return; }
+    if (it.product === 'stolecek') { try { localStorage.setItem('stolecky-retez', JSON.stringify(Stolecky.normalize(it.config))); } catch (e) { /* bez paměti */ } location.href = 'stolecky.html#dilna'; return; }
     current = it; cfg = K.normalize(it.config);
     $('oNum').value = 'OBJ-' + String(it.id).replace(/^P/, ''); $('oDate').value = today();
     $('cName').value = c.name || ''; $('cEmail').value = c.email || ''; $('cPhone').value = c.phone || ''; $('cAddr').value = c.address || ''; $('oNote').value = it.note || '';

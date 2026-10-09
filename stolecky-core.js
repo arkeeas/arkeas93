@@ -23,8 +23,17 @@
   ];
   const DEFAULT_CFG = {
     H: 450, topD: 700, topT: 30, baseW: 340, baseT: 10, plT: 6,
-    prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, clear: 0.15, tabMargin: 3, holeClear: 0.5
+    prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, clear: 0.15, tabMargin: 3, holeClear: 0.5,
+    fin: 'black', qty: 1
   };
+  /* povrch a sazby – stejné jako u podnoží (core.js), ceník se bere z nastaveni/cenik */
+  const FIN = [
+    { id: 'black', lab: 'Černá mat', ral: 'RAL 9005', sw: '#1E1F21', k: 1 },
+    { id: 'anth', lab: 'Antracit', ral: 'RAL 7016', sw: '#383E45', k: 1 },
+    { id: 'white', lab: 'Bílá', ral: 'RAL 9016', sw: '#F2F2EE', k: 1 },
+    { id: 'raw', lab: 'Ocel + lak', ral: 'bezbarvý lak', sw: '#77726A', k: 0.7 }
+  ];
+  const DEFAULT_RATES = { kg: 42, rez: 35, svar: 90, barva: 280, priprava: 600, marze: 35 };
   const STEEL = 7.85e-6;                                            // kg/mm³
   const kgm = (p) => (2 * (p.hp + p.hd) * p.wall - 4 * p.wall * p.wall) * STEEL * 1000;
   const rad = (d) => d * Math.PI / 180, deg = (r) => r * 180 / Math.PI;
@@ -67,6 +76,8 @@
     num('H', 300, 800); num('topD', 400, 1400); num('topT', 10, 60); num('baseW', 150, 700); num('baseT', 4, 25); num('plT', 3, 12);
     num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
     if (!PROFILES.some((p) => p.id === o.prof)) o.prof = DEFAULT_CFG.prof;
+    if (!FIN.some((f) => f.id === o.fin)) o.fin = DEFAULT_CFG.fin;
+    o.qty = Math.min(99, Math.max(1, Math.round(Number(o.qty)) || 1));
     return o;
   }
 
@@ -331,7 +342,26 @@
     ].join('\n');
   }
 
+  /* orientační cena podnože stolku (bez desky) – stejný vzorec jako analyzeCore v core.js:
+   * materiál + pálení dílů + svary + prášková barva + příprava, marže, DPH 21 % */
+  function price(B, ratesIn) {
+    const R = Object.assign({}, DEFAULT_RATES, ratesIn || {}), c = B.cfg, P = B.G.P, F = FIN.find((f) => f.id === c.fin);
+    const barLen = B.parts.reduce((s, p) => s + (p.lo + p.li) / 2 * p.qty, 0);
+    const cuts = B.parts.reduce((s, p) => s + p.qty, 0) + 2;
+    const welds = 4 + 2 + 4 + 4;                                     // kosočtverec, hroty V/Λ, nohy v plechu, styky článků
+    const surf = barLen * 2 * (P.hp + P.hd) / 1e6 + [B.plates.base, B.plates.top].reduce((s, pl) => s + 2 * pl.w * pl.w / 1e6, 0);
+    const cost = B.kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava;
+    const p = Math.round(cost * (1 + R.marze / 100) / 10) * 10, vat = Math.round(p * 1.21 / 10) * 10;
+    return { price: p, vat, total: vat * c.qty, cuts, welds, surf };
+  }
+  function describe(c) {
+    c = normalize(c);
+    const F = FIN.find((f) => f.id === c.fin);
+    return 'Stolek Řetěz ' + c.gamma + '° · výška ' + c.H + ' · deska Ø ' + c.topD + ' · jekl ' + c.prof.replace(/x/g, '×') + ' · ' + F.lab;
+  }
+
   const API = {
+    FIN, DEFAULT_RATES, price, describe,
     PROFILES, DEFAULT_CFG, kgm, dxf, area, normalize, frame, locks, barFlat, geom, clash, seat, build, freecadMacro, orient, rad, deg, r1
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
