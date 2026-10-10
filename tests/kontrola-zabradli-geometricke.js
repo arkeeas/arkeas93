@@ -99,6 +99,16 @@ for (const madlo of [false, true]) {
     if (distance(profileCenter(a, "end"), profileCenter(b, "start")) > 2.01) throw new Error("configured railing joint does not fit at its 2 mm seam: " + joint.name);
     if (capFitGap(capPoints(a, "end"), capPoints(b, "start")) > 2.01) throw new Error("configured railing miter edges do not align: " + joint.name);
   }
+  if (madlo) {
+    const routedRails = routed.lay.members.filter((m) => m.role === "rail");
+    const routedWood = routed.lay.members.filter((m) => m.role === "handrail");
+    if (routedRails.length !== routedWood.length || routedRails.some((rail, i) => {
+      const wood = routedWood[i], e = rail.e2;
+      const steelTop = rail.p0.map((x, k) => x + e[k] * rail.h2);
+      const woodBottom = wood.p0.map((x, k) => x - e[k] * wood.h2);
+      return Math.abs(e.reduce((sum, x, k) => sum + x * (woodBottom[k] - steelTop[k]), 0)) > 0.01;
+    })) throw new Error("wooden handrail does not sit on the steel rail along the sloped route");
+  }
   const routedStep = validate(G.stepFile("geometricke_rohy_trasa", routed.lay.members.map((m) => m.solid)), "geometricke_rohy_trasa");
   if (routedStep.errs.length) throw new Error(routedStep.errs.slice(0, 3).join("; "));
 }

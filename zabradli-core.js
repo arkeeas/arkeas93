@@ -1192,8 +1192,8 @@
         cut0: cutPlane(k, true, p0), cut1: cutPlane(k, false, p1), holes: [], holeLabel: 'otvor pro zasunutí svislé tyče', L: s.L, a1: 0, a2: 0, seg: k };
       railMembers.push(m); members.push(m);
       if (P.handrail) {
-        const woodP0 = add(s.p0, mul(Z, P.handrail_height + P.handrail_h / 2));
-        const woodP1 = add(s.p1, mul(Z, P.handrail_height + P.handrail_h / 2));
+        const woodP0 = add(p0, mul(s.e2, P.rail_h / 2 + P.handrail_h / 2));
+        const woodP1 = add(p1, mul(s.e2, P.rail_h / 2 + P.handrail_h / 2));
         const wood = { kind: 'wood', role: 'handrail', name: 'dřevěné madlo' + (s.sloped ? ' šikmé' : ''),
           prof: 'dřevo ' + P.handrail_w + '×' + P.handrail_h, p0: woodP0, d: s.d, e1: s.across, e2: s.e2,
           h1: P.handrail_w / 2, h2: P.handrail_h / 2, t: 0, cut0: cutPlane(k, true, woodP0), cut1: cutPlane(k, false, woodP1), holes: [], L: s.L, a1: 0, a2: 0, seg: k };
@@ -1202,7 +1202,20 @@
     });
     for (let k = 1; k < segs.length; k++) {
       const makeJoint = (a, b, kind, name) => {
-        const seam = a.cut1.p, n = unit(a.cut1.n);
+        // At a pitch change, an offset member (such as timber on top of steel)
+        // has a different axis line from the rail. Miter at the true axis
+        // intersection so both cut profiles land on the same seam.
+        const aEnd = add(a.p0, mul(a.d, a.L));
+        const u = a.d, v = b.d, w = sub(aEnd, b.p0), uv = dot(u, v), uw = dot(u, w), vw = dot(v, w);
+        const den = 1 - uv * uv;
+        let seam;
+        if (den < 1e-8) seam = mul(add(aEnd, b.p0), 0.5);
+        else {
+          const pa = add(aEnd, mul(u, (uv * vw - uw) / den));
+          const pb = add(b.p0, mul(v, (vw - uv * uw) / den));
+          seam = mul(add(pa, pb), 0.5);
+        }
+        const n = unit(a.cut1.n);
         a.cut1 = { p: sub(seam, mul(n, 1)), n };
         b.cut0 = { p: add(seam, mul(n, 1)), n };
         const d = unit(add(segs[k - 1].d, segs[k].d)), e1 = unit(cross(Math.abs(d[2]) < 0.9 ? Z : [0, 1, 0], d)), e2 = unit(cross(d, e1));
