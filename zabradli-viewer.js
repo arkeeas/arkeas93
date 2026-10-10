@@ -102,13 +102,23 @@
       const st = STEEL[A.cfg.fin] || STEEL.zn;
       const mats = {
         steel: new THREE.MeshStandardMaterial({ color: st[0], metalness: st[1], roughness: st[2] }),
+        anchor: new THREE.MeshStandardMaterial({ color: new THREE.Color(st[0]).multiplyScalar(0.62), metalness: st[1], roughness: 0.52,
+          polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
         wood: new THREE.MeshStandardMaterial({ color: '#B98252', metalness: 0, roughness: 0.7 }),
         hw: new THREE.MeshStandardMaterial({ color: '#8E9196', metalness: 0.8, roughness: 0.3 }),
         pad: new THREE.MeshStandardMaterial({ color: '#7A6A55', metalness: 0, roughness: 0.9 })
       };
-      const by = { steel: [], wood: [], hw: [], pad: [] };
-      A.lay.members.forEach((m) => by[m.kind === 'wood' ? 'wood' : m.kind === 'rod' ? 'hw' : m.kind === 'pad' ? 'pad' : 'steel'].push(m.solid));
+      const by = { steel: [], anchor: [], wood: [], hw: [], pad: [] };
+      A.lay.members.forEach((m) => by[m.kind === 'plate' && m.role === 'patka' ? 'anchor' : m.kind === 'wood' ? 'wood' : m.kind === 'rod' ? 'hw' : m.kind === 'pad' ? 'pad' : 'steel'].push(m.solid));
       Object.keys(by).forEach((k) => { if (!by[k].length) return; const mesh = new THREE.Mesh(geo(by[k]), mats[k]); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); });
+      const edgeMat = new THREE.LineBasicMaterial({ color: '#343b40', transparent: true, opacity: 0.9, depthTest: false });
+      A.lay.members.filter((m) => m.kind === 'plate' && m.role === 'patka').forEach((m) => {
+        const pos = [], f = m.solid.faces.find((x) => V.dot(x.n, m.ez) > 0.99);
+        if (!f) return;
+        [f.outer].concat(f.inner).forEach((loop) => loop.forEach((id, i) => pos.push(...m.solid.verts[id], ...m.solid.verts[loop[(i + 1) % loop.length]])));
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        const lines = new THREE.LineSegments(g, edgeMat); lines.renderOrder = 5; group.add(lines);
+      });
       const b = bounds(A, state.ctx);
       if (state.ctx) A.build.context.forEach((c) => {
         const mt = new THREE.MeshStandardMaterial({ color: c.color, roughness: 0.95, metalness: 0, transparent: c.alpha < 1, opacity: c.alpha, depthWrite: c.alpha >= 1, side: THREE.DoubleSide });

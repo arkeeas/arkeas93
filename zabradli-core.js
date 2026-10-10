@@ -89,6 +89,44 @@
     return solidFrom(F);
   }
 
+  function connectorCap(m, plane) {
+    const f = m.solid.faces.find((x) => x.outer.every((i) => Math.abs(dot(plane.n, sub(m.solid.verts[i], plane.p))) < 1e-5) && (!m.t || x.inner.length));
+    if (!f) throw new Error('Nelze najít řeznou plochu madla pro rohovou spojku.');
+    return { outer: f.outer.map((i) => m.solid.verts[i]), inner: f.inner.length ? f.inner[0].map((i) => m.solid.verts[i]) : [], n: unit(plane.n) };
+  }
+
+  function connectorSolid(m) {
+    const a = connectorCap(m.connectorPair[0], m.connectorPair[0].cut1), b = connectorCap(m.connectorPair[1], m.connectorPair[1].cut0);
+    let best = null;
+    for (const dir of [1, -1]) for (let shift = 0; shift < 4; shift++) {
+      const ids = [0, 1, 2, 3].map((i) => (shift + dir * i + 8) % 4);
+      const score = ids.reduce((sum, j, i) => sum + dot(sub(a.outer[i], b.outer[j]), sub(a.outer[i], b.outer[j])), 0);
+      if (!best || score < best.score) best = { ids, score };
+    }
+    const bo = best.ids.map((i) => b.outer[i]), bi = b.inner.length ? best.ids.map((i) => b.inner[i]) : [];
+    const F = [], ca = mul(a.outer.reduce(add, [0, 0, 0]), 1 / 4), cb = mul(bo.reduce(add, [0, 0, 0]), 1 / 4);
+    const axis = sub(cb, ca), n = unit(axis);
+    m.p0 = ca; m.d = n; m.L = len(axis);
+    m.e1 = unit(cross(Math.abs(n[2]) < 0.9 ? Z : [0, 1, 0], n)); m.e2 = unit(cross(n, m.e1));
+    const capNormal = (cap, outward) => dot(cap.n, outward) < 0 ? mul(cap.n, -1) : cap.n;
+    F.push({ loops: a.inner.length ? [a.outer, a.inner] : [a.outer], n: capNormal(a, mul(n, -1)) }, { loops: b.inner.length ? [bo, bi] : [bo], n: capNormal(b, n) });
+    const center = mul(a.outer.concat(bo).reduce(add, [0, 0, 0]), 1 / 8);
+    const triangles = (p, inward) => {
+      for (let j = 1; j < p.length - 1; j++) {
+        let q = [p[0], p[j], p[j + 1]], nn = cross(sub(q[1], q[0]), sub(q[2], q[0]));
+        const mid = mul(q.reduce(add, [0, 0, 0]), 1 / 3);
+        if ((dot(nn, sub(mid, center)) > 0) === inward) { q = [q[0], q[2], q[1]]; nn = mul(nn, -1); }
+        F.push({ loops: [q], n: nn });
+      }
+    };
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      triangles([a.outer[i], a.outer[j], bo[j], bo[i]], false);
+      if (a.inner.length) triangles([a.inner[i], a.inner[j], bi[j], bi[i]], true);
+    }
+    return solidFrom(F);
+  }
+
   /* vytažení rovinného obrysu (konvexní) s otvory: deska, plotna, tyč */
   function extrudeSolid(outer, holes, o, ex, ey, ez, t) {
     const P = (q, z) => add(add(add(o, mul(ex, q[0])), mul(ey, q[1])), mul(ez, z));
@@ -1014,6 +1052,7 @@
     return solidFrom(F);
   }
   function memberSolid(m) {
+    if (m.connectorPair) return connectorSolid(m);
     if (m.kind === 'bar' && (m.tab0 || m.tab1)) return tabBarSolid(m);
     if (m.kind === 'plate' || m.kind === 'pad') return extrudeSolid(rect2(m.w, m.l), m.holes.map((h) => circle(h[0], h[1], h[2], 16)), m.o, m.ex, m.ey, m.ez, m.t);
     if (m.kind === 'rod') { const e1 = unit(cross(m.dir, Math.abs(m.dir[2]) < 0.9 ? Z : [1, 0, 0])), e2 = cross(m.dir, e1); return extrudeSolid(circle(0, 0, m.r, 12), [], m.o, e1, e2, m.dir, m.L); }
@@ -1133,7 +1172,7 @@
         slope: Math.atan2(d[2], Math.hypot(d[0], d[1])) * DEG, sloped: Math.abs(d[2]) > 1e-6 };
       segs.push(s); acc += L;
     }
-    const total = acc, railMembers = [], motifCenters = [];
+    const total = acc, railMembers = [], motifCenters = [], woodMembers = [];
     const pointAt = (s, u) => add(s.p0, mul(s.d, u));
     const cutPlane = (k, atStart, axisPoint) => {
       const s = segs[k];
@@ -1152,31 +1191,45 @@
       railMembers.push(m); members.push(m);
       if (P.handrail) {
         const woodP0 = add(p0, mul(s.e2, P.rail_h / 2 + P.handrail_h / 2));
-        members.push({ kind: 'wood', role: 'handrail', name: 'dřevěné madlo' + (s.sloped ? ' šikmé' : ''),
+        const wood = { kind: 'wood', role: 'handrail', name: 'dřevěné madlo' + (s.sloped ? ' šikmé' : ''),
           prof: 'dřevo ' + P.handrail_w + '×' + P.handrail_h, p0: woodP0, d: s.d, e1: s.across, e2: s.e2,
-          h1: P.handrail_w / 2, h2: P.handrail_h / 2, t: 0, cut0: cutPlane(k, true, p0), cut1: cutPlane(k, false, p1), holes: [], L: s.L, a1: 0, a2: 0 });
+          h1: P.handrail_w / 2, h2: P.handrail_h / 2, t: 0, cut0: cutPlane(k, true, p0), cut1: cutPlane(k, false, p1), holes: [], L: s.L, a1: 0, a2: 0, seg: k };
+        members.push(wood); woodMembers.push(wood);
       }
     });
-    const bar = (role, name, p0, d, e1, e2, length, h1, h2) => {
+    for (let k = 1; k < segs.length; k++) {
+      const seam = railMembers[k - 1].cut1.p, n = unit(railMembers[k - 1].cut1.n);
+      const makeJoint = (a, b, kind, name) => {
+        a.cut1 = { p: sub(seam, mul(n, 1)), n };
+        b.cut0 = { p: add(seam, mul(n, 1)), n };
+        const d = unit(add(segs[k - 1].d, segs[k].d)), e1 = unit(cross(Math.abs(d[2]) < 0.9 ? Z : [0, 1, 0], d)), e2 = unit(cross(d, e1));
+        members.push({ kind, role: 'corner', name, prof: a.prof, p0: seam, d, e1, e2,
+          h1: a.h1, h2: a.h2, t: a.t, cut0: a.cut1, cut1: b.cut0, holes: [], L: 2, a1: 0, a2: 0, connectorPair: [a, b] });
+      };
+      makeJoint(railMembers[k - 1], railMembers[k], 'tube', 'rohová spojka madla');
+      if (P.handrail) makeJoint(woodMembers[k - 1], woodMembers[k], 'wood', 'rohová spojka dřevěného madla');
+    }
+    const bar = (role, name, p0, d, e1, e2, length, h1, h2, cut0, cut1) => {
       const m = { kind: 'bar', role, name, prof: 'PL ' + P.bar_w + '×' + P.bar_t,
-        p0, d, e1, e2, h1, h2, t: 0, cut0: { p: p0, n: mul(d, -1) },
-        cut1: { p: add(p0, mul(d, length)), n: d }, holes: [], L: length, a1: 0, a2: 0 };
+        p0, d, e1, e2, h1, h2, t: 0, cut0: cut0 || { p: p0, n: mul(d, -1) },
+        cut1: cut1 || { p: add(p0, mul(d, length)), n: d }, holes: [], L: length, a1: 0, a2: 0 };
       members.push(m); return m;
     };
     const frame = (s, center, bottom, width, height, label) => {
       const bw = P.bar_w, d = s.h, across = s.across, left = -(width - bw) / 2, right = (width - bw) / 2;
-      const zbase = bottom;
+      const zBot = bottom + bw / 2, zTop = bottom + height - bw / 2;
       [-1, 1].forEach((sgn) => {
-        const x = sgn < 0 ? left : right;
-        const p = add(add(center, mul(d, x)), mul(Z, zbase + bw));
-        bar('motif', label + ' svislý díl', p, Z, d, across, height - 2 * bw, bw / 2, P.bar_t / 2);
+        const x = sgn < 0 ? left : right, p = add(add(center, mul(d, x)), mul(Z, zBot));
+        const n0 = add(mul(d, -sgn), Z), n1 = sub(mul(d, -sgn), Z);
+        bar('motif', label + ' svislý díl', p, Z, d, across, height - bw, bw / 2, P.bar_t / 2,
+          { p, n: n0 }, { p: add(p, mul(Z, height - bw)), n: n1 });
       });
-      const rungStart = add(add(center, mul(d, -width / 2 + bw)), mul(Z, zbase + bw / 2));
-      const rungLen = width - 2 * bw;
       [-1, 1].forEach((atTop) => {
-        const z = atTop ? height - bw / 2 : 0;
-        const p = add(rungStart, mul(Z, z));
-        bar('motif', label + (atTop ? ' horní spojka' : ' dolní spojka'), p, d, across, Z, rungLen, P.bar_t / 2, bw / 2);
+        const z = atTop ? zTop : zBot, q = add(center, mul(Z, z));
+        const p0 = add(q, mul(d, left)), p1 = add(q, mul(d, right));
+        const n0 = add(d, atTop ? mul(Z, -1) : Z), n1 = add(mul(d, -1), atTop ? mul(Z, -1) : Z);
+        bar('motif', label + (atTop ? ' horní spojka' : ' dolní spojka'), p0, d, across, Z, width - bw,
+          P.bar_t / 2, bw / 2, { p: p0, n: n0 }, { p: p1, n: n1 });
       });
     };
     const centers = [];
@@ -1299,7 +1352,7 @@
 
     // svary (odhad pro cenu)
     const cnt = (r) => parts.filter((m) => m.role === r).length;
-    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + cnt('bar') * 2 + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed');
+    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + parts.filter((m) => m.role === 'corner' && m.kind === 'tube').length * 2 + cnt('bar') * 2 + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed');
     const cutsN = rows.filter((r) => r.kind === 'tube' || r.kind === 'bar' || r.kind === 'plate').reduce((a, r) => a + r.q, 0);
     const fin = cfg.fin;
     const finCost = (fin === 'zn' ? kg * R.zinek : fin === 'znpu' ? kg * R.zinek + area * R.lak : fin === 'prasek' ? area * R.prasek : kg * R.zinek + area * R.prasek);
@@ -1422,6 +1475,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261010a', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261012a', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
