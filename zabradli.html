@@ -271,7 +271,7 @@
 
       <div class="step">
         <h2><small>Krok 3</small>Profil a výplň</h2>
-        <div class="field" id="motifSettings" hidden style="margin:0 0 12px"><div class="row"><label for="mp">Rozteč geometrických motivů</label><span class="num"><input id="mpn" type="number" inputmode="numeric" aria-label="Rozteč motivů v mm"> mm</span></div><input id="mp" type="range" min="150" max="400" step="10"><p class="note" style="margin:5px 0 0">Rámy 12×6 mm, výchozí rozteč 250 mm. Horní tyč se zasune do otvoru v jeklu a přivaří.</p></div>
+        <div class="field" id="motifSettings" hidden style="margin:0 0 12px"><div class="row"><label for="mp">Rozteč geometrických motivů</label><span class="num"><input id="mpn" type="number" inputmode="numeric" aria-label="Rozteč motivů v mm"> mm</span></div><input id="mp" type="range" min="150" max="400" step="10"><p class="note" style="margin:5px 0 0">Rámy z jeklu 20×20×2 mm, všechny rohy na pokos 45°. Výchozí rozteč 250 mm; horní tyč se zasune do otvoru v jeklu a přivaří.</p></div>
         <div id="profBox"></div>
         <div class="box lock" id="lockBox"></div>
         <div id="overBox"><p class="sub-h">Délka špruší – přesah přes rám (0 = zarovnané s rámem)</p>
@@ -366,13 +366,13 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
-<script src="zabradli-core.js?v=20261012a"></script>
+<script src="zabradli-core.js?v=20261012b"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261012a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261012b') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -436,7 +436,7 @@
     group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40 navrch rámu' }, { id: 'n', l: 'Bez dřevěného madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
     const nPost = A.parts.filter((m) => m.role === 'post').length;
     $('typeNote').textContent = cfg.vypln === 'geometricky'
-      ? 'Geometrické rámy nahrazují běžnou pásovinovou výplň. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
+      ? 'Dvojité rámy tvoří jekl 20×20×2 mm s pokosovými spoji 45°, které se v rozích skládají do pravého úhlu. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
       : cfg.sloupky
       ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
       : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');
@@ -458,7 +458,7 @@
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
     $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'geometricky' ?
-      '<p class="note" style="margin:8px 0 0">Rámové motivy jsou z ploché oceli 12×6 mm; výška a trasa odpovídají nastavení v kroku 2.</p>' :
+      '<p class="note" style="margin:8px 0 0">Vnější i vnitřní rám motivu tvoří dutý jekl 20×20×2 mm. Čtyři konce se seříznou na 45° a v rozích svaří do pravého úhlu; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
       (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : ''));

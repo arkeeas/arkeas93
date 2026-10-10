@@ -1161,7 +1161,7 @@
 
   function layoutGeometric(path, kw) {
     const P = Object.assign({ handrail_height: 1000, pitch: 250, rail_w: 40, rail_h: 40, rail_t: 2,
-      frame_w: 130, inner_w: 60, frame_h: 640, inner_h: 500, bar_w: 12, bar_t: 6,
+      frame_w: 130, inner_w: 60, frame_h: 640, inner_h: 500, frame_tube_w: 20, frame_tube_t: 2, bar_w: 12, bar_t: 6,
       foot_h: 90, plate_w: 60, plate_l: 80, plate_t: 6, hole_d: 11, handrail: false, handrail_w: 60, handrail_h: 40 }, kw || {});
     const pts = path.map((p) => [p[0], p[1], p[2] || 0]), segs = [], members = [];
     let acc = 0;
@@ -1215,21 +1215,27 @@
         cut1: cut1 || { p: add(p0, mul(d, length)), n: d }, holes: [], L: length, a1: 0, a2: 0 };
       members.push(m); return m;
     };
+    const frameTube = (name, p0, d, e1, e2, length, cut0, cut1) => {
+      const w = P.frame_tube_w, t = P.frame_tube_t;
+      const m = { kind: 'tube', role: 'motif', name, prof: 'jekl ' + w + '×' + w + '×' + t,
+        p0, d, e1, e2, h1: w / 2, h2: w / 2, t, cut0, cut1, holes: [], L: length, a1: 45, a2: 45 };
+      members.push(m); return m;
+    };
     const frame = (s, center, bottom, width, height, label) => {
-      const bw = P.bar_w, d = s.h, across = s.across, left = -(width - bw) / 2, right = (width - bw) / 2;
+      const bw = P.frame_tube_w, d = s.h, across = s.across, left = -(width - bw) / 2, right = (width - bw) / 2;
       const zBot = bottom + bw / 2, zTop = bottom + height - bw / 2;
       [-1, 1].forEach((sgn) => {
         const x = sgn < 0 ? left : right, p = add(add(center, mul(d, x)), mul(Z, zBot));
         const n0 = add(mul(d, -sgn), Z), n1 = sub(mul(d, -sgn), Z);
-        bar('motif', label + ' svislý díl', p, Z, d, across, height - bw, bw / 2, P.bar_t / 2,
+        frameTube(label + ' svislý díl', p, Z, d, across, height - bw,
           { p, n: n0 }, { p: add(p, mul(Z, height - bw)), n: n1 });
       });
-      [-1, 1].forEach((atTop) => {
+      [false, true].forEach((atTop) => {
         const z = atTop ? zTop : zBot, q = add(center, mul(Z, z));
         const p0 = add(q, mul(d, left)), p1 = add(q, mul(d, right));
         const n0 = add(d, atTop ? mul(Z, -1) : Z), n1 = add(mul(d, -1), atTop ? mul(Z, -1) : Z);
-        bar('motif', label + (atTop ? ' horní spojka' : ' dolní spojka'), p0, d, across, Z, width - bw,
-          P.bar_t / 2, bw / 2, { p: p0, n: n0 }, { p: p1, n: n1 });
+        frameTube(label + (atTop ? ' horní spojka' : ' dolní spojka'), p0, d, across, Z, width - bw,
+          { p: p0, n: n0 }, { p: p1, n: n1 });
       });
     };
     const centers = [];
@@ -1352,7 +1358,9 @@
 
     // svary (odhad pro cenu)
     const cnt = (r) => parts.filter((m) => m.role === r).length;
-    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + parts.filter((m) => m.role === 'corner' && m.kind === 'tube').length * 2 + cnt('bar') * 2 + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed');
+    const motifFrameMembers = parts.filter((m) => m.role === 'motif' && /vnější rám|vnitřní rám/.test(m.name)).length;
+    const motifFrameWelds = Math.round(motifFrameMembers / 4) * 4;
+    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + parts.filter((m) => m.role === 'corner' && m.kind === 'tube').length * 2 + cnt('bar') * 2 + motifFrameWelds + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed');
     const cutsN = rows.filter((r) => r.kind === 'tube' || r.kind === 'bar' || r.kind === 'plate').reduce((a, r) => a + r.q, 0);
     const fin = cfg.fin;
     const finCost = (fin === 'zn' ? kg * R.zinek : fin === 'znpu' ? kg * R.zinek + area * R.lak : fin === 'prasek' ? area * R.prasek : kg * R.zinek + area * R.prasek);
@@ -1470,11 +1478,11 @@
     const zd = cfg.zed.start || cfg.zed.end ? ', ' + (cfg.zed.start && cfg.zed.end ? 'oba konce' : cfg.zed.start ? 'začátek' : 'konec') + ' ke zdi (' + WALL_BASE.find((b) => b.id === cfg.zedBase).lab.replace('Zeď – ', '') + ')' : '';
     const an = cfg.anchor === 'bez' ? 'bez kotev' : ({ patka: 'kotvení shora', celo: 'sloupky přes čelo', bocni: 'kotvení z boku' }[cfg.anchor]) + ' – ' + BASE.find((b) => b.id === cfg.base).lab.toLowerCase() + zd + (cfg.podlozka && padAllowed(cfg) ? ', tepelně oddělující podložky' : '');
     const ms = cfg.stavba && cfg.stavba.on ? stavbaCheck(cfg) : null;
-    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z PL 12×6' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
+    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
       (cfg.overTop || cfg.overBot ? ', přesah ' + [cfg.overTop ? 'nahoře ' + cfg.overTop : '', cfg.overBot ? 'dole ' + cfg.overBot : ''].filter(Boolean).join(' / ') + ' mm' : '') + (cfg.madlo ? ', dřevěné madlo' : ', bez dřevěného madla') + ', ' + an + ', ' + FIN.find((f) => f.id === cfg.fin).lab.toLowerCase() +
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261012a', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261012b', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
