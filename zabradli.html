@@ -232,7 +232,7 @@
     <div class="steps">
       <div class="step">
         <h2><small>Krok 1</small>Konstrukce</h2>
-        <p class="sub-h" style="margin-top:0">Sloupky</p>
+        <p class="sub-h" style="margin-top:0">Provedení</p>
         <div class="grid g2" id="types"></div>
         <div class="field" id="postBox" style="margin-top:14px"><div class="row"><label for="pp">Rozteč sloupků (nejvýš)</label><span class="num"><input id="ppn" type="number" inputmode="numeric" aria-label="Rozteč sloupků v mm"> mm</span></div><input id="pp" type="range" min="600" max="1500" step="50"></div>
         <p class="sub-h">Madlo</p>
@@ -271,14 +271,15 @@
 
       <div class="step">
         <h2><small>Krok 3</small>Profil a výplň</h2>
+        <div class="field" id="motifSettings" hidden style="margin:0 0 12px"><div class="row"><label for="mp">Rozteč geometrických motivů</label><span class="num"><input id="mpn" type="number" inputmode="numeric" aria-label="Rozteč motivů v mm"> mm</span></div><input id="mp" type="range" min="150" max="400" step="10"><p class="note" style="margin:5px 0 0">Rámy 12×6 mm, výchozí rozteč 250 mm. Horní tyč se zasune do otvoru v jeklu a přivaří.</p></div>
         <div id="profBox"></div>
         <div class="box lock" id="lockBox"></div>
-        <p class="sub-h">Délka špruší – přesah přes rám (0 = zarovnané s rámem)</p>
+        <div id="overBox"><p class="sub-h">Délka špruší – přesah přes rám (0 = zarovnané s rámem)</p>
         <div class="split">
           <label for="ovT">Nahoře nad horním rámem [mm]<input id="ovT" type="number" inputmode="numeric" min="0" step="10"></label>
           <label for="ovB">Dole pod spodním rámem [mm]<input id="ovB" type="number" inputmode="numeric" min="0" step="10"></label>
         </div>
-        <p class="note" id="ovNote" style="margin:8px 0 0"></p>
+        <p class="note" id="ovNote" style="margin:8px 0 0"></p></div>
       </div>
 
       <div class="step">
@@ -365,13 +366,13 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
-<script src="zabradli-core.js?v=20261007l"></script>
+<script src="zabradli-core.js?v=20261010a"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261006a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261010a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -423,18 +424,20 @@
   function render() {
     A = Zb.analyze(cfg, rates);
     const T = Zb.TYPES.find((t) => t.id === cfg.typ);
-    $('mName').textContent = 'Zábradlí ' + T.lab.toLowerCase();
+    $('mName').textContent = cfg.vypln === 'geometricky' ? 'Zábradlí s geometrickým motivem' : 'Zábradlí ' + T.lab.toLowerCase();
     $('mSub').textContent = nf(A.lenM, 1) + ' m · výška ' + cfg.vyska + ' mm · ' + Zb.FIN.find((f) => f.id === cfg.fin).lab;
     $('factChip').textContent = A.anchorsN + ' kotev · ' + nf(A.kg) + ' kg oceli';
 
-    group($('types'), [{ id: 'B', l: 'Bez sloupků', s: 'pole do 1,5 m, styky na vložkách', ic: Zb.TYPES[1].icon }, { id: 'A', l: 'Se sloupky', s: 'rozteč si nastavíte', ic: Zb.TYPES[0].icon }],
-      (t) => optBtn(t.id, t.id === cfg.typ, t.l, t.s, t.ic), (id) => set({ sloupky: id === 'A' }));
-    $('postBox').hidden = !cfg.sloupky;
+    group($('types'), [{ id: 'B', l: 'Bez sloupků', s: 'pole do 1,5 m, styky na vložkách', ic: Zb.TYPES[1].icon }, { id: 'A', l: 'Se sloupky', s: 'rozteč si nastavíte', ic: Zb.TYPES[0].icon }, { id: 'G', l: 'Geometrický motiv', s: 'dvojité rámy s vlastními patkami' }],
+      (t) => optBtn(t.id, t.id === (cfg.vypln === 'geometricky' ? 'G' : cfg.typ), t.l, t.s, t.ic), (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : set({ sloupky: id === 'A', vypln: 'standard' }));
+    $('postBox').hidden = !cfg.sloupky || cfg.vypln === 'geometricky';
     if (document.activeElement !== $('pp')) $('pp').value = cfg.postPitch;
     if (document.activeElement !== $('ppn')) $('ppn').value = cfg.postPitch;
     group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40 navrch rámu' }, { id: 'n', l: 'Bez dřevěného madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
     const nPost = A.parts.filter((m) => m.role === 'post').length;
-    $('typeNote').textContent = cfg.sloupky
+    $('typeNote').textContent = cfg.vypln === 'geometricky'
+      ? 'Geometrické rámy nahrazují běžnou pásovinovou výplň. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
+      : cfg.sloupky
       ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
       : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');
 
@@ -451,43 +454,53 @@
     $('dimNote').textContent = 'Celková délka podél zábradlí ' + nf(A.lenM, 2) + ' m' + (sl.length ? ', sklon schodiště ' + sl.join(', ') : '') + '. ' + (cfg.typ === 'B' ? 'Výška se měří k horní hraně madla' : 'Výška se měří k horní hraně horního madla') + ', na schodišti svisle od hrany stupňů.';
 
     const jt = A.locks;
-    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' +
+    $('motifSettings').hidden = cfg.vypln !== 'geometricky';
+    if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
+    if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
+    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'geometricky' ?
+      '<p class="note" style="margin:8px 0 0">Rámové motivy jsou z ploché oceli 12×6 mm; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
-      (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : '');
+      (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : ''));
     group($('profs'), Zb.RAILS[cfg.typ], (p) => optBtn(p.id, p.id === cfg.rail, 'Jekl ' + p.lab, p.sub), (id) => set({ rail: id }));
-    group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
-    if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
+    if (cfg.vypln !== 'geometricky') {
+      group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
+      if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
+    }
     const ov = Zb.overAllowed(cfg);
     $('ovT').disabled = !ov.top; $('ovB').disabled = !ov.bot;
     if (document.activeElement !== $('ovT')) $('ovT').value = cfg.overTop;
     if (document.activeElement !== $('ovB')) $('ovB').value = cfg.overBot;
     const pieces = A.rows.filter((r) => r.kind === 'bar' && r.cut === '0° / 0°');
     $('ovNote').textContent = [ov.whyTop, ov.whyBot].filter(Boolean).join(' ') + (pieces.length ? (ov.whyTop || ov.whyBot ? ' ' : '') + 'Špruše na rovině: ' + pieces.map((r) => r.name + ' ' + r.len + ' mm').join(', ') + '.' : '');
+    $('lockBox').hidden = cfg.vypln === 'geometricky';
     $('lockBox').className = 'box lock' + (A.locks.ok ? ' on' : '');
-    $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
+    $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.', vlozeni: 'Tyče v otvorech madla.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
+    $('overBox').hidden = cfg.vypln === 'geometricky';
 
     const pOK = Zb.patkaAllowed(cfg), stairs = cfg.segs.some((s) => s.rise);
+    $('anchors').hidden = cfg.vypln === 'geometricky';
+    $('kotvyBox').hidden = cfg.vypln === 'geometricky';
     group($('anchors'), Zb.ANCHOR, (a) => { const dis = (a.id === 'patka' || a.id === 'celo') && !pOK; return optBtn(a.id, a.id === cfg.anchor, a.lab, a.sub, '', dis, dis ? 'Kotví se pod sloupky – zapněte sloupky v kroku 1. Bez sloupků se kotví z boku.' : ''); }, (id) => set({ anchor: id }));
     const bez = cfg.anchor === 'bez';
-    $('baseLab').hidden = bez; $('bases').hidden = bez;
+    $('baseLab').hidden = bez || cfg.vypln === 'geometricky'; $('bases').hidden = bez || cfg.vypln === 'geometricky';
     group($('bases'), Zb.BASE, (b) => optBtn(b.id, b.id === cfg.base, b.lab, b.sub), (id) => set({ base: id }));
-    $('armBox').hidden = cfg.anchor !== 'bocni';
+    $('armBox').hidden = cfg.anchor !== 'bocni' || cfg.vypln === 'geometricky';
     if (document.activeElement !== $('fac')) $('fac').value = cfg.facade;
     if (document.activeElement !== $('arm')) $('arm').value = cfg.arm;
     // konce ke zdi: ve stavbě jen ten konec, který je u zdi
     const stOn2 = !!(cfg.stavba && cfg.stavba.on), endOK = (k) => !stOn2 || cfg.stavba[k] === 'zed';
-    $('zedBox').hidden = bez;
+    $('zedBox').hidden = bez || cfg.vypln === 'geometricky';
     group($('zeds'), [{ id: 'start', l: 'Začátek ke zdi' }, { id: 'end', l: 'Konec ke zdi' }], (o) => optBtn(o.id, !!cfg.zed[o.id], o.l, cfg.zed[o.id] ? '2 plotny 120×100 na koncovém sloupku' : 'konec volně', '', !endOK(o.id), !endOK(o.id) ? 'Ve stavbě (krok 2) je tento konec volný – nastavte ho na „u zdi“.' : ''),
       (id) => set({ zed: Object.assign({}, cfg.zed, { [id]: !cfg.zed[id] }) }));
     const anyZed = cfg.zed.start || cfg.zed.end;
-    $('zedBases').hidden = !anyZed;
+    $('zedBases').hidden = !anyZed || cfg.vypln === 'geometricky';
     group($('zedBases'), Zb.WALL_BASE, (b) => optBtn(b.id, b.id === cfg.zedBase, b.lab, b.sub), (id) => set({ zedBase: id }));
     const padOK = Zb.padAllowed(cfg);
-    $('padBox').hidden = !padOK;
+    $('padBox').hidden = !padOK || cfg.vypln === 'geometricky';
     group($('pads'), [{ id: 'n', l: 'Plotna přímo na stavbu', s: 'bez podložky' }, { id: 'y', l: 'S tepelně oddělující podložkou', s: Zb.PAD_T + ' mm pod každou plotnu · omezí tepelný most' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.podlozka, o.l, o.s), (id) => set({ podlozka: id === 'y' }));
     const nCelo = A.parts.filter((m) => m.role === 'celo').length;
-    $('anchorNote').textContent = (cfg.anchor === 'bocni' ? 'Rameno vede od rámu skrz zateplení k čelu nosné desky, tam se plotna 120×120 přikotví dvěma závitovými tyčemi M12. Rameno = fasáda + mezera k rámu (obvykle +50 mm).'
+    $('anchorNote').textContent = cfg.vypln === 'geometricky' ? 'Každý motiv má kotvicí plech 60×80×6 mm se dvěma otvory Ø11 mm. Poloha plechů sleduje délku a sklon trasy.' : (cfg.anchor === 'bocni' ? 'Rameno vede od rámu skrz zateplení k čelu nosné desky, tam se plotna 120×120 přikotví dvěma závitovými tyčemi M12. Rameno = fasáda + mezera k rámu (obvykle +50 mm).'
       : cfg.anchor === 'patka' ? 'Pod sloupky patky 100×120×8 mm se dvěma kotvami M12.' + (stairs ? ' Na schodišti stojí sloupky uprostřed stupňů a pod spodním rámem mají nožku k patce; u hrany podesty je patka 160 mm dlouhá, aby kotva nebyla u hrany.' + (Zb.stepsMissing(cfg).length ? ' Zadejte u schodiště počet schodů.' : '') : '')
       : cfg.anchor === 'celo' ? 'Sloupky jdou dolů přes hranu podlahy, na boku mají plotnu 120×100×10 do čela nosné desky (' + nCelo + '×, 2 kotvy M12). Jen bez zateplení – přes zateplení zvolte kotvení z boku. U rohů a zlomů je kotevní sloupek ' + Zb.CELO_CORNER + ' mm od rohu.' + (stairs ? ' Na schodišti jde plotna pod stupně' + (Zb.stepsMissing(cfg).length ? ' – zadejte počet schodů.' : '.') : '')
       : 'Dodáme jen zábradlí, kotvení si navrhnete a provedete sami.') +
@@ -700,6 +713,8 @@
   window.addEventListener('resize', () => { clearTimeout(ui.rt); ui.rt = setTimeout(renderKotvy, 150); });
   $('pp').addEventListener('input', (e) => set({ postPitch: Number(e.target.value), kotvyPos: null }));
   $('ppn').addEventListener('change', (e) => set({ postPitch: Number(e.target.value), kotvyPos: null }));
+  $('mp').addEventListener('input', (e) => set({ motifPitch: Number(e.target.value) }));
+  $('mpn').addEventListener('change', (e) => set({ motifPitch: Number(e.target.value) }));
 
   $('segAdd').addEventListener('click', () => { const segs = cfg.segs.map((s) => Object.assign({}, s)); if (segs.length >= 8) return; segs[segs.length - 1].turn = 90; segs.push({ L: 2000, rise: 0, turn: 0 }); set({ segs }); });
   document.querySelectorAll('#sideT button').forEach((b) => b.addEventListener('click', () => set({ side: b.dataset.side })));

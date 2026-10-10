@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "type": "geometric_motif_stair_rail",
+  "units": "mm",
+  "parameters": {
+    "run_length": {"type": "number", "default": 1600, "min": 300, "max": 12000, "label_cs": "Délka ramene po sklonu"},
+    "slope_deg": {"type": "number", "default": 30, "min": -45, "max": 45, "label_cs": "Sklon ramene"},
+    "handrail_height": {"type": "number", "default": 1000, "min": 800, "max": 1200, "label_cs": "Výška madla"},
+    "motif_pitch": {"type": "number", "default": 250, "min": 150, "max": 400, "label_cs": "Rozteč motivů"},
+    "motif_width": {"type": "number", "default": 130, "min": 90, "max": 180, "label_cs": "Šířka motivu"},
+    "motif_count": {"type": "integer", "derived_from": ["run_length", "slope_deg", "motif_pitch", "motif_width"], "formula": "max(1, floor((run_length - motif_width/cos(slope_deg))/motif_pitch) + 1)", "label_cs": "Počet motivů"},
+    "anchor_plate": {"type": "fixed", "width": 60, "length": 80, "thickness": 6, "hole_diameter": 11, "hole_count": 2, "hole_spacing": 50, "label_cs": "Kotevní plech pod každým motivem"},
+    "insert_fit_clearance": {"type": "fixed", "default": 0.5, "unit": "mm total", "label_cs": "Vůle otvoru pro zasunutí tyče"}
+  },
+  "demo_values": {"run_length": 1600, "slope_deg": 30, "handrail_height": 1000, "motif_pitch": 250, "wood_handrail": false}
+}

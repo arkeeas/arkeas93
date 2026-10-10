@@ -225,5 +225,23 @@ for (const anchor of ["patka", "celo"]) for (const postPitch of [600, 1500]) for
   if (errs.length) fail("stavba: " + errs.slice(0, 3).join("; "));
   else console.log("OK    stavba z bloků – trasa, kontrola měření, schody");
 }
+// h) geometrická výplň: rozměry/rozteč, výška, šikmina, zásuvné otvory a patky
+{
+  const cfg = { vypln: "geometricky", sloupky: true, vyska: 1100, motifPitch: 300,
+    segs: [{ L: 1800, rise: 900 }] };
+  const A = Z.analyze(cfg), C = A.cfg, members = A.lay.members;
+  const motifs = A.lay.motifCenters;
+  const plates = members.filter((m) => m.role === "patka" && m.kind === "plate");
+  const slots = members.filter((m) => m.role === "rail").flatMap((m) => m.holes || []).filter((h) => h.kind === "insert");
+  if (C.vypln !== "geometricky" || C.anchor !== "patka" || C.vyska !== 1100) fail("geometrický motiv: normalizace výšky/výplně/kotvení");
+  if (!motifs.length || plates.length !== motifs.length || slots.length !== motifs.length) fail("geometrický motiv: počet rámů, patek a otvorů nesouhlasí");
+  if (plates.some((m) => m.w !== 60 || m.l !== 80 || m.t !== 6 || m.holes.length !== 2 || m.holes.some((h) => h[2] !== 5.5))) fail("geometrický motiv: patka musí být 60×80×6 se 2×Ø11");
+  if (slots.some((h) => h.kind !== "insert")) fail("geometrický motiv: horní madlo nemá zásuvné otvory");
+  members.forEach((m) => { if (!G.checkClosed(m.solid.verts, m.solid.faces)) fail("geometrický motiv: neuzavřené těleso " + m.name); });
+  const flat = Z.analyze({ vypln: "geometricky", segs: [{ L: 1800, rise: 0 }], motifPitch: 250 });
+  if (!flat.lay.members.some((m) => m.role === "rail" && Math.abs(m.d[2]) < 1e-8)) fail("geometrický motiv: rovná varianta není vodorovná");
+  if (A.price <= 0) fail("geometrický motiv: výpočet ceny nevyšel");
+  console.log("OK    geometrický motiv – rovina/sklon, nastavitelné rozměry, zásuvné otvory a patky 60×80×6");
+}
 console.log((bad ? "\n" + bad + " chyb" : "\nvše v pořádku") + " (" + n + " konfigurací)");
 process.exit(bad ? 1 : 0);
