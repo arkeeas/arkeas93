@@ -54,7 +54,14 @@ function checkFrameCorners(members) {
     const top = group.find((m) => /horní spojka/.test(m.name));
     if (!left || !right || !bottom || !top || group.length !== 4) throw new Error("incomplete frame: " + label);
     const pairs = [[left,"start",bottom,"start"],[right,"start",bottom,"end"],[left,"end",top,"start"],[right,"end",top,"end"]];
-    for (const [a, ac, b, bc] of pairs) if (capGap(capVerts(a, ac), capVerts(b, bc)) > 0.01) throw new Error("45-degree frame corner does not fit: " + label);
+    for (const [a, ac, b, bc] of pairs) {
+      const pa = ac === "start" ? a.cut0 : a.cut1, pb = bc === "start" ? b.cut0 : b.cut1;
+      if (capGap(capVerts(a, ac), capVerts(b, bc)) > 0.01) throw new Error("45-degree frame corner does not fit: " + label);
+      const inwardA = ac === "start" ? 1 : -1, inwardB = bc === "start" ? 1 : -1;
+      const sideA = pa.n.reduce((s, x, i) => s + x * (a.p0[i] + a.d[i] * inwardA - pa.p[i]), 0);
+      const sideB = pa.n.reduce((s, x, i) => s + x * (b.p0[i] + b.d[i] * inwardB - pa.p[i]), 0);
+      if (sideA * sideB >= 0) throw new Error("mitered corner members overlap on the same side of the cut: " + label);
+    }
   }
 }
 checkFrameCorners(A.lay.members);

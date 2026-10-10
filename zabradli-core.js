@@ -1226,14 +1226,14 @@
       const zBot = bottom + bw / 2, zTop = bottom + height - bw / 2;
       [-1, 1].forEach((sgn) => {
         const x = sgn < 0 ? left : right, p = add(add(center, mul(d, x)), mul(Z, zBot));
-        const n0 = add(mul(d, -sgn), Z), n1 = sub(mul(d, -sgn), Z);
+        const n0 = sub(mul(d, -sgn), Z), n1 = add(mul(d, -sgn), Z);
         frameTube(label + ' svislý díl', p, Z, d, across, height - bw,
           { p, n: n0 }, { p: add(p, mul(Z, height - bw)), n: n1 });
       });
       [false, true].forEach((atTop) => {
         const z = atTop ? zTop : zBot, q = add(center, mul(Z, z));
         const p0 = add(q, mul(d, left)), p1 = add(q, mul(d, right));
-        const n0 = add(d, atTop ? mul(Z, -1) : Z), n1 = add(mul(d, -1), atTop ? mul(Z, -1) : Z);
+        const n0 = add(d, atTop ? Z : mul(Z, -1)), n1 = add(mul(d, -1), atTop ? Z : mul(Z, -1));
         frameTube(label + (atTop ? ' horní spojka' : ' dolní spojka'), p0, d, across, Z, width - bw,
           { p: p0, n: n0 }, { p: p1, n: n1 });
       });
@@ -1483,6 +1483,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261012b', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261012c', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
