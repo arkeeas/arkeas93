@@ -1499,6 +1499,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261012c', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261012d', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
