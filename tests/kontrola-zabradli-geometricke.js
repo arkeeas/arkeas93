@@ -79,6 +79,14 @@ const profileCenter = (m, cut) => {
   const points = capPoints(m, cut);
   return points.reduce((sum, p) => sum.map((x, i) => x + p[i] / points.length), [0, 0, 0]);
 };
+const capFitGap = (a, b) => {
+  let best = Infinity;
+  for (const dir of [1, -1]) for (let shift = 0; shift < 4; shift++) {
+    const ds = [0, 1, 2, 3].map((i) => distance(a[i], b[(shift + dir * i + 8) % 4]));
+    best = Math.min(best, Math.max(...ds));
+  }
+  return best;
+};
 const transitionCapCenters = [profileCenter(rails[0], "end"), profileCenter(rails[1], "start")];
 if (distance(...transitionCapCenters) > 2.01) throw new Error("sloped-to-level handrail cap centers are offset; the rail profiles do not fit into one another");
 const screenshotRoute = [{ L: 2380, rise: 2000 }, { L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }];
@@ -89,6 +97,7 @@ for (const madlo of [false, true]) {
   for (const joint of routedJoints) {
     const [a, b] = joint.connectorPair;
     if (distance(profileCenter(a, "end"), profileCenter(b, "start")) > 2.01) throw new Error("configured railing joint does not fit at its 2 mm seam: " + joint.name);
+    if (capFitGap(capPoints(a, "end"), capPoints(b, "start")) > 2.01) throw new Error("configured railing miter edges do not align: " + joint.name);
   }
   const routedStep = validate(G.stepFile("geometricke_rohy_trasa", routed.lay.members.map((m) => m.solid)), "geometricke_rohy_trasa");
   if (routedStep.errs.length) throw new Error(routedStep.errs.slice(0, 3).join("; "));
