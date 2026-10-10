@@ -1176,30 +1176,33 @@
     const pointAt = (s, u) => add(s.p0, mul(s.d, u));
     const cutPlane = (k, atStart, axisPoint) => {
       const s = segs[k];
-      const top = P.handrail_height + (P.handrail ? P.handrail_h : 0);
-      if (atStart && k > 0) return { p: add(segs[k].p0, [0, 0, top]), n: unit(add(segs[k - 1].d, s.d)) };
-      if (!atStart && k < segs.length - 1) return { p: add(segs[k].p1, [0, 0, top]), n: unit(add(s.d, segs[k + 1].d)) };
+      if (atStart && k > 0) return { p: axisPoint, n: unit(add(segs[k - 1].d, s.d)) };
+      if (!atStart && k < segs.length - 1) return { p: axisPoint, n: unit(add(s.d, segs[k + 1].d)) };
       return { p: axisPoint, n: atStart ? mul(s.d, -1) : s.d };
     };
     segs.forEach((s, k) => {
-      const midZ = P.handrail_height - P.rail_h / 2 * s.e2[2];
-      const p0 = add(s.p0, mul(Z, midZ)), p1 = add(s.p1, mul(Z, midZ));
+      // Keep the rail centerline at a shared vertical offset from the route.
+      // Rotating the profile must not shift its center sideways; otherwise a
+      // sloped-to-level miter has separated section centers.
+      const p0 = add(s.p0, mul(Z, P.handrail_height - P.rail_h / 2));
+      const p1 = add(s.p1, mul(Z, P.handrail_height - P.rail_h / 2));
       const m = { kind: 'tube', role: 'rail', name: 'horní madlo' + (s.sloped ? ' šikmé' : ''),
         prof: 'jekl ' + P.rail_w + '×' + P.rail_h + '×' + P.rail_t, p0, d: s.d, e1: s.across, e2: s.e2,
         h1: P.rail_w / 2, h2: P.rail_h / 2, t: P.rail_t,
         cut0: cutPlane(k, true, p0), cut1: cutPlane(k, false, p1), holes: [], holeLabel: 'otvor pro zasunutí svislé tyče', L: s.L, a1: 0, a2: 0, seg: k };
       railMembers.push(m); members.push(m);
       if (P.handrail) {
-        const woodP0 = add(p0, mul(s.e2, P.rail_h / 2 + P.handrail_h / 2));
+        const woodP0 = add(s.p0, mul(Z, P.handrail_height + P.handrail_h / 2));
+        const woodP1 = add(s.p1, mul(Z, P.handrail_height + P.handrail_h / 2));
         const wood = { kind: 'wood', role: 'handrail', name: 'dřevěné madlo' + (s.sloped ? ' šikmé' : ''),
           prof: 'dřevo ' + P.handrail_w + '×' + P.handrail_h, p0: woodP0, d: s.d, e1: s.across, e2: s.e2,
-          h1: P.handrail_w / 2, h2: P.handrail_h / 2, t: 0, cut0: cutPlane(k, true, p0), cut1: cutPlane(k, false, p1), holes: [], L: s.L, a1: 0, a2: 0, seg: k };
+          h1: P.handrail_w / 2, h2: P.handrail_h / 2, t: 0, cut0: cutPlane(k, true, woodP0), cut1: cutPlane(k, false, woodP1), holes: [], L: s.L, a1: 0, a2: 0, seg: k };
         members.push(wood); woodMembers.push(wood);
       }
     });
     for (let k = 1; k < segs.length; k++) {
-      const seam = railMembers[k - 1].cut1.p, n = unit(railMembers[k - 1].cut1.n);
       const makeJoint = (a, b, kind, name) => {
+        const seam = a.cut1.p, n = unit(a.cut1.n);
         a.cut1 = { p: sub(seam, mul(n, 1)), n };
         b.cut0 = { p: add(seam, mul(n, 1)), n };
         const d = unit(add(segs[k - 1].d, segs[k].d)), e1 = unit(cross(Math.abs(d[2]) < 0.9 ? Z : [0, 1, 0], d)), e2 = unit(cross(d, e1));

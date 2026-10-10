@@ -75,6 +75,24 @@ const capPoints = (m, cut) => {
   return m.solid.faces.filter((f) => f.outer.every((i) => Math.abs(n.reduce((s, x, k) => s + x * (v[i][k] - p[k]), 0)) < 1e-5)).flatMap((f) => f.outer.map((i) => v[i]));
 };
 if (joints.length !== 1 || capGap(capPoints(rails[0], "end"), capPoints(joints[0], "start")) > 0.01 || capGap(capPoints(joints[0], "end"), capPoints(rails[1], "start")) > 0.01) throw new Error("sloped and level handrails do not meet through a fitted corner connector");
+const profileCenter = (m, cut) => {
+  const points = capPoints(m, cut);
+  return points.reduce((sum, p) => sum.map((x, i) => x + p[i] / points.length), [0, 0, 0]);
+};
+const transitionCapCenters = [profileCenter(rails[0], "end"), profileCenter(rails[1], "start")];
+if (distance(...transitionCapCenters) > 2.01) throw new Error("sloped-to-level handrail cap centers are offset; the rail profiles do not fit into one another");
+const screenshotRoute = [{ L: 2380, rise: 2000 }, { L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }];
+for (const madlo of [false, true]) {
+  const routed = Z.analyze({ vypln: "geometricky", vyska: 1000, madlo, segs: screenshotRoute });
+  const routedJoints = routed.lay.members.filter((m) => m.role === "corner" && m.connectorPair);
+  if (routedJoints.length !== (madlo ? 4 : 2)) throw new Error("not all configured railing joints have connectors");
+  for (const joint of routedJoints) {
+    const [a, b] = joint.connectorPair;
+    if (distance(profileCenter(a, "end"), profileCenter(b, "start")) > 2.01) throw new Error("configured railing joint does not fit at its 2 mm seam: " + joint.name);
+  }
+  const routedStep = validate(G.stepFile("geometricke_rohy_trasa", routed.lay.members.map((m) => m.solid)), "geometricke_rohy_trasa");
+  if (routedStep.errs.length) throw new Error(routedStep.errs.slice(0, 3).join("; "));
+}
 const standard = Z.analyze({ vypln: "standard", sloupky: true, anchor: "bocni", segs: [{ L: 1800, rise: 0 }] });
 if (standard.cfg.vypln !== "standard" || standard.cfg.anchor !== "bocni" || !standard.lay.members.some((m) => m.role === "bar")) throw new Error("standard type A settings changed");
 if (!(A.price > 0)) throw new Error("price not calculated");
