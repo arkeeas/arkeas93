@@ -246,8 +246,6 @@
         <div class="grid g2" id="types"></div>
         <div id="motivBox" hidden><p class="sub-h">Motiv v plechu</p><div class="grid g2" id="motivs"></div></div>
         <div id="prirodaBox" hidden>
-          <p class="sub-h">Tloušťka plechu</p><div class="grid g4" id="plechs"></div>
-          <p class="note" id="plechNote" style="margin:6px 0 0"></p>
           <p class="sub-h">Stejný motiv do všech polí</p>
           <div class="grid g4" id="prAll"></div>
           <p class="sub-h">Motiv v jednotlivých polích</p>
@@ -287,6 +285,10 @@
         </div>
         <div class="field" style="margin-top:16px"><div class="row"><label for="vy">Výška zábradlí nad podlahou</label><span class="num"><input id="vyn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="vy" type="range" min="900" max="1200" step="10"></div>
         <p class="note" id="dimNote" style="margin:8px 0 0"></p>
+        <div id="plechBox" hidden style="margin-top:18px">
+          <p class="sub-h">Tloušťka plechu</p><div class="grid g4" id="plechs"></div>
+          <p class="note" id="plechNote" style="margin:6px 0 0"></p>
+        </div>
       </div>
 
       <div class="step">
@@ -392,16 +394,16 @@
 <script src="assets/zabradli/motiv-medved.js?v=20261014b"></script>
 <script src="assets/zabradli/motiv-smrky.js?v=20261014b"></script>
 <script src="assets/zabradli/motiv-los.js?v=20261014b"></script>
-<script src="assets/zabradli/motiv-motyl.js?v=20261014h"></script>
-<script src="assets/zabradli/motiv-motyl-a.js?v=20261014h"></script>
-<script src="assets/zabradli/motiv-motyl-b.js?v=20261014h"></script>
-<script src="zabradli-core.js?v=20261014h"></script>
+<script src="assets/zabradli/motiv-motyl.js?v=20261014i"></script>
+<script src="assets/zabradli/motiv-motyl-a.js?v=20261014i"></script>
+<script src="assets/zabradli/motiv-motyl-b.js?v=20261014i"></script>
+<script src="zabradli-core.js?v=20261014i"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261014h') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261014i') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -499,7 +501,7 @@
   // motivy pro šikminy se stahují, až je pole na schodišti potřebuje
   const loading = {};
   window.ZabradliNacti = (id, a) => {
-    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014h';
+    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014i';
     if (loading[f]) return; loading[f] = true;
     const sc = document.createElement('script'); sc.src = f;
     sc.onload = () => { if (cfg) render(); };
@@ -554,6 +556,7 @@
       (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : id === 'L' ? set({ vypln: 'laser', rada: 'abstrakt', sloupky: true }) : id === 'P' ? set({ vypln: 'laser', rada: 'priroda', sloupky: true }) : set({ sloupky: id === 'A', vypln: 'standard' }));
     const prir = cfg.vypln === 'laser' && cfg.rada === 'priroda';
     $('motivBox').hidden = cfg.vypln !== 'laser' || prir; $('prirodaBox').hidden = !prir;
+    $('plechBox').hidden = !prir;
     if (prir) renderPriroda();
     else if (cfg.vypln === 'laser') group($('motivs'), Zb.MOTIFS.filter((m) => m.rada !== 'priroda'), (m) => optBtn(m.id, m.id === cfg.motiv, m.lab, m.sub), (id) => set({ motiv: id }));
     $('postBox').hidden = !cfg.sloupky || cfg.vypln === 'geometricky';
