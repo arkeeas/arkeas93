@@ -7,7 +7,7 @@
    - DXF: obrys + výřezy jako uzavřené křivky; STEP projde validátorem
    Použití: node tests/kontrola-zabradli-priroda.js */
 require("../core.js"); require("../gen.js");
-["strom", "bunky", "jelen", "medved", "smrky", "los", "motyl", "motyl-a", "motyl-b"].forEach((m) => require("../assets/zabradli/motiv-" + m + ".js"));
+["strom", "bunky", "jelen", "medved", "smrky", "los", "motyl", "motyl-a", "motyl-b", "kachny"].forEach((m) => require("../assets/zabradli/motiv-" + m + ".js"));
 require("fs").readdirSync(__dirname + "/../assets/zabradli/schody").forEach((f) => require("../assets/zabradli/schody/" + f));
 require("../zabradli-core.js");
 const Z = globalThis.Zabradli, G = globalThis.Generator, { validate } = require("./validate-step.js");
@@ -56,7 +56,9 @@ function clipCheck(m) {
     if (pl.every((q) => planes.every(([f]) => f(q) >= 0))) return;                // celý uvnitř
     let cnt = 0;
     for (let x = b[0] + 0.13; x < b[2]; x += 0.5) for (let y = b[1] + 0.11; y < b[3]; y += 0.5) if (inside([x, y], pl) && planes.every(([f]) => f([x, y]) >= 0)) cnt++;
-    tot++; if (Math.abs(cnt * 0.25 - pa) > 0.03 * pa + 25) bad++;
+    // chyba počítání mřížkou 0,5 mm je až ~¼ buňky na mm obvodu – u štíhlého kusu podél okraje víc než 3 % plochy
+    const per = pieces.reduce((a, q) => a + q.reduce((b, p, j) => b + Math.hypot(q[(j + 1) % q.length][0] - p[0], q[(j + 1) % q.length][1] - p[1]), 0), 0);
+    tot++; if (Math.abs(cnt * 0.25 - pa) > 0.03 * pa + 25 + 0.15 * per) bad++;
   });
   const sumPanel = pn.holesXY.reduce((a, q) => a + Math.abs(area(q)), 0);
   // drobné kusy u okraje, které by nechaly úzký můstek, konfigurátor záměrně vynechá nebo výřez u okraje ustřihne dál – nanejvýš 3 % plochy
@@ -79,6 +81,8 @@ const CASES = [
   ["smrky posun 0 a 1, patky, plech 3", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, anchor: "patka", plech: 3, pole: [{ m: "smrky", p: 0 }, { m: "smrky", p: 1 }] }],
   ["rozteč 700, čelo, plech 6", { segs: [{ L: 2100, rise: 0 }], postPitch: 700, anchor: "celo", plech: 6, pole: [{ m: "medved" }, { m: "jelen" }, { m: "smrky" }] }],
   ["los, posun 0 a 1, plech 5", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 5, pole: [{ m: "los", p: 0 }, { m: "los", p: 1 }] }],
+  ["kachny, posun 0 a 1, plech 4", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 4, pole: [{ m: "kachny", p: 0 }, { m: "kachny", p: 1 }] }],
+  ["kachny + los + jelen, rozteč 1000", { segs: [{ L: 3000, rise: 0 }], postPitch: 1000, pole: [{ m: "kachny", p: 0.5 }, { m: "los" }, { m: "jelen", p: 0.3 }] }],
   ["schody 30° nahoru", { segs: [{ L: 2600, rise: 1500, steps: 9 }], anchor: "patka", postPitch: 1100, pole: [{ m: "los", p: 0.3 }, { m: "smrky" }, { m: "los", p: 1 }] }],
   ["schody 35° dolů (zrcadlo)", { segs: [{ L: 2400, rise: -1700, steps: 9 }], pole: [{ m: "los", p: 1 }, { m: "smrky", p: 0 }, { m: "los", p: 0 }] }],
   ["schody 40° nahoru", { segs: [{ L: 2400, rise: 2014, steps: 11 }], pole: [{ m: "los", p: 0.5 }, { m: "smrky", p: 1 }, { m: "los" }] }],
@@ -125,7 +129,7 @@ CASES.forEach(([lab, c], ci) => {
     const nPoly = (txt.match(/\nPOLYLINE\n/g) || []).length;
     if (nPoly !== d.polys.length || d.polys.length !== r.part.pn.holesXY.length) fail(lab, "DXF: " + nPoly + " výřezů místo " + r.part.pn.holesXY.length);
     if (Math.min(...d.poly.flat()) < -1e-6) fail(lab, "DXF má záporné souřadnice");
-    if (!/_plech\d_motiv-(jelen|medved|smrky|los|motyl(?:-a|-b)?)(@\d+)?_/.test(r.file)) fail(lab, "název DXF " + r.file);
+    if (!/_plech\d_motiv-(jelen|medved|smrky|los|kachny|motyl(?:-a|-b)?)(@\d+)?_/.test(r.file)) fail(lab, "název DXF " + r.file);
   });
   if (ci === 1) { const st = validate(G.stepFile("priroda", lay.members.map((m) => m.solid)), "priroda"); if (st.errs.length) fail(lab, "STEP: " + st.errs.slice(0, 2).join("; ")); }
   console.log((fails ? "…   " : "OK   ") + lab.padEnd(38) + " polí " + panels.length + "  plech " + Array.from(new Set(panels.map((m) => Math.round(m.w) + "×" + Math.round(m.l)))).join(", ") + " × " + cfg.plech +
@@ -137,6 +141,8 @@ nope("sklon 20°", { segs: [{ L: 3000, rise: 1092, steps: 8 }], motiv: "los" }, 
 nope("sklon 45°", { segs: [{ L: 2000, rise: 2000, steps: 11 }], motiv: "smrky" }, /jiný sklon/);
 nope("jelen na schodech", { segs: [{ L: 2600, rise: 1500, steps: 9 }], pole: [{ m: "jelen" }, { m: "los" }, { m: "los" }] }, /jen motivy/);
 nope("medvěd na schodech", { segs: [{ L: 2600, rise: 1500, steps: 9 }], pole: [{ m: "los" }, { m: "medved" }, { m: "los" }] }, /jen motivy/);
+nope("kachny na schodech", { segs: [{ L: 2600, rise: 1500, steps: 9 }], pole: [{ m: "los" }, { m: "kachny" }, { m: "los" }] }, /jen motivy/);
+nope("kachny s plechem 3", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 3, pole: [{ m: "kachny" }, { m: "kachny" }] }, /nejde pro vybrané motivy/);
 nope("výška 1200 z boku", { segs: [{ L: 3000, rise: 0 }], vyska: 1200 }, /moc vysoké/);
 // tloušťka: rozmezí z motivů, nabídka a doporučení
 const rg = Z.plechRange(["jelen", "medved", "smrky"]);

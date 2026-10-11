@@ -450,5 +450,18 @@
     "fit": true
    }
   ]
+ },
+ {
+  "id": "kachny",
+  "lab": "Kachny u rybníka",
+  "sub": "potáplice, kachny, orobince",
+  "W": 1750.0,
+  "H": 820.0,
+  "web": 6.0,
+  "ball": 99,
+  "open": 0.423,
+  "n": 113,
+  "cutM": 40.2,
+  "kids": 0
  }
 ]

@@ -36,6 +36,7 @@ SCENES = [  # id, popis, rámeček scény v SVG (x0, y0, x1, y1), zvířata [x o
     ('motyl-a','Motýl A',        'motýl s květy', None,                         []),
     ('motyl-b','Motýl B',        'motýl s květy', None,                         []),
     ('motyl',  'Motýl C',        'velký motýl mezi rostlinami', None,            []),
+    ('kachny', 'Kachny u rybníka', 'potáplice, kachny, orobince', None,       None),   # rám, anim: kachny_orobince.py
 ]
 
 def disk(r_mm):
@@ -175,7 +176,7 @@ def prep_los(svg):
 
 LOS_SPRITE = []
 
-def clean(mat, pad, WEB_R=WEB_R, HOLE_MIN=HOLE_MIN):
+def clean(mat, pad, WEB_R=WEB_R, HOLE_MIN=HOLE_MIN, smooth=False):
     """otvory ≥ HOLE_MIN, ocel ≥ WEB_R, žádné volné ostrůvky; opakuje se, protože smazaný ostrůvek nebo můstek
     k ptákovi může vedle sebe udělat nové úzké místo"""
     M = mat.astype(np.uint8)
@@ -186,6 +187,10 @@ def clean(mat, pad, WEB_R=WEB_R, HOLE_MIN=HOLE_MIN):
             H = cv2.morphologyEx(1 - M, cv2.MORPH_OPEN, disk(HOLE_MIN / 2))          # štěrbiny pryč
             M = 1 - H
             thin = M & (1 - cv2.morphologyEx(M, cv2.MORPH_OPEN, disk(WEB_R / 2)))   # tenká ocel
+            if smooth:   # jednotlivé pixely ze schodů rastru na hladké křivce – z nich by byly hrbolky Ø WEB_R (u Kachen nápadné)
+                n, lab, st, _c = cv2.connectedComponentsWithStats(thin, connectivity=8)
+                small = np.zeros(n, bool); small[1:] = st[1:, cv2.CC_STAT_AREA] < 6
+                thin[small[lab]] = 0
             M = M | cv2.dilate(thin, disk(WEB_R / 2))
             frame(M)
         n, lab, st, _c = cv2.connectedComponentsWithStats(M, connectivity=8)
@@ -364,7 +369,10 @@ def main(svg_path):
     index = json.load(open(index_path)) if only_motyl and os.path.exists(index_path) else []
     for sid, lab, sub, box, anim in SCENES:
         if only_motyl and sid not in MOTYL_IDS: continue
-        if sid == 'los':
+        if sid == 'kachny':
+            from kachny_orobince import prep_kachny, ANIM
+            mat, _z = prep_kachny(svg, H_MM); anim = ANIM
+        elif sid == 'los':
             mat, zone = prep_los(svg)
             mat = add_branches(mat, avoid=zone)           # velký otvor nad losem přepaží větev (ne přes losa)
         elif sid in MOTYL_IDS:
@@ -383,7 +391,7 @@ def main(svg_path):
         fine = FINE.get(sid)                       # jemný motiv: menší můstek a otvor (a tím i nižší nejsilnější plech)
         wb = fine if fine else WEB_TARGETS.get(sid, WEB)
         hm = fine if fine else HOLE_MIN
-        M = clean(mat, pad, WEB_R=wb + 0.9, HOLE_MIN=hm)
+        M = clean(mat, pad, WEB_R=wb + 0.9, HOLE_MIN=hm, smooth=(sid == 'kachny'))   # vyhlazení jen u Kachen: hladké obrysy
         ball, web, opr, bpos = measure(M, pad, WEB=wb)
         eps = 0.8 if sid in MOTYL_IDS else EPS
         holes, kids = trace(M, pad, HOLE_MIN=hm, eps=eps)
