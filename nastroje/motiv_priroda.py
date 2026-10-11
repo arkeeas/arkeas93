@@ -22,7 +22,8 @@ WEB = 6.0                    # nejužší můstek oceli (mm) → plech max 6 mm
 WEB_R = 6.9                  # v rastru se drží širší (rezerva na zjednodušení obrysu ±0,3 mm a mřížku 0,5 mm)
 HOLE_MIN = 6.0               # nejužší otvor (mm)
 FINE = {'los': 5.0}           # motivy s jemnější kresbou: můstek a otvor 5 mm → plech nejvýš 5 mm
-WEB_TARGETS = {'motyl': 8.0}  # na šikminách se geometrická transformace lokálně zúží; držíme rezervu
+MOTYL_IDS = ('motyl-a', 'motyl-b', 'motyl')
+WEB_TARGETS = {sid: 8.0 for sid in MOTYL_IDS}  # na šikminách se geometrická transformace lokálně zúží; držíme rezervu
 ISL_KEEP = 300.0             # ostrůvek větší než tolik mm² se připojí, menší zmizí
 EPS = 0.3                    # tolerance zjednodušení obrysu (mm)
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -32,7 +33,9 @@ SCENES = [  # id, popis, rámeček scény v SVG (x0, y0, x1, y1), zvířata [x o
     ('medved', 'Medvěd',         'medvěd, srnec, smrky', (364, 294, 660, 478), [[970, 1319, 1], [280, 410, 0]]),
     ('smrky',  'Smrkový les',    'smrky a hejno ptáků',  (672, 294, 992, 478), []),
     ('los',    'Los',            'los, ptáci, smrky',    None,                 [[609, 1070, 1]]),
-    ('motyl',  'Motýl',          'velký motýl mezi rostlinami', None,           []),
+    ('motyl-a','Motýl A',        'motýl s květy', None,                         []),
+    ('motyl-b','Motýl B',        'motýl s květy', None,                         []),
+    ('motyl',  'Motýl C',        'velký motýl mezi rostlinami', None,            []),
 ]
 
 def disk(r_mm):
@@ -236,7 +239,7 @@ def trace(M, pad, HOLE_MIN=HOLE_MIN, eps=EPS):
 # ---------------------------------------------------------------- schodiště
 # na schodiště jen scény, které zkosení snesou: Los (kreslený pro schody) a Smrkový les (jen svislé stromy).
 # Jelen a Medvěd mají vodorovné větve a břehy a zvířata srostlá se stromy – zkosené vypadají špatně, zůstávají jen na rovinu.
-STAIRS = ('smrky', 'los', 'motyl')
+STAIRS = ('smrky', 'los') + MOTYL_IDS
 ANGLES = [25.0, 27.5, 30.0, 32.5, 35.0, 37.5, 40.0]       # sklony šikmin; konfigurátor vezme nejbližší (±1,25°), na druhou stranu zrcadlí
 # zvířata, která na šikmině zůstanou vzpřímená: x od, x do, y od, y do (mm ve scéně od spodu), hlavní
 SPRITES = {'jelen': [(975, 1430, 55, 540, 1), (265, 415, 55, 500, 0)],
@@ -360,12 +363,12 @@ def main(svg_path):
     index_path = os.path.join(ROOT, 'assets', 'zabradli', 'priroda', 'index.json')
     index = json.load(open(index_path)) if only_motyl and os.path.exists(index_path) else []
     for sid, lab, sub, box, anim in SCENES:
-        if only_motyl and sid != 'motyl': continue
+        if only_motyl and sid not in MOTYL_IDS: continue
         if sid == 'los':
             mat, zone = prep_los(svg)
             mat = add_branches(mat, avoid=zone)           # velký otvor nad losem přepaží větev (ne přes losa)
-        elif sid == 'motyl':
-            src = cv2.imread(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', 'motyl_predloha.png'), cv2.IMREAD_GRAYSCALE)
+        elif sid in MOTYL_IDS:
+            src = cv2.imread(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', sid + '_predloha.png'), cv2.IMREAD_GRAYSCALE)
             if src is None: raise FileNotFoundError('Chybí zdrojový obrázek motýlího motivu.')
             src = cv2.resize(src, (int(round(src.shape[1] * (H_MM / (src.shape[0] * PX)))), int(round(H_MM / PX))), interpolation=cv2.INTER_NEAREST)
             mat = add_branches((src < 127).astype(np.uint8))
@@ -382,7 +385,7 @@ def main(svg_path):
         hm = fine if fine else HOLE_MIN
         M = clean(mat, pad, WEB_R=wb + 0.9, HOLE_MIN=hm)
         ball, web, opr, bpos = measure(M, pad, WEB=wb)
-        eps = 0.8 if sid == 'motyl' else EPS
+        eps = 0.8 if sid in MOTYL_IDS else EPS
         holes, kids = trace(M, pad, HOLE_MIN=hm, eps=eps)
         Wmm = (M.shape[1] - 2 * pad) * PX
         cut = sum(sum(math.hypot(h[3*i] - h[3*((i+1) % (len(h)//3))], h[3*i+1] - h[3*((i+1) % (len(h)//3))+1]) for i in range(len(h)//3)) for h in holes) / 1000
@@ -408,8 +411,8 @@ def main(svg_path):
         open(os.path.join(ROOT, 'assets', 'zabradli', 'motiv-' + sid + '.js'), 'w').write(js)
         if not ONLY_FLAT and sid in STAIRS: info['schody'] = stair_variants(sid, lab, raw, anim, wb, hm, eps=eps)
     if only_motyl:
-        motyl = next(item for item in reversed(index) if item.get('id') == 'motyl')
-        index = [item for item in index if item.get('id') != 'motyl'] + [motyl]
+        variants = [item for item in index if item.get('id') in MOTYL_IDS]
+        index = [item for item in index if item.get('id') not in MOTYL_IDS] + variants
     json.dump(index, open(index_path, 'w'), ensure_ascii=False, indent=1)
 
 ONLY_FLAT = '--bez-schodu' in sys.argv

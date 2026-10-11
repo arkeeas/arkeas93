@@ -1,10 +1,10 @@
-/* Laserový motiv řady Příroda „Motýl“ pro šikminu 32.5° (schody stoupají doprava, na opačnou stranu zrcadlit).
+/* Laserový motiv řady Příroda „Motýl C“ pro šikminu 32.5° (schody stoupají doprava, na opačnou stranu zrcadlit).
    Souřadnice výřezu [u, w, bulge]: u vodorovně podél pole, w svisle nad šikmou spodní hranou scény (mm).
    Zvířata vzpřímená, stromy svislé. Generuje nastroje/motiv_priroda.py – ručně neupravovat. */
 (function (root) {
   'use strict';
   const M = root.ZabradliMotivy = root.ZabradliMotivy || {};
-  M["motyl@325"] = { id: "motyl@325", base: "motyl", lab: "Motýl", rada: 'priroda', mode: 'crop', slope: 32.5, W: 1393.5, H: 820.0, web: 8.0, holeMin: 6.0, ball: 70, open: 0.091, animFit: true,
+  M["motyl@325"] = { id: "motyl@325", base: "motyl", lab: "Motýl C", rada: 'priroda', mode: 'crop', slope: 32.5, W: 1393.5, H: 820.0, web: 8.0, holeMin: 6.0, ball: 70, open: 0.091, animFit: true,
     anim: [],
     holes: [
       [52.75,123.14,0,47.75,125.83,0,44.25,121.56,0,38.25,123.38,0,31.25,121.84,0,31.25,64.84,0,34.25,60.93,0,37.75,61.2,0,37.25,66.02,0,39.25,67.74,0,42.25,66.83,0,47.25,63.15,0,51.25,65.1,0,50.75,71.92,0,52.75,73.64,0,56.25,73.41,0,56.25,75.41,0,65.25,87.68,0,65.25,92.18,0,69.25,94.13,0,69.25,96.13,0,65.25,103.18,0,65.75,107.36,0,64.25,109.82,0,57.25,115.78,0],

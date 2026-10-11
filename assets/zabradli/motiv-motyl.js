@@ -1,10 +1,10 @@
-/* Laserový motiv řady Příroda „Motýl“ – scéna 1393.5 × 820.0 mm na ořez (dole ukotveno, vystředěno), počátek vlevo dole, mm.
+/* Laserový motiv řady Příroda „Motýl C“ – scéna 1393.5 × 820.0 mm na ořez (dole ukotveno, vystředěno), počátek vlevo dole, mm.
    Výřez = uzavřená křivka [x, y, bulge, …] (bulge 0 = úsečka). Zdroj: AI vektor, vyčištěno nastroje/motiv_priroda.py:
    můstky ≥ 8.0 mm, otvor ≥ 6.0 mm, největší otvor koule Ø64 mm, podíl otvorů 19 %. Generuje se – ručně neupravovat. */
 (function (root) {
   'use strict';
   const M = root.ZabradliMotivy = root.ZabradliMotivy || {};
-  M["motyl"] = { id: "motyl", lab: "Motýl", sub: "velký motýl mezi rostlinami", rada: 'priroda', mode: 'crop', schody: true, W: 1393.5, H: 820.0, web: 8.0, holeMin: 6.0, ball: 64, open: 0.189,
+  M["motyl"] = { id: "motyl", lab: "Motýl C", sub: "velký motýl mezi rostlinami", rada: 'priroda', mode: 'crop', schody: true, W: 1393.5, H: 820.0, web: 8.0, holeMin: 6.0, ball: 64, open: 0.189,
     anim: [],
     holes: [
       [745.25,73.25,0,743.25,75.25,0,738.25,76.75,0,734.25,80.25,0,730.25,79.25,0,720.75,81.75,0,711.75,79.25,0,709.25,79.75,0,697.75,73.75,0,698.25,65.25,0,697.25,62.75,0,703.75,60.75,0,722.25,60.75,0,728.25,66.25,0,743.75,69.75,0],

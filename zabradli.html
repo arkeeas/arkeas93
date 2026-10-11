@@ -241,7 +241,7 @@
           <p class="note" id="plechNote" style="margin:6px 0 0"></p>
           <p class="sub-h">Stejný motiv do všech polí</p><div class="grid g4" id="prAll"></div>
           <p class="sub-h">Motiv v jednotlivých polích</p>
-          <p class="note" style="margin:0 0 8px">Posuvníkem posunete, která část scény bude v poli vidět. Hlavní zvíře zůstane vždy celé, ostatní buď celé, nebo vůbec – posuvník jinam nepustí.</p>
+          <p class="note" style="margin:0 0 8px">Posuvníkem posunete, která část scény bude v poli vidět. Hlavní motiv zůstane vždy celý, ostatní buď celé, nebo vůbec – posuvník jinam nepustí.</p>
           <div id="poleList"></div>
         </div>
         <div class="field" id="postBox" style="margin-top:14px"><div class="row"><label for="pp">Rozteč sloupků (nejvýš)</label><span class="num"><input id="ppn" type="number" inputmode="numeric" aria-label="Rozteč sloupků v mm"> mm</span></div><input id="pp" type="range" min="600" max="1500" step="50"></div>
@@ -382,14 +382,16 @@
 <script src="assets/zabradli/motiv-medved.js?v=20261014b"></script>
 <script src="assets/zabradli/motiv-smrky.js?v=20261014b"></script>
 <script src="assets/zabradli/motiv-los.js?v=20261014b"></script>
-<script src="assets/zabradli/motiv-motyl.js?v=20261014c"></script>
-<script src="zabradli-core.js?v=20261014c"></script>
+<script src="assets/zabradli/motiv-motyl.js?v=20261014d"></script>
+<script src="assets/zabradli/motiv-motyl-a.js?v=20261014d"></script>
+<script src="assets/zabradli/motiv-motyl-b.js?v=20261014d"></script>
+<script src="zabradli-core.js?v=20261014d"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261014c') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261014d') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -440,6 +442,8 @@
 
   /* ---------- Příroda: tloušťka, motiv a posun výřezu po polích ---------- */
   const thumbs = {};
+  const MOTYL_CHOICES = ['motyl-a', 'motyl-b', 'motyl'];
+  const hasMotylThumb = (id) => MOTYL_CHOICES.indexOf(id) >= 0;
   const MOT = () => window.ZabradliMotivy || {};
   // náhled scény (ocel tmavě, výřezy světle), šířka 320 px; šikmina se kreslí zkosená (y = w + |t|·u), zrcadlo převrácené
   function thumb(key, mirror) {
@@ -472,10 +476,17 @@
     poly.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.fill('evenodd');
     g.strokeStyle = '#c0392b'; g.lineWidth = 2; g.beginPath(); poly.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.stroke();
   }
+  function motifChoice(m, on, dis, title) {
+    const preview = hasMotylThumb(m.id) ? '<canvas data-motif-thumb="' + m.id + '" style="width:100%;height:auto;display:block" aria-label="Náhled ' + esc(m.lab) + '"></canvas>' : m.sub;
+    return optBtn(m.id, on, m.lab, preview, '', dis, title);
+  }
+  function renderMotifThumbs(rootEl) {
+    rootEl.querySelectorAll('canvas[data-motif-thumb]').forEach((cv) => drawField(cv, cv.dataset.motifThumb, null, 0.5));
+  }
   // motivy pro šikminy se stahují, až je pole na schodišti potřebuje
   const loading = {};
   window.ZabradliNacti = (id, a) => {
-    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014c';
+    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014d';
     if (loading[f]) return; loading[f] = true;
     const sc = document.createElement('script'); sc.src = f;
     sc.onload = () => { if (cfg) render(); };
@@ -491,15 +502,17 @@
     group($('plechs'), Zb.PANEL.tList.map((t) => ({ id: String(t), t })), (o) => optBtn(o.id, o.t === cfg.plech, o.t + ' mm', o.t === rg.rec ? 'doporučeno' : rg.ok.indexOf(o.t) < 0 ? (o.t > rg.max ? 'motiv je na to jemný' : 'zkroutí se') : '', '', rg.ok.indexOf(o.t) < 0,
       rg.ok.indexOf(o.t) < 0 ? (o.t > rg.max ? 'Nejužší můstek / otvor motivu je ' + rg.max + ' mm – silnější plech by se při pálení přehřál.' : 'Tenký plech s tolika výřezy se zkroutí.') : ''), (id) => set({ plech: Number(id) }));
     $('plechNote').textContent = 'Pro vybrané motivy jde plech ' + rg.min + '–' + rg.max + ' mm. Silnější je tužší a těžší, cena řezu roste s tloušťkou.';
-    group($('prAll'), ids.map((id) => Zb.motifOf(id)), (m) => optBtn(m.id, used.length === 1 && used[0] === m.id, m.lab, m.sub), (id) => set({ motiv: id, pole: pn.map(() => ({ m: id, p: 0.5 })) }));
+    group($('prAll'), ids.map((id) => Zb.motifOf(id)), (m) => motifChoice(m, used.length === 1 && used[0] === m.id), (id) => set({ motiv: id, pole: pn.map(() => ({ m: id, p: 0.5 })) }));
+    renderMotifThumbs($('prAll'));
     const el = $('poleList');
     el.innerHTML = pn.map((f, i) => '<div class="box" style="display:block;margin:0 0 10px;padding:10px">' +
       '<div class="row" style="margin-bottom:6px"><strong>Pole ' + f.field + '</strong><span class="note">' + (f.slope ? 'schodiště ' + nf(f.slope, 1) + '° · ' : '') + 'plech ' + nf(f.w) + ' × ' + nf(f.h) + ' mm</span></div>' +
-      '<div class="grid g4" data-pm="' + i + '">' + ids.map((id) => { const m = Zb.motifOf(id), no = !!f.slope && m.schody === false; return optBtn(id, pole[i].m === id, m.lab, no ? 'jen na rovinu' : '', '', no && pole[i].m !== id, no ? 'Na schodišti vypadá zkosená scéna špatně – vyberte Los nebo Smrkový les.' : ''); }).join('') + '</div>' +
+      '<div class="grid g4" data-pm="' + i + '">' + ids.map((id) => { const m = Zb.motifOf(id), no = !!f.slope && m.schody === false; return motifChoice(m, pole[i].m === id, no && pole[i].m !== id, no ? 'Na schodišti vypadá zkosená scéna špatně – vyberte Los, Smrkový les nebo Motýla.' : ''); }).join('') + '</div>' +
       '<canvas data-cv="' + i + '" style="width:100%;height:auto;margin-top:8px;border-radius:6px;display:block" aria-label="Náhled výřezu scény v poli ' + f.field + '"></canvas>' +
       (f.ok && f.crop && f.crop.n > 1 ? '<input type="range" data-pp="' + i + '" min="0" max="1000" step="1" value="' + Math.round(pole[i].p * 1000) + '" aria-label="Posun výřezu v poli ' + f.field + '" style="width:100%;margin-top:6px">'
         : f.ok ? '<p class="note" style="margin:6px 0 0">Poloha je daná – hlavní zvíře se do pole vejde jen takhle.</p>' : '') +
       (!f.ok ? '<p class="note" style="margin:6px 0 0;color:var(--bad-ink)">' + esc((f.steep ? WHY.steep : WHY[f.why]) || 'Pole nejde osadit.') + '</p>' : '') + '</div>').join('');
+    renderMotifThumbs(el);
     pn.forEach((f, i) => drawField(el.querySelector('[data-cv="' + i + '"]'), pole[i].m, f, pole[i].p));
     const setPole = (i, ch) => { const np = Zb.fieldsOf(cfg).slice(0, pn.length).map((x) => Object.assign({}, x)); Object.assign(np[i], ch); set({ pole: np }); };
     el.querySelectorAll('[data-pm]').forEach((gEl) => gEl.querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => setPole(Number(gEl.dataset.pm), { m: b.dataset.id, p: 0.5 }))));
