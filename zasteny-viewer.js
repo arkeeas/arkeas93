@@ -41,10 +41,11 @@
       const plate = new THREE.MeshStandardMaterial({ color: colors[current.finish], metalness: 0.45, roughness: 0.5, side: THREE.DoubleSide });
       const depth = 40, t = 2;
       // Hollow 40 × 40 mm frame, with the sheet inset into its front face.
-      bar(W, depth, depth, W / 2, H - depth / 2, 0, metal);
-      bar(W, depth, depth, W / 2, depth / 2, 0, metal);
-      bar(depth, Math.max(1, H - 2 * depth), depth, depth / 2, H / 2, 0, metal);
-      bar(depth, Math.max(1, H - 2 * depth), depth, W - depth / 2, H / 2, 0, metal);
+      const lower = L.frame[1].z, span = Math.max(1, W - 2 * depth);
+      bar(span, depth, depth, W / 2, H - depth / 2, 0, metal);
+      bar(span, depth, depth, W / 2, lower + depth / 2, 0, metal);
+      bar(depth, H, depth, depth / 2, H / 2, 0, metal);
+      bar(depth, H, depth, W - depth / 2, H / 2, 0, metal);
       const art = root.ZastenyArtwork || {}, contourData = art.contours || [];
       const shape = new THREE.Shape();
       shape.moveTo(0, 0); shape.lineTo(L.panel.width, 0); shape.lineTo(L.panel.width, L.panel.height); shape.lineTo(0, L.panel.height); shape.closePath();
@@ -62,8 +63,8 @@
       panelMesh.position.set(L.panel.x, L.panel.z, -depth / 2 - t / 2);
       panelMesh.scale.set(1, 1, 1); panelMesh.castShadow = true; product.add(panelMesh);
       // Two floor plates as shown in the fixed 800 × 2000 reference model.
-      for (const x of [W * 0.18, W * 0.82]) {
-        bar(Math.min(100, W * 0.22), 6, 220, x, 3, 0, metal);
+      for (const x of [depth / 2, W - depth / 2]) {
+        bar(40, 6, 100, x, 3, 0, metal);
       }
       camera.position.set(W * 1.1, H * 0.63, Math.max(W, H) * 1.28);
       camera.near = 1; camera.far = Math.max(20000, H * 10); camera.updateProjectionMatrix();

@@ -25,19 +25,20 @@
     return { ok: errors.length === 0, errors };
   }
   function layout(config) {
-    const c = normalize(config), wall = Math.min(40, c.width / 5, c.height / 10), rail = Math.min(40, wall);
-    const panel = { x: wall, z: wall + 40, width: Math.max(1, c.width - 2 * wall), height: Math.max(1, c.height - 2 * wall - 60) };
+    const c = normalize(config), rail = Math.min(40, c.width / 5, c.height / 3);
+    const lowerClearance = Math.min(150, Math.max(0, c.height - 3 * rail));
+    const panel = { x: rail, z: lowerClearance + rail, width: Math.max(1, c.width - 2 * rail), height: Math.max(1, c.height - lowerClearance - 2 * rail) };
     const art = root.ZastenyArtwork || {};
-    const sheet = art['sheet_mm'] || art.sheet_mm || [720, 1770];
+    const sheet = art.sheet_mm || [720, 1770];
     const scale = Math.min(panel.width / sheet[0], panel.height / sheet[1]);
     const motifWidth = sheet[0] * scale, motifHeight = sheet[1] * scale;
     return {
       outer: { width: c.width, height: c.height, depth: 100 }, panel,
       frame: [
-        { x: 0, z: 0, width: c.width, height: rail },
-        { x: 0, z: c.height - rail, width: c.width, height: rail },
-        { x: 0, z: rail, width: rail, height: c.height - 2 * rail },
-        { x: c.width - rail, z: rail, width: rail, height: c.height - 2 * rail }
+        { x: rail, z: c.height - rail, width: Math.max(1, c.width - 2 * rail), height: rail },
+        { x: rail, z: lowerClearance, width: Math.max(1, c.width - 2 * rail), height: rail },
+        { x: 0, z: 0, width: rail, height: c.height },
+        { x: c.width - rail, z: 0, width: rail, height: c.height }
       ],
       motif: { scale, x: panel.x + (panel.width - motifWidth) / 2, z: panel.z + (panel.height - motifHeight) / 2, width: motifWidth, height: motifHeight }
     };

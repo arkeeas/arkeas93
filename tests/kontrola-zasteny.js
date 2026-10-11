@@ -3,6 +3,9 @@ const assert = require('node:assert/strict');
 const Z = require('../zasteny-core.js');
 
 assert.deepEqual(Z.normalize({}), { width: 800, height: 2000, finish: 'black', qty: 1 });
+const reference = Z.layout({ width: 800, height: 2000, finish: 'black', qty: 1 });
+assert.deepEqual(reference.panel, { x: 40, z: 190, width: 720, height: 1770 });
+assert.equal(reference.frame[1].z, 150);
 assert.equal(Z.validEmail('rené@example.cz'), true);
 assert.equal(Z.validEmail('not an email'), false);
 assert.deepEqual(Z.normalize({ finish: 'purple', qty: 0 }), { width: 800, height: 2000, finish: 'black', qty: 1 });
