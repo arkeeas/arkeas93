@@ -82,6 +82,7 @@ const CASES = [
   ["rozteč 700, čelo, plech 6", { segs: [{ L: 2100, rise: 0 }], postPitch: 700, anchor: "celo", plech: 6, pole: [{ m: "medved" }, { m: "jelen" }, { m: "smrky" }] }],
   ["los, posun 0 a 1, plech 5", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 5, pole: [{ m: "los", p: 0 }, { m: "los", p: 1 }] }],
   ["kachny, posun 0 a 1, plech 4", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 4, pole: [{ m: "kachny", p: 0 }, { m: "kachny", p: 1 }] }],
+  ["kachny jen s kachnami vlevo (posun 0), rozteč 1000", { segs: [{ L: 2000, rise: 0 }], postPitch: 1000, pole: [{ m: "kachny", p: 0 }, { m: "kachny", p: 0.6 }] }],
   ["kachny + los + jelen, rozteč 1000", { segs: [{ L: 3000, rise: 0 }], postPitch: 1000, pole: [{ m: "kachny", p: 0.5 }, { m: "los" }, { m: "jelen", p: 0.3 }] }],
   ["schody 30° nahoru", { segs: [{ L: 2600, rise: 1500, steps: 9 }], anchor: "patka", postPitch: 1100, pole: [{ m: "los", p: 0.3 }, { m: "smrky" }, { m: "los", p: 1 }] }],
   ["schody 35° dolů (zrcadlo)", { segs: [{ L: 2400, rise: -1700, steps: 9 }], pole: [{ m: "los", p: 1 }, { m: "smrky", p: 0 }, { m: "los", p: 0 }] }],
@@ -119,6 +120,10 @@ CASES.forEach(([lab, c], ci) => {
     (M.anim || []).filter((a) => a[2]).forEach((a) => {
       const xs = [pn.map(a[0], 0)[0], pn.map(a[1], 0)[0]], xa = Math.min(...xs), xb = Math.max(...xs);
       if (xa < X0 - 1 || xb > X1 + 1) fail(lab, "pole " + (i + 1) + ": hlavní zvíře " + M.lab + " je uříznuté (" + xa.toFixed(0) + "–" + xb.toFixed(0) + " mimo " + X0.toFixed(0) + "–" + X1.toFixed(0) + ")");
+    });
+    if (!(M.anim || []).some((a) => a[2])) (M.anim || []).forEach((a) => {   // motiv bez hlavního zvířete (Kachny): každé zvíře celé, nebo vůbec
+      const xs = [pn.map(a[0], 0)[0], pn.map(a[1], 0)[0]], xa = Math.min(...xs), xb = Math.max(...xs);
+      if (!(xa >= X0 - 1 && xb <= X1 + 1) && !(xb <= X0 + 1 || xa >= X1 - 1)) fail(lab, "pole " + (i + 1) + ": zvíře " + a[0] + "–" + a[1] + " je uříznuté");
     });
     const cc = clipCheck(m); clipBad += cc.bad; clipTot += cc.tot;
   });

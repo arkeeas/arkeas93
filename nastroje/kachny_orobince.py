@@ -10,7 +10,7 @@ PX = 0.5
 WT = 1750.0                    # délka scény (mm)
 BOX_SVG = (243, 40, 744, 226)  # nad nejvyšší orobince, dole po čáru břehu (volné kaluže pod ní by byly ostrůvky)
 SEED = 8
-ANIM = [[1015, 1350, 1], [135, 620, 0]]   # potáplice (hlavní), kachny vlevo (na bidle + letící) – mm ve scéně
+ANIM = [[1015, 1350, 0], [135, 620, 0]]   # potáplice, kachny vlevo (na bidle + letící) – mm ve scéně; bez hlavního zvířete: posuvník jde i mimo potáplici, každé zvíře ale celé nebo vůbec
 
 def prep_kachny(svg, H_MM=820.0):
     """vrací (maska scény bez okraje v rozlišení PX, zóna zvířat)"""
