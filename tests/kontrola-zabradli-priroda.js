@@ -7,7 +7,7 @@
    - DXF: obrys + výřezy jako uzavřené křivky; STEP projde validátorem
    Použití: node tests/kontrola-zabradli-priroda.js */
 require("../core.js"); require("../gen.js");
-["strom", "bunky", "jelen", "medved", "smrky", "los"].forEach((m) => require("../assets/zabradli/motiv-" + m + ".js"));
+["strom", "bunky", "jelen", "medved", "smrky", "los", "motyl"].forEach((m) => require("../assets/zabradli/motiv-" + m + ".js"));
 require("fs").readdirSync(__dirname + "/../assets/zabradli/schody").forEach((f) => require("../assets/zabradli/schody/" + f));
 require("../zabradli-core.js");
 const Z = globalThis.Zabradli, G = globalThis.Generator, { validate } = require("./validate-step.js");
@@ -67,6 +67,10 @@ const base = { vypln: "laser", rada: "priroda" };
 const CASES = [
   ["rovné 3 m, výchozí", { segs: [{ L: 3000, rise: 0 }] }],
   ["tři motivy, posuny 0/½/1, z boku", { segs: [{ L: 3900, rise: 0 }], postPitch: 1300, pole: [{ m: "jelen", p: 0 }, { m: "medved", p: 1 }, { m: "smrky", p: 0.5 }] }],
+  ["motýl v botanickém motivu", { segs: [{ L: 3000, rise: 0 }], motiv: "motyl", pole: [{ m: "motyl" }, { m: "motyl" }] }],
+  ...[25, 27.5, 30, 32.5, 35, 37.5, 40].map((deg) => ["motýl na schodech " + deg + "°", {
+    segs: [{ L: 2600, rise: Math.round(2600 * Math.tan(deg * Math.PI / 180)), steps: 9 }], motiv: "motyl", pole: [{ m: "motyl" }, { m: "motyl" }]
+  }]),
   ["smrky posun 0 a 1, patky, plech 3", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, anchor: "patka", plech: 3, pole: [{ m: "smrky", p: 0 }, { m: "smrky", p: 1 }] }],
   ["rozteč 700, čelo, plech 6", { segs: [{ L: 2100, rise: 0 }], postPitch: 700, anchor: "celo", plech: 6, pole: [{ m: "medved" }, { m: "jelen" }, { m: "smrky" }] }],
   ["los, posun 0 a 1, plech 5", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 5, pole: [{ m: "los", p: 0 }, { m: "los", p: 1 }] }],
@@ -116,7 +120,7 @@ CASES.forEach(([lab, c], ci) => {
     const nPoly = (txt.match(/\nPOLYLINE\n/g) || []).length;
     if (nPoly !== d.polys.length || d.polys.length !== r.part.pn.holesXY.length) fail(lab, "DXF: " + nPoly + " výřezů místo " + r.part.pn.holesXY.length);
     if (Math.min(...d.poly.flat()) < -1e-6) fail(lab, "DXF má záporné souřadnice");
-    if (!/_plech\d_motiv-(jelen|medved|smrky|los)(@\d+)?_/.test(r.file)) fail(lab, "název DXF " + r.file);
+    if (!/_plech\d_motiv-(jelen|medved|smrky|los|motyl)(@\d+)?_/.test(r.file)) fail(lab, "název DXF " + r.file);
   });
   if (ci === 1) { const st = validate(G.stepFile("priroda", lay.members.map((m) => m.solid)), "priroda"); if (st.errs.length) fail(lab, "STEP: " + st.errs.slice(0, 2).join("; ")); }
   console.log((fails ? "…   " : "OK   ") + lab.padEnd(38) + " polí " + panels.length + "  plech " + Array.from(new Set(panels.map((m) => Math.round(m.w) + "×" + Math.round(m.l)))).join(", ") + " × " + cfg.plech +
@@ -134,6 +138,12 @@ const rg = Z.plechRange(["jelen", "medved", "smrky"]);
 if (rg.min !== 3 || rg.max !== 6 || rg.rec !== 5) fail("tloušťka", JSON.stringify(rg));
 const rgL = Z.plechRange(["jelen", "los"]);
 if (rgL.max !== 5 || rgL.ok.indexOf(6) >= 0) fail("tloušťka", "Los je jemnější – plech nejvýš 5 mm: " + JSON.stringify(rgL));
+if (!Z.MOTIFS.some((m) => m.id === "motyl" && m.rada === "priroda")) fail("katalog", "Motýl není volbou řady Příroda");
+[25, 27.5, 30, 32.5, 35, 37.5, 40].forEach((deg) => {
+  const v = globalThis.ZabradliMotivy["motyl@" + Math.round(deg * 10)];
+  if (!v || v.base !== "motyl" || v.animFit !== true || v.web < 8 - 1e-6 || v.ball > 110 || !v.holes.length)
+    fail("motýl – schody " + deg + "°", "chybí použitelná předpočítaná varianta");
+});
 nope("los s plechem 6", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 6, pole: [{ m: "los" }, { m: "jelen" }] }, /nejde pro vybrané motivy/);
 if (Z.normalize(Object.assign({}, base, { plech: 8 })).plech !== P.tDef) fail("tloušťka", "nepovolená tloušťka se nevrátila na výchozí");
 // ořez polygonu: konkávní „U“ přes hranu se rozpadne na dva kusy bez mostu po hraně

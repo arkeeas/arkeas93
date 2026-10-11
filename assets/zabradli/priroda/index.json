@@ -166,5 +166,76 @@
     "fit": true
    }
   ]
+ },
+ {
+  "id": "motyl",
+  "lab": "Motýl",
+  "sub": "velký motýl mezi rostlinami",
+  "W": 1393.5,
+  "H": 820.0,
+  "web": 8.0,
+  "ball": 64,
+  "open": 0.189,
+  "n": 183,
+  "cutM": 25.0,
+  "kids": 0,
+  "schody": [
+   {
+    "key": "motyl@250",
+    "deg": 25.0,
+    "ball": 67,
+    "web": 8.0,
+    "n": 184,
+    "fit": true
+   },
+   {
+    "key": "motyl@275",
+    "deg": 27.5,
+    "ball": 68,
+    "web": 8.0,
+    "n": 188,
+    "fit": true
+   },
+   {
+    "key": "motyl@300",
+    "deg": 30.0,
+    "ball": 69,
+    "web": 8.0,
+    "n": 189,
+    "fit": true
+   },
+   {
+    "key": "motyl@325",
+    "deg": 32.5,
+    "ball": 70,
+    "web": 8.0,
+    "n": 189,
+    "fit": true
+   },
+   {
+    "key": "motyl@350",
+    "deg": 35.0,
+    "ball": 71,
+    "web": 8.0,
+    "n": 184,
+    "fit": true
+   },
+   {
+    "key": "motyl@375",
+    "deg": 37.5,
+    "ball": 71,
+    "web": 8.0,
+    "n": 177,
+    "fit": true
+   },
+   {
+    "key": "motyl@400",
+    "deg": 40.0,
+    "ball": 71,
+    "web": 8.0,
+    "n": 170,
+    "fit": true
+   }
+  ]
  }
 ]

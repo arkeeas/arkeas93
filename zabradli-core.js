@@ -539,7 +539,8 @@
   const MOTIFS = [{ id: 'strom', lab: 'Stromy', sub: 'větve a listy', rada: 'abstrakt' }, { id: 'bunky', lab: 'Buňky', sub: 'organická síť', rada: 'abstrakt' },
     { id: 'jelen', lab: 'Jelen v lese', sub: 'jelen, srnec, smrky', rada: 'priroda' }, { id: 'medved', lab: 'Medvěd', sub: 'medvěd, srnec, smrky', rada: 'priroda' },
     { id: 'smrky', lab: 'Smrkový les', sub: 'smrky a hejno ptáků', rada: 'priroda' },
-    { id: 'los', lab: 'Los', sub: 'los, smrky, ptáci', rada: 'priroda' }];
+    { id: 'los', lab: 'Los', sub: 'los, smrky, ptáci', rada: 'priroda' },
+    { id: 'motyl', lab: 'Motýl', sub: 'velký motýl mezi rostlinami', rada: 'priroda' }];
   const PANEL = { gap: 5, t: 5, border: 25, motif: 'strom', minWidth: 300, tol3d: 0.4, tolDxf: 0.05, minWeb: 5, webTarget: 6, postMin: 700, postMax: 1300,
     // řada Příroda: scéna se nedeformuje, jen ořízne (posun volí zákazník) a rovnoměrně zvětší/zmenší na výšku pole v mezích sMin–sMax;
     // co zbude nad scénou, je plný pás plechu (do topMax mm v pořádku, víc nejde poptat)
@@ -1868,6 +1869,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261014b', MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, clipPlanes, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261014c', MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, clipPlanes, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
