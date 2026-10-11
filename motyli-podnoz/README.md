@@ -1,18 +1,19 @@
 # Motýlí podnož
 
-Model je zařazen v záložce **Umělecké** jako náhled dodaného STEP souboru. Náhled používá triangulovanou síť (59 104 trojúhelníků, 33 těles), odvozenou z `/home/arkeas/Desktop/cad_worker/motyli_podnoz.step` pomocí FreeCAD 1.1.3.
+Umělecká podnož používá aktualizovanou triangulovanou síť ze souboru `motyli_podnoz_jekl_40x40.step` (FreeCAD 1.1.3). Síť má 33 těles a 125 608 trojúhelníků. Je určena pouze pro zobrazení.
 
-## Ověřeno
+## Kontrola geometrie
 
-- Původní STEP se načetl jako platný B-rep s 33 platnými tělesy, 1 786 plochami a obálkou 1 532,526 × 842,028 × 728 mm.
-- Kontrola výrobního workflow nehlásila geometrickou chybu; celkový stav je `VAROVANI`.
-- Čtyři složitá tělesa kontrola označila jako pravděpodobně ohýbaný plech s nestandardním ohybem. Tloušťky z protokolu jsou heuristické odhady.
+- STEP se načetl jako 33 platných těles; audit nenašel geometrické chyby. Stav auditu je `VAROVANI`.
+- Rozměr výsledné náhledové sítě: 1 532,5 × 842,0 × 728 mm.
+- Audit B-rep uvádí obálku 1 532,5 × 842,0 × 732,0 mm, zatímco triangulovaná síť má výšku 728 mm. Před výrobou je potřeba tento 4mm rozdíl potvrdit v CADu.
+- Audit označil 28 těles jako možné ohýbané plechy s nestandardním ohybem. Jde o automatickou heuristiku a neověřuje průřezy jeklu 40×40. Materiál ocel je předpoklad; odhad hmotnosti 48,66 kg není výrobní údaj.
 
 ## Omezení
 
-- V konfigurátoru jsou rozměry zdrojové sestavy zobrazené jako pevné a nelze je měnit. Síť je určena pro vizualizaci, nikoli pro úpravy CAD geometrie.
-- Profilové průřezy, výrobní postupy, svary a záměr jednotlivých dotyků nebyly ověřeny proti výkresu ani zdrojovému editovatelnému CAD modelu.
+- Rozměry jsou v konfigurátoru pevné. Síť není parametrický ani editovatelný CAD model.
+- Profilové průřezy, výrobní postupy, svary a záměr dotyků nejsou ověřené vůči výkresu nebo zdrojovému editovatelnému CADu.
 - Cena, nosnost, pevnostní analýza a schválení pro výrobu nejsou k dispozici. UI je nezobrazuje jako ověřené.
-- Pro výrobní použití je nutné překreslit díly parametricky a zkontrolovat jejich spoje.
+- Před výrobou je nutné potvrdit průřezy a spoje v editovatelném CADu nebo výkresu.
 
-Podrobný protokol je v `kontrola.json`; charakteristiky a jejich zdroje jsou v `zadani_znaky.md`.
+Podrobný audit je v `kontrola.json`; znaky a předpoklady jsou v `zadani_znaky.md`.
