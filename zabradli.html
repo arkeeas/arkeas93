@@ -464,8 +464,9 @@
     $('motifSettings').hidden = cfg.vypln !== 'geometricky';
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
-    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
-      '<p class="sub-h">Motiv v plechu</p><div class="grid g2" id="motivs"></div><p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(cfg.motiv).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
+    $('profBox').innerHTML = (cfg.vypln === 'laser' ? '<p class="sub-h" style="margin-top:0">Motiv v plechu</p><div class="grid g2" id="motivs"></div>' : '') +
+      '<p class="sub-h"' + (cfg.vypln === 'laser' ? '' : ' style="margin-top:0"') + '>' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
+      '<p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(cfg.motiv).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
       '<p class="note" style="margin:8px 0 0">Vnější i vnitřní rám motivu tvoří dutý jekl 20×20×2 mm. Čtyři konce se seříznou na 45° a v rozích svaří do pravého úhlu; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
