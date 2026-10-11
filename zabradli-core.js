@@ -326,6 +326,7 @@
     const ov = overAllowed(o);
     o.overTop = ov.top ? Math.round(c.overTop == null ? 0 : num(c.overTop, 0, OVER_MAX, 0)) : 0;
     o.overBot = ov.bot ? Math.round(c.overBot == null ? (o.typ === 'B' ? 150 : 0) : num(c.overBot, 0, OVER_MAX, 0)) : 0;
+    o.motiv = MOTIFS.some((m) => m.id === c.motiv) ? c.motiv : PANEL.motif;
     if (o.vypln === 'laser') { o.overTop = 0; o.overBot = 0; }          // plech je jen v poli mezi madly
     o.base = pick(BASE, c.base, 'beton');
     o.facade = Math.round(num(c.facade, 0, 400, 200));
@@ -530,6 +531,7 @@
      Na šikmině je pole kosodélník: motiv se afinně roztáhne (svislé zůstane svislé) – můstky a otvory se
      přepočítají podle singulárních hodnot zobrazení (nejužší můstek × σmin, největší otvor × σmax).
      ====================================================================== */
+  const MOTIFS = [{ id: 'strom', lab: 'Stromy', sub: 'větve a listy' }, { id: 'bunky', lab: 'Buňky', sub: 'organická síť' }];
   const PANEL = { gap: 5, t: 5, border: 25, motif: 'strom', minWidth: 300, tol3d: 0.4, tolDxf: 0.05, minWeb: 5, webTarget: 6, postMin: 700, postMax: 1300 };
   /* výřezy plechu v jeho rovině (mm); tol = max. odchylka tětivy oblouku */
   const panelHoles = (m, tol) => [].concat.apply([], m.pn.motif.holes.map((h) => m.pn.shrink > 1e-9 ? untangle(shrinkLoop(bulgePoints(h, m.pn.map, m.pn.smax, tol), m.pn.shrink), PANEL.webTarget / 2 + 0.5) : [bulgePoints(h, m.pn.map, m.pn.smax, tol)]));
@@ -1474,7 +1476,7 @@
       lay = layoutA(pts.map((p) => add(p, [0, 0, zt])), Object.assign({ tube: pr.w, wall: pr.t, rail_spacing: zt - zbAxis, joint: jt.mode, over_bot: cfg.overBot,
         floor_off: zt, seg_steps: cfg.segs.map(stepsOf),
         pitch_flat: 106 + br.t, pitch_slope: 113 + br.t, post_max_flat: cfg.postPitch, post_max_slope: cfg.postPitch * (laser ? 1.15 : 1.35), handrail: cfg.madlo,
-        panel: laser ? { motif: PANEL.motif, gap: PANEL.gap, border: PANEL.border, t: PANEL.t, minWidth: PANEL.minWidth, webMin: PANEL.webTarget } : null }, common, laser ? { over_top: 0 } : {}));
+        panel: laser ? { motif: cfg.motiv, gap: PANEL.gap, border: PANEL.border, t: PANEL.t, minWidth: PANEL.minWidth, webMin: PANEL.webTarget } : null }, common, laser ? { over_top: 0 } : {}));
     } else {
       lay = layoutB(pts, Object.assign({ rail_w: pr.w, rail_h: pr.h, rail_t: pr.t, insert_w: pr.ins[0], insert_h: pr.ins[1], insert_t: pr.ins[2],
         handrail: cfg.madlo, handrail_top: cfg.vyska, bar_joint: jt.mode, overhang: cfg.overBot, pitch_max: 106 + br.t }, common));
@@ -1483,7 +1485,7 @@
     const locks = cfg.vypln === 'geometricky' ? { ok: true, mode: 'vlozeni', choice: false,
       why: 'Svislé tyče se zasouvají do otvorů v horním jeklu a přivaří.' }
       : cfg.vypln === 'laser' ? { ok: true, mode: 'panel', choice: false, rail: jt.rail, bar: jt.bar,
-        why: 'V každém poli je laserovaný plech ' + PANEL.t + ' mm s motivem ' + motifOf(PANEL.motif).lab + ' – kolem dokola ' + PANEL.gap + ' mm od líce sloupků a madel, přivaří se stehy.' } : jt;
+        why: 'V každém poli je laserovaný plech ' + PANEL.t + ' mm s motivem ' + motifOf(cfg.motiv).lab + ' – kolem dokola ' + PANEL.gap + ' mm od líce sloupků a madel, přivaří se stehy.' } : jt;
     return { cfg, pts, lay, locks, context: context(cfg, pts, lay) };
   }
 
@@ -1678,11 +1680,11 @@
     const zd = cfg.zed.start || cfg.zed.end ? ', ' + (cfg.zed.start && cfg.zed.end ? 'oba konce' : cfg.zed.start ? 'začátek' : 'konec') + ' ke zdi (' + WALL_BASE.find((b) => b.id === cfg.zedBase).lab.replace('Zeď – ', '') + ')' : '';
     const an = cfg.anchor === 'bez' ? 'bez kotev' : ({ patka: 'kotvení shora', celo: 'sloupky přes čelo', bocni: 'kotvení z boku' }[cfg.anchor]) + ' – ' + BASE.find((b) => b.id === cfg.base).lab.toLowerCase() + zd + (cfg.podlozka && padAllowed(cfg) ? ', tepelně oddělující podložky' : '');
     const ms = cfg.stavba && cfg.stavba.on ? stavbaCheck(cfg) : null;
-    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.vypln === 'laser' ? 's laserovým motivem ' + motifOf(PANEL.motif).lab + ', sloupky po max. ' + cfg.postPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : cfg.vypln === 'laser' ? ', v polích laserovaný plech ' + PANEL.t + ' mm' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
+    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.vypln === 'laser' ? 's laserovým motivem ' + motifOf(cfg.motiv).lab + ', sloupky po max. ' + cfg.postPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : cfg.vypln === 'laser' ? ', v polích laserovaný plech ' + PANEL.t + ' mm' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
       (cfg.overTop || cfg.overBot ? ', přesah ' + [cfg.overTop ? 'nahoře ' + cfg.overTop : '', cfg.overBot ? 'dole ' + cfg.overBot : ''].filter(Boolean).join(' / ') + ' mm' : '') + (cfg.madlo ? ', dřevěné madlo' : ', bez dřevěného madla') + ', ' + an + ', ' + FIN.find((f) => f.id === cfg.fin).lab.toLowerCase() +
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261012e', PANEL, motifOf, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261012f', MOTIFS, PANEL, motifOf, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);

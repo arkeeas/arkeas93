@@ -5,7 +5,7 @@
    - výřezy leží uvnitř obrysu s okrajem, nejužší můstek a největší otvor (koule) podle přepočtu
    - DXF: obrys + výřezy jako uzavřené POLYLINE, číslo dílu v okraji; STEP sestavy projde validátorem
    Použití: node tests/kontrola-zabradli-laser.js */
-require("../core.js"); require("../gen.js"); require("../assets/zabradli/motiv-strom.js"); require("../zabradli-core.js");
+require("../core.js"); require("../gen.js"); require("../assets/zabradli/motiv-strom.js"); require("../assets/zabradli/motiv-bunky.js"); require("../zabradli-core.js");
 const Z = globalThis.Zabradli, G = globalThis.Generator, { validate } = require("./validate-step.js");
 const { add, sub, mul, dot, cross, len, unit } = Z.V;
 const P = Z.PANEL;
@@ -77,7 +77,10 @@ const CASES = [
   ["roh L 90°", { segs: [{ L: 2500, rise: 0, turn: 90 }, { L: 2000, rise: 0 }] }],
   ["roh 45°", { segs: [{ L: 2000, rise: 0, turn: 45 }, { L: 2000, rise: 0 }] }],
   ["schody + podesta + roh", { segs: [{ L: 2380, rise: 2000, steps: 12 }, { L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }], anchor: "patka" }],
-  ["sloupky přes čelo", { segs: [{ L: 4000, rise: 0 }], anchor: "celo" }]
+  ["sloupky přes čelo", { segs: [{ L: 4000, rise: 0 }], anchor: "celo" }],
+  ["Buňky – rovné", { segs: [{ L: 3000, rise: 0 }], motiv: "bunky" }],
+  ["Buňky – rozteč 700", { segs: [{ L: 2100, rise: 0 }], postPitch: 700, motiv: "bunky" }],
+  ["Buňky – schody + podesta", { segs: [{ L: 2380, rise: 2000, steps: 12 }, { L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }], anchor: "patka", motiv: "bunky" }]
 ];
 let first = null;
 CASES.forEach(([lab, c], ci) => {
@@ -86,6 +89,7 @@ CASES.forEach(([lab, c], ci) => {
   const lay = A.lay, panels = lay.members.filter((m) => m.kind === "panel");
   if (A.cfg.vypln !== "laser" || !A.cfg.sloupky) fail(lab, "konfigurace se nepřevedla na laserový motiv");
   if (lay.members.some((m) => m.role === "bar" || m.role === "over" || m.role === "overtop")) fail(lab, "zůstaly špruše");
+  if (panels.some((m) => m.pn.motif.id !== (c.motiv || "strom"))) fail(lab, "plech nemá zvolený motiv");
   if (panels.length !== lay.fields.length || lay.panels.some((p) => !p.ok)) fail(lab, "plechů " + panels.length + " na " + lay.fields.length + " polí");
   // kotvy (rameno, plotna) kontroluje zvlášť – v rohu je známá kolize kotvy dalšího úseku se spodním madlem (i bez laseru)
   const ANCH = ["arm", "plotna", "patka", "celo", "zed", "stub"];

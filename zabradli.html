@@ -367,13 +367,14 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
 <script src="assets/zabradli/motiv-strom.js?v=20261011a"></script>
-<script src="zabradli-core.js?v=20261012e"></script>
+<script src="assets/zabradli/motiv-bunky.js?v=20261011a"></script>
+<script src="zabradli-core.js?v=20261012f"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261012e') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261012f') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -442,7 +443,7 @@
     $('typeNote').textContent = cfg.vypln === 'geometricky'
       ? 'Dvojité rámy tvoří jekl 20×20×2 mm s pokosovými spoji 45°, které se v rozích skládají do pravého úhlu. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
       : cfg.vypln === 'laser'
-      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + Zb.PANEL.t + ' mm s motivem stromů; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.'
+      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + Zb.PANEL.t + ' mm s vybraným motivem; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.'
       : cfg.sloupky
       ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
       : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');
@@ -464,12 +465,13 @@
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
     $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
-      '<p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(Zb.PANEL.motif).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
+      '<p class="sub-h">Motiv v plechu</p><div class="grid g2" id="motivs"></div><p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(cfg.motiv).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
       '<p class="note" style="margin:8px 0 0">Vnější i vnitřní rám motivu tvoří dutý jekl 20×20×2 mm. Čtyři konce se seříznou na 45° a v rozích svaří do pravého úhlu; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
       (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : ''));
     group($('profs'), Zb.RAILS[cfg.typ], (p) => optBtn(p.id, p.id === cfg.rail, 'Jekl ' + p.lab, p.sub), (id) => set({ rail: id }));
+    if (cfg.vypln === 'laser') group($('motivs'), Zb.MOTIFS, (m) => optBtn(m.id, m.id === cfg.motiv, m.lab, m.sub), (id) => set({ motiv: id }));
     if (cfg.vypln === 'standard') {
       group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
       if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
