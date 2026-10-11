@@ -13,7 +13,8 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#f2f4f5');
     const camera = new THREE.PerspectiveCamera(34, (host.clientWidth || 640) / (host.clientHeight || 520), 1, 20000);
-    const controls = root.OrbitControls ? new root.OrbitControls(camera, renderer.domElement) : null;
+    const Controls = THREE.OrbitControls;
+    const controls = Controls ? new Controls(camera, renderer.domElement) : null;
     if (controls) { controls.enableDamping = true; controls.dampingFactor = 0.08; }
     scene.add(new THREE.HemisphereLight(0xffffff, 0x68727a, 2.0));
     const key = new THREE.DirectionalLight(0xffffff, 2.5);
@@ -52,7 +53,7 @@
         const path = new THREE.Path();
         contour.pts.forEach((pt, i) => {
           const px = (pt[0] - Number(art.sheet_mm[0]) / 2) * L.motif.scale + L.panel.width / 2;
-          const py = (Number(art.sheet_mm[1]) - pt[1]) * L.motif.scale + (L.panel.height - L.motif.height) / 2;
+          const py = pt[1] * L.motif.scale + (L.panel.height - L.motif.height) / 2;
           if (i === 0) path.moveTo(px, py); else path.lineTo(px, py);
         });
         path.closePath(); shape.holes.push(path);

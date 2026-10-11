@@ -3,10 +3,12 @@ const assert = require('node:assert/strict');
 const Z = require('../zasteny-core.js');
 
 assert.deepEqual(Z.normalize({}), { width: 800, height: 2000, finish: 'black', qty: 1 });
+assert.equal(Z.validEmail('rené@example.cz'), true);
+assert.equal(Z.validEmail('not an email'), false);
 assert.deepEqual(Z.normalize({ finish: 'purple', qty: 0 }), { width: 800, height: 2000, finish: 'black', qty: 1 });
 assert.equal(Z.validate({ width: 900, height: 2100, finish: 'white', qty: 2 }).ok, true);
 assert.equal(Z.validate({ width: 800, height: 2000, finish: 'black', qty: 0 }).ok, false);
-for (const width of [0, -1, 900.5, NaN, Infinity]) {
+for (const width of [0, -1, 900.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, Number.MAX_VALUE]) {
   assert.equal(Z.validate({ width, height: 2000, finish: 'black', qty: 1 }).ok, false, `reject width ${width}`);
 }
 for (const height of [0, -1, 2000.5, NaN, Infinity]) {

@@ -5,7 +5,7 @@
   const DEFAULTS = { width: 800, height: 2000, finish: 'black', qty: 1 };
   function normalize(config) {
     const c = config || {};
-    const whole = (value, fallback) => Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+    const whole = (value, fallback) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
     return {
       width: whole(c.width, DEFAULTS.width),
       height: whole(c.height, DEFAULTS.height),
@@ -17,10 +17,10 @@
     const c = config || {}, errors = [];
     ['width', 'height'].forEach((key) => {
       const n = Number(c[key]);
-      if (c[key] == null || c[key] === '' || !Number.isFinite(n) || !Number.isInteger(n) || n <= 0) errors.push(key + ' musí být kladné celé číslo.');
+      if (c[key] == null || c[key] === '' || !Number.isFinite(n) || !Number.isSafeInteger(n) || n <= 0) errors.push(key + ' musí být kladné celé číslo.');
     });
     const qty = Number(c.qty);
-    if (c.qty == null || c.qty === '' || !Number.isFinite(qty) || !Number.isInteger(qty) || qty < 1) errors.push('Počet kusů musí být celé číslo alespoň 1.');
+    if (c.qty == null || c.qty === '' || !Number.isFinite(qty) || !Number.isSafeInteger(qty) || qty < 1) errors.push('Počet kusů musí být celé číslo alespoň 1.');
     if (c.finish != null && !FINISHES.includes(c.finish)) errors.push('Vyberte platný povrch.');
     return { ok: errors.length === 0, errors };
   }
@@ -42,11 +42,12 @@
       motif: { scale, x: panel.x + (panel.width - motifWidth) / 2, z: panel.z + (panel.height - motifHeight) / 2, width: motifWidth, height: motifHeight }
     };
   }
+  function validEmail(value) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(value || '').trim()); }
   function describe(config) {
     const c = normalize(config), labels = { black: 'Černá mat', anth: 'Antracit', white: 'Bílá', raw: 'Ocel + lak' };
     return 'Zástěna Motýli · ' + c.width + ' × ' + c.height + ' mm · ' + labels[c.finish] + ' · ' + c.qty + ' ks';
   }
-  const api = { DEFAULTS, FINISHES, normalize, validate, layout, describe };
+  const api = { DEFAULTS, FINISHES, normalize, validate, layout, describe, validEmail };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Zasteny = api;
 })(typeof window !== 'undefined' ? window : globalThis);
