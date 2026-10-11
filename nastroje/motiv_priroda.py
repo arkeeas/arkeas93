@@ -17,7 +17,7 @@ from svg_raster import rasterize
 from skimage.morphology import medial_axis
 
 PX = 0.5                     # mm na px rastru
-H_MM = 900.0                 # výška scény (pole bývá 800–880 mm, ořízne se horní okraj)
+H_MM = 820.0                 # výška scény = výška plechu bez okraje u zábradlí 1 m (při menší výšce se ořízne horní okraj)
 WEB = 6.0                    # nejužší můstek oceli (mm) → plech max 6 mm
 HOLE_MIN = 6.0               # nejužší otvor (mm)
 ISL_KEEP = 300.0             # ostrůvek větší než tolik mm² se připojí, menší zmizí
@@ -33,6 +33,60 @@ SCENES = [  # id, popis, rámeček scény v SVG (x0, y0, x1, y1)
 def disk(r_mm):
     r = max(1, int(round(r_mm / PX)))
     return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+
+def _mm(v): return int(round(v / PX))
+
+def _ballmap(M):
+    c = M.copy(); b = 1; c[:b] = 1; c[-b:] = 1; c[:, :b] = 1; c[:, -b:] = 1
+    return cv2.distanceTransform((1 - c).astype(np.uint8), cv2.DIST_L2, 5)
+
+def _attach(M, B):
+    """připojí tvar B nejbližším bodem k oceli M (můstek WEB), vrací délku můstku v mm"""
+    H, W = M.shape
+    dist, lbl = cv2.distanceTransformWithLabels(1 - M, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
+    yy, xx = np.where(M > 0); lut = np.zeros(lbl.max() + 1, np.int64); lut[lbl[yy, xx]] = yy * W + xx
+    by, bx = np.where(B > 0); k = np.argmin(dist[by, bx]); q = lut[lbl[by[k], bx[k]]]
+    cv2.line(M, (int(bx[k]), int(by[k])), (int(q % W), int(q // W)), 1, _mm(WEB))
+    return dist[by[k], bx[k]] * PX
+
+def prep_smrky(raw):
+    """Smrky: strom pod každým ptákem se zvedne, až se špička dotkne ocasu (koruna 380 mm, okno ±110 mm);
+    do největších otvorů oblohy se doplní další ptáci (kopie původních, i zrcadlově), dokud koule ≤ 110 mm."""
+    raw = raw.astype(np.uint8)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(raw, 8)
+    order = np.argsort(-st[1:, cv2.CC_STAT_AREA]) + 1
+    T = (lab == order[0]).astype(np.uint8)
+    birds = [(lab == i).astype(np.uint8) for i in order[1:] if st[i, cv2.CC_STAT_AREA] * PX * PX > 2000]
+    H, W = T.shape
+    for b in birds:
+        by, bx = np.where(b > 0); i = np.argmax(by); tx, ty = int(bx[i]), int(by[i])
+        x0, x1 = max(0, tx - _mm(150)), min(W, tx + _mm(150))
+        cols = T[:, x0:x1]; ys = np.argmax(cols > 0, axis=0); ys[cols.max(0) == 0] = H
+        cand = [(abs(x - tx), ys[x - x0], x) for x in range(x0 + _mm(20), x1 - _mm(20))
+                if ys[x - x0] <= ys[max(0, x - x0 - _mm(20)):x - x0 + _mm(20)].min()]
+        _, tipy, tipx = min(cand)
+        if tipy <= ty: continue
+        w = _mm(110); base = min(H - 1, tipy + _mm(380)); K = (base - ty + _mm(4)) / (base - tipy)
+        win = T[tipy:base, max(0, tipx - w):tipx + w]
+        sc = cv2.resize(win, (win.shape[1], int(win.shape[0] * K)), interpolation=cv2.INTER_NEAREST)
+        y0 = base - sc.shape[0]
+        T[max(0, y0):base, max(0, tipx - w):tipx + w] |= sc[max(0, -y0):]
+    M = T.copy()
+    for b in birds: M |= b
+    tmpl = []
+    for b in birds:
+        ys, xs = np.where(b > 0); c = b[ys.min():ys.max() + 1, xs.min():xs.max() + 1]; tmpl += [c, c[:, ::-1]]
+    for added in range(12):
+        d = _ballmap(M)
+        if 2 * d.max() * PX <= 110: break
+        y, x = np.unravel_index(np.argmax(d), d.shape); r = d[y, x]
+        t = tmpl[added % len(tmpl)]; s = min(1.0, 1.5 * r / max(t.shape))
+        tt = cv2.resize(t, (max(3, int(t.shape[1] * s)), max(3, int(t.shape[0] * s))), interpolation=cv2.INTER_NEAREST)
+        h, w = tt.shape; y0, x0 = y - h // 2, x - w // 2
+        if y0 < 0 or x0 < 0 or y0 + h > H or x0 + w > W: break
+        B = np.zeros_like(M); B[y0:y0 + h, x0:x0 + w] = tt
+        _attach(M, B); M |= B
+    return M.astype(bool)
 
 def clean(mat, pad):
     M = mat.astype(np.uint8)
@@ -68,14 +122,13 @@ def measure(M, pad):
     H = (1 - M).astype(np.uint8)
     dH = cv2.distanceTransform(H, cv2.DIST_L2, 5)
     ball = 2 * dH.max() * PX
-    inner = M[pad:-pad, pad:-pad].astype(bool)
-    skel, dist = medial_axis(inner, return_distance=True)
-    # konce větví (1 soused) vynechat – tam je tloušťka přirozeně menší
-    sk = skel.astype(np.uint8)
-    nb = cv2.filter2D(sk, -1, np.ones((3, 3), np.float32)) - 1
-    body = skel & (nb >= 2)
-    w = 2 * dist[body] * PX
-    web = float(np.percentile(w, 0.5)) if w.size else 0
+    # můstky: ocel, kterou nepokryje otevření kruhem o průměru WEB − 1 px, je užší než WEB (bývají to jen špičky jehličí)
+    Mi = M.astype(np.uint8)
+    thin = Mi & (1 - cv2.morphologyEx(Mi, cv2.MORPH_OPEN, disk(WEB / 2 - PX)))
+    thin[:pad + 2] = 0; thin[-pad - 2:] = 0; thin[:, :pad + 2] = 0; thin[:, -pad - 2:] = 0
+    n, lab, st, _ = cv2.connectedComponentsWithStats(thin, connectivity=8)
+    # tenké místo, které spojuje dvě části (krček), je horší než špička: kolik je jich širších než 2 px
+    web = WEB if not any(st[i, cv2.CC_STAT_AREA] * PX * PX > 4 for i in range(1, n)) else round(WEB - 1, 1)
     open_ratio = float(H[pad:-pad, pad:-pad].mean())
     yb, xb = np.unravel_index(np.argmax(dH), dH.shape)
     return ball, web, open_ratio, (xb, yb)
@@ -101,6 +154,7 @@ def main(svg_path):
     for sid, lab, sub, box in SCENES:
         sc = (H_MM / PX) / (box[3] - box[1])
         mat = rasterize(svg, box, sc)
+        if sid == 'smrky': mat = prep_smrky(mat)
         pad = int(round(10 / PX))
         mat = np.pad(mat, pad, constant_values=True)
         M = clean(mat, pad)
