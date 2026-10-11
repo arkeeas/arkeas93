@@ -1,0 +1,41 @@
+[
+ {
+  "id": "jelen",
+  "lab": "Jelen v lese",
+  "sub": "jelen, smrky, břízy",
+  "W": 1570.0,
+  "H": 900.0,
+  "web": 1.4,
+  "ball": 99,
+  "open": 0.356,
+  "n": 161,
+  "cutM": 37.2,
+  "kids": 0
+ },
+ {
+  "id": "medved",
+  "lab": "Medvěd",
+  "sub": "medvěd, srnec, smrky",
+  "W": 1448.0,
+  "H": 900.0,
+  "web": 1.4,
+  "ball": 111,
+  "open": 0.337,
+  "n": 147,
+  "cutM": 33.4,
+  "kids": 0
+ },
+ {
+  "id": "smrky",
+  "lab": "Smrkový les",
+  "sub": "smrky a dravci",
+  "W": 1565.0,
+  "H": 900.0,
+  "web": 2.0,
+  "ball": 188,
+  "open": 0.336,
+  "n": 81,
+  "cutM": 24.0,
+  "kids": 0
+ }
+]
