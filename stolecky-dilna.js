@@ -94,41 +94,53 @@
       : '<span style="color:var(--muted)">Bez poptávky – podklady pro konfiguraci z konfigurátoru stolečků v tomto prohlížeči.</span>';
     if (B.model === 'motylek') {
       $('sCfg').textContent = S.describe(c) + ' · parametrická varianta';
-      $('sPriceTitle').textContent = 'Orientační cena podle ceníku, včetně ocelové desky';
+      const ownTop = c.motylekTop === 'vlastni';
+      $('sPriceTitle').textContent = ownTop ? 'Orientační cena podnože a úchytů, bez vlastní desky' : 'Orientační cena podle ceníku, včetně ocelové desky';
       $('sPrice').textContent = nf(X.vat) + ' Kč s DPH / ks · ' + nf(X.price) + ' Kč bez DPH';
-      $('sFacts').innerHTML = [['Deska', 'Ø ' + c.topD + ' mm'], ['Výška', c.H + ' mm'], ['Tloušťka plechu', '4 mm'], ['Odhad hmotnosti', fmt(B.kg) + ' kg']]
+      const deskFact = ownTop ? 'Vlastní dřevěná Ø' + c.topD + ' × ' + c.motylekTopT + ' mm' : 'Ocelová Ø ' + c.topD + ' mm';
+      $('sFacts').innerHTML = [['Deska', deskFact], ['Výška', c.H + ' mm'], ['Plech', '4 mm'], ...(ownTop ? [['Uchycení', '4× drážka 18 × 5,5 mm']] : []), ['Odhad hmotnosti oceli', fmt(B.kg) + ' kg']]
         .map(([a, b]) => '<div class="fact"><b>' + b + '</b><span>' + a + '</span></div>').join('');
-      $('sWarns').innerHTML = '<div>Kontrola: výška se změří od podlahy k horní ploše. Podnože A/B se roztahují souměrně; středový zámek zůstává široký 4,3 mm.</div>' +
-        (c.H === 500 && c.topD === 600 ? '' : '<div>Původní STEP je referenční pouze pro Ø600 × 500 mm; výrobní DXF níže se generují podle aktuálních rozměrů.</div>');
-      $('sCutTitle').textContent = 'Výrobní díly – laserované plechy';
+      $('sWarns').innerHTML = B.warn.map((w) => '<div>' + esc(w) + '</div>').join('') +
+        '<div>Kontrola: výška se měří od podlahy po horní povrch. Podnože A/B se roztahují souměrně; středový zámek zůstává široký 4,3 mm.</div>' +
+        (ownTop || c.H !== 500 || c.topD !== 600 ? '<div>Původní STEP je referenční pouze pro ocelovou variantu Ø600 × 500 mm; výrobní DXF níže se generují podle aktuální konfigurace.</div>' : '');
+      $('sCutTitle').textContent = ownTop ? 'Výrobní díly – podnož a úchyty' : 'Výrobní díly – laserované plechy';
       $('sCut').innerHTML = [
-        ['1', 'Kruhová deska Ø ' + c.topD + ' mm, ocel 4 mm', c.qty],
         ['A', 'Motýlí podnož A, ocel 4 mm', c.qty],
-        ['B', 'Motýlí podnož B, ocel 4 mm', c.qty]
-      ].map((p) => '<tr><td class="mono">' + p[0] + '</td><td>' + p[1] + '</td><td class="num">' + p[2] + '</td><td colspan="3">DXF přepočtené pro Ø ' + c.topD + ' × ' + c.H + ' mm</td></tr>').join('') +
+        ['B', 'Motýlí podnož B, ocel 4 mm', c.qty],
+        ...(ownTop ? [['U', 'Úchyt vlastní desky, ocel 4 mm', 4 * c.qty]] : [['1', 'Kruhová deska Ø ' + c.topD + ' mm, ocel 4 mm', c.qty]])
+      ].map((p) => '<tr><td class="mono">' + p[0] + '</td><td>' + p[1] + '</td><td class="num">' + p[2] + '</td><td colspan="3">' +
+        (p[0] === 'U' ? '4× rádiusová drážka pro vruty, výpal z dodaného DXF' : 'DXF přepočtené pro Ø ' + c.topD + ' × ' + c.H + ' mm') + '</td></tr>').join('') +
         '<tr><td colspan="6" style="color:var(--muted)">Obrysy vycházejí z původních DXF; výška a průměr se přepočítají, šířka zámku zůstává podle zdroje.</td></tr>';
       $('sFlatsTitle').textContent = 'Zdrojové CAD soubory';
-      $('sFlats').innerHTML = '<figure class="wide"><figcaption><b>STEP sestava</b> je zdrojový model Ø600 × 500 mm. Pro jiné rozměry použijte přepočtené výrobní DXF; 3D náhled je transformovaný podle poptávky.</figcaption></figure>';
+      $('sFlats').innerHTML = '<figure class="wide"><figcaption><b>STEP sestava</b> je zdrojový model s ocelovou deskou Ø600 × 500 mm. Pro variantu s vlastní deskou použijte její výrobní DXF úchytů a přepočtené DXF podnoží; náhled odpovídá zvolené konfiguraci.</figcaption></figure>';
       $('sDl').innerHTML = B.productFiles.map((f) => f.part
-        ? '<button type="button" class="btn" data-motylek-part="' + esc(f.part) + '" data-source="' + esc(f.path) + '">' + esc(f.label) + '</button>'
+        ? '<button type="button" class="btn" data-motylek-part="' + esc(f.part) + '"' + (f.path ? ' data-source="' + esc(f.path) + '"' : '') + '>' + esc(f.label) + '</button>'
         : '<a class="btn" href="' + esc(f.path) + '" download title="Zdrojový model, rozměr Ø600 × 500 mm">' + esc(f.label) + '</a>').join('');
       $('sDl').querySelectorAll('[data-motylek-part]').forEach((button) => button.addEventListener('click', async () => {
         button.disabled = true;
         try {
-          const res = await fetch(button.dataset.source);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const source = await res.text();
-          const output = S.transformMotylekDxf(source, button.dataset.motylekPart, c);
-          const name = button.dataset.motylekPart === 'deska'
-            ? 'motylek-deska-D' + c.topD + 'mm.dxf'
-            : 'motylek-podnoz-' + button.dataset.motylekPart + '-H' + c.H + '-D' + c.topD + 'mm.dxf';
+          const part = button.dataset.motylekPart;
+          let output;
+          if (part === 'uchyty') output = S.motylekMountTabDxf();
+          else {
+            const res = await fetch(button.dataset.source);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            output = S.transformMotylekDxf(await res.text(), part, c);
+          }
+          const name = part === 'deska' ? 'motylek-deska-D' + c.topD + 'mm.dxf'
+            : part === 'uchyty' ? 'motylek-uchyt-vlastni-desky-4x.dxf'
+              : 'motylek-podnoz-' + part + '-H' + c.H + '-D' + c.topD + 'mm.dxf';
           await download(name, output, 'application/dxf');
         } catch (error) {
           $('sWarns').innerHTML += '<div>DXF se nepodařilo připravit. Zkuste stránku načíst znovu.</div>';
         } finally { button.disabled = false; }
       }));
-      $('sSteps').innerHTML = [
-        'Vyříznout desku Ø ' + c.topD + ' mm a podnože A/B z právě stažených DXF souborů.',
+      $('sSteps').innerHTML = ownTop ? [
+        'Z DXF podnoží A/B vyříznout oba díly a z DXF úchytu vypálit 4 stejné úchyty z plechu 4 mm. Vlastní dřevěná deska Ø ' + c.topD + ' × ' + c.motylekTopT + ' mm není součástí dodávky.',
+        'Sestavit kolmé podnože A/B; jejich středový zámek má šířku 4,3 mm. Úchyty přiložit na horní konce podnoží v osových polohách ±' + fmt(B.mountTabs[0].x) + ' mm od středu a přivařit.',
+        'Podnož s úchyty končí pod deskou ve výšce ' + (c.H - c.motylekTopT) + ' mm. Dřevěnou desku vystředit a připevnit čtyřmi vruty do dřeva (nejsou v ceně) přes radiální drážky; délku vrutů zvolit podle tloušťky desky tak, aby neprošly skrz.'
+      ] : [
+        'Vyříznout kruhovou desku Ø ' + c.topD + ' mm a podnože A/B z právě stažených DXF souborů.',
         'Sestavit kolmé podnože A/B; jejich středový zámek má šířku 4,3 mm podle původního CAD.',
         'Přiložit podnož k rubu desky tak, aby horní hrany lícovaly s její spodní plochou ve výšce ' + (c.H - 4) + ' mm, a dokončit svarové spoje.'
       ].map((t) => '<li>' + t + '</li>').join('');
