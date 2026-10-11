@@ -1,0 +1,95 @@
+{
+  "units": "mm",
+  "overall_mm": [
+    800.0,
+    100.0,
+    2000.0
+  ],
+  "front_view_mm": [
+    800.0,
+    2000.0
+  ],
+  "sheet_mm": [
+    720.0,
+    2.0,
+    1770.0
+  ],
+  "sheet_material_assumption": "steel (grade not specified)",
+  "frame_profile": "jekl-jekl-40x40-2",
+  "lower_rail_ground_clearance_mm": 150,
+  "base_plates": {
+    "size_mm": [
+      40.0,
+      100.0,
+      6.0
+    ],
+    "hole_d_mm": 14.0,
+    "holes_per_plate": 2
+  },
+  "cutout_count": 181,
+  "minimum_web_between_cutouts_mm": 8.626,
+  "closest_cutout_indices": [
+    1,
+    6
+  ],
+  "cutout_pairs_under_8mm_web": [],
+  "panel_valid": true,
+  "panel_solids": 1,
+  "panel_volume_mm3": 2043530.2,
+  "mass_estimate_kg_if_all_steel": 29.05,
+  "members": [
+    {
+      "name": "Stojka leva jekl 40x40x2",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 592482.7
+    },
+    {
+      "name": "Stojka prava jekl 40x40x2",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 592482.7
+    },
+    {
+      "name": "Pricna horni jekl 40x40x2",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 213935.6
+    },
+    {
+      "name": "Pricna dolni jekl 40x40x2",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 213935.6
+    },
+    {
+      "name": "Vyrezavana vypln ocel 2 mm",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 2043530.2
+    },
+    {
+      "name": "Patka leva 40x100x6",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 22152.7
+    },
+    {
+      "name": "Patka prava 40x100x6",
+      "valid": true,
+      "solids": 1,
+      "volume_mm3": 22152.7
+    }
+  ],
+  "step": "zastena_motyli_800x2000.step",
+  "dxf_panel": "vypln_720x1770_t2_C2.dxf",
+  "dxf_base_plates": "patka_40x100_t6_2xD14.dxf",
+  "assumptions": [
+    "Freestanding garden screen inspired by the reference image.",
+    "Overall height includes the 150 mm exposed lower leg section.",
+    "The C2 process is specified for the 2 mm panel; its 1770 x 720 mm blank fits the documented 3048 x 1524 mm bed when rotated.",
+    "C2 maximum thickness is not documented for the 6 mm anchor plates.",
+    "Anchor holes and plate sizing are indicative and require verification against the real mounting substrate and wind load.",
+    "Decorative cutouts are traced from the supplied photograph, thresholded and simplified; photograph is not a dimensioned source."
+  ]
+}
