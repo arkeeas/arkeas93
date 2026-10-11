@@ -163,7 +163,12 @@ def prep_los(svg):
     f = (H_MM / PX) / scene.shape[0]
     out = cv2.resize(scene * 255, None, fx=f, fy=f, interpolation=cv2.INTER_AREA) > 127
     zone = cv2.resize(MZ[2280:3720, 110:3800] * 255, (out.shape[1], out.shape[0]), interpolation=cv2.INTER_NEAREST) > 127
+    MS = np.zeros_like(U3); MS[by0 + dy:by1 + dy, bx0:bx1] = moose[by0:by1, bx0:bx1]
+    sprite = cv2.resize(MS[2280:3720, 110:3800] * 255, (out.shape[1], out.shape[0]), interpolation=cv2.INTER_AREA) > 127
+    LOS_SPRITE[:] = [sprite.astype(np.uint8)]
     return out, zone.astype(np.uint8)
+
+LOS_SPRITE = []
 
 def clean(mat, pad, WEB_R=WEB_R, HOLE_MIN=HOLE_MIN):
     """otvory ≥ HOLE_MIN, ocel ≥ WEB_R, žádné volné ostrůvky; opakuje se, protože smazaný ostrůvek nebo můstek
@@ -226,6 +231,124 @@ def trace(M, pad, HOLE_MIN=HOLE_MIN):
         out.append(flat)
     return out, kids
 
+# ---------------------------------------------------------------- schodiště
+ANGLES = [25.0, 27.5, 30.0, 32.5, 35.0, 37.5, 40.0]       # sklony šikmin; konfigurátor vezme nejbližší (±1,25°), na druhou stranu zrcadlí
+# zvířata, která na šikmině zůstanou vzpřímená: x od, x do, y od, y do (mm ve scéně od spodu), hlavní
+SPRITES = {'jelen': [(975, 1430, 55, 540, 1), (265, 415, 55, 500, 0)],
+           'medved': [(965, 1319, 45, 430, 1), (275, 415, 55, 525, 0)],
+           'smrky': [], 'los': 'los'}
+
+def body_of(M, box):
+    """tělo zvířete v obdélníku: otevření (tráva a větve pryč), největší kus, omezené narůstání zpět (nohy, parohy)"""
+    x0, y0, x1, y1 = box
+    bx = np.zeros_like(M); bx[y0:y1, x0:x1] = M[y0:y1, x0:x1]
+    k = _mm(9) | 1
+    op = cv2.morphologyEx(bx, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(op, 8)
+    if n < 2: return bx * 0
+    body = (lab == 1 + np.argmax(st[1:, cv2.CC_STAT_AREA])).astype(np.uint8)
+    near = (cv2.distanceTransform(1 - body, cv2.DIST_L2, 5) < _mm(12)).astype(np.uint8)
+    a = body.copy()
+    for _ in range(_mm(8)): a = cv2.dilate(a, np.ones((3, 3), np.uint8)) & bx & near
+    return a
+
+def shear_scene(M, sprites, deg):
+    """Zkosení scény na šikminu (zem stoupá doprava, svislé zůstává svislé). Zvířata se ze zkosené scény vymažou
+    (místo nich obloha) a vloží vzpřímená tak, aby střed stál na stejném místě zkosené země; mezeru pod nohama vyplní pahorek.
+    Vrací obraz (mimo rovnoběžník = ocel), masku vložených zvířat, ext (posun) a tan."""
+    t = math.tan(math.radians(deg)); H, W = M.shape; ext = int(math.ceil(t * W)) + 2
+    def sh(img): return cv2.warpAffine(img, np.float32([[1, 0, 0], [-t, 1, ext]]), (W, H + ext), flags=cv2.INTER_NEAREST, borderValue=0)
+    U = sh(M.astype(np.uint8)); Z = np.zeros_like(U); placed = []
+    for a in sprites: U[cv2.dilate(sh(a), np.ones((5, 5), np.uint8)) > 0] = 0
+    for a in sprites:
+        ys, xs = np.where(a > 0)
+        if not len(xs): placed.append(None); continue
+        y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        dy = int(round(ext - t * (x0 + x1) / 2))
+        # kopyta na straně do kopce by se zabořila pod spodní hranu plechu: zvíře zvednout, aby stálo aspoň 15 mm nad ní
+        fy, fx = ys + dy, xs
+        wmin = ((ext - t * (fx + 0.5) + H - (fy + 0.5)) * PX).min()
+        if wmin < 15: dy -= int(math.ceil((15 - wmin) / PX))
+        U[y0 + dy:y1 + dy, x0:x1] |= a[y0:y1, x0:x1]; Z[y0 + dy:y1 + dy, x0:x1] |= a[y0:y1, x0:x1]
+        Zi = np.zeros_like(U); Zi[y0 + dy:y1 + dy, x0:x1] = a[y0:y1, x0:x1]
+        for x in range(x0, x1):                                  # pahorek pod nohama
+            col = np.where(a[y0:y1, x] > 0)[0]
+            if not len(col) or col.max() < (y1 - y0) - _mm(15): continue
+            yb = y0 + col.max() + dy; below = np.where(U[yb + 1:, x] > 0)[0]
+            if len(below): U[yb:yb + 1 + below[0], x] = 1
+        placed.append(Zi)
+    yy, xx = np.mgrid[0:U.shape[0], 0:W]
+    top = ext - t * xx; inside = (yy >= top) & (yy < top + H)
+    U[~inside] = 1
+    SHEAR_PLACED[:] = placed
+    return U, Z, ext, t, inside
+
+SHEAR_PLACED = []
+
+def stair_variants(sid, lab, raw, anim, wb, hm):
+    H, W = raw.shape
+    sp = SPRITES.get(sid, [])
+    if sp == 'los': sprites, mains = LOS_SPRITE[:1], [1]
+    else:
+        sprites = [body_of(raw.astype(np.uint8), (_mm(a), H - _mm(d), _mm(b), H - _mm(c))) for a, b, c, d, _m in sp]
+        mains = [m for *_r, m in sp]
+    d = os.path.join(ROOT, 'assets', 'zabradli', 'schody'); os.makedirs(d, exist_ok=True)
+    out = []
+    for deg in ANGLES:
+        U, Z, ext, t, inside = shear_scene(raw, sprites, deg)
+        pad = _mm(10)
+        M = clean(np.pad(U, pad, constant_values=1), pad, WEB_R=wb + 0.9, HOLE_MIN=hm)
+        ball, web, opr, _ = measure(M, pad, WEB=wb)
+        if ball > 110:                                       # obloha po vymazaném zkoseném zvířeti apod. – větev, ne přes zvíře
+            zone = np.pad(cv2.dilate(Z, np.ones((_mm(12) | 1,) * 2, np.uint8)), pad)
+            M = clean(add_branches(M, avoid=zone).astype(np.uint8), pad, WEB_R=wb + 0.9, HOLE_MIN=hm)
+            ball, web, opr, _ = measure(M, pad, WEB=wb)
+            if ball > 110:
+                M = clean(add_flock(M, avoid=zone).astype(np.uint8), pad, WEB_R=wb + 0.9, HOLE_MIN=hm)
+                ball, web, opr, _ = measure(M, pad, WEB=wb)
+        # hlavní zvíře celé uvnitř rovnoběžníku (s rezervou na okraj)
+        fit = True
+        for Zi, m in zip(SHEAR_PLACED, mains):
+            if not m: continue
+            if Zi is None: fit = False; break
+            ys, xs = np.where(Zi > 0)
+            if not len(xs): fit = False; break
+            w = (ext - t * (xs + 0.5) + H - (ys + 0.5)) * PX
+            if w.max() > H * PX - 5 or w.min() < 0: fit = False
+        # obrysy výřezů v souřadnicích (u podél, w nad šikmou spodní hranou)
+        Hh = (1 - M).astype(np.uint8)
+        cs, hier = cv2.findContours(Hh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+        holes = []
+        for c, hr in zip(cs, hier[0]):
+            if hr[3] != -1: continue
+            a = cv2.approxPolyDP(c, EPS / PX, True)[:, 0, :]
+            if len(a) < 3 or cv2.contourArea(a) * PX * PX < 10: continue
+            if min(cv2.minAreaRect(c)[1]) * PX < hm - PX: continue
+            flat = []
+            for x, y in a:
+                X, Y = x - pad + 0.5, y - pad + 0.5
+                flat += [round(X * PX, 2), round((ext - t * X + H - Y) * PX, 2), 0]
+            holes.append(flat)
+        key = '%s@%d' % (sid, round(deg * 10))
+        info = dict(key=key, deg=deg, ball=round(ball), web=round(web, 1), n=len(holes), fit=fit)
+        print('   šikmina', json.dumps(info, ensure_ascii=False))
+        js = ('/* Laserový motiv řady Příroda „%s“ pro šikminu %s° (schody stoupají doprava, na opačnou stranu zrcadlit).\n'
+              '   Souřadnice výřezu [u, w, bulge]: u vodorovně podél pole, w svisle nad šikmou spodní hranou scény (mm).\n'
+              '   Zvířata vzpřímená, stromy svislé. Generuje nastroje/motiv_priroda.py – ručně neupravovat. */\n'
+              "(function (root) {\n  'use strict';\n  const M = root.ZabradliMotivy = root.ZabradliMotivy || {};\n"
+              "  M[%s] = { id: %s, base: %s, lab: %s, rada: 'priroda', mode: 'crop', slope: %s, W: %s, H: %s, web: %s, holeMin: %s, ball: %s, open: %s, animFit: %s,\n    anim: %s,\n    holes: [\n%s\n    ] };\n"
+              "})(typeof globalThis !== 'undefined' ? globalThis : this);\n") % (
+            lab, deg, json.dumps(key), json.dumps(key), json.dumps(sid), json.dumps(lab, ensure_ascii=False), deg, round(W * PX, 1), H_MM,
+            info['web'], hm, info['ball'], round(opr, 3), 'true' if fit else 'false', json.dumps(anim),
+            ',\n'.join('      ' + json.dumps(h, separators=(',', ':')) for h in holes))
+        open(os.path.join(d, 'motiv-%s-%d.js' % (sid, round(deg * 10))), 'w').write(js)
+        if deg == 32.5:
+            img = np.where(M[pad:-pad, pad:-pad] > 0, 40, 245).astype(np.uint8); img[~inside] = 255
+            cv2.imwrite(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', sid + '_schody325_nahled.png'), cv2.resize(img, None, fx=0.3, fy=0.3, interpolation=cv2.INTER_AREA))
+        out.append(info)
+    return out
+
+
 def main(svg_path):
     svg = open(svg_path).read()
     index = []
@@ -237,6 +360,8 @@ def main(svg_path):
             sc = (H_MM / PX) / (box[3] - box[1])
             mat = rasterize(svg, box, sc)
         if sid == 'smrky': mat = prep_smrky(mat)
+        raw = mat.copy()
+        if sid == 'los': raw, _z = prep_los(svg)          # na šikmině bez větve – ta se přidá až podle otvorů po zkosení
         pad = int(round(10 / PX))
         mat = np.pad(mat, pad, constant_values=True)
         fine = FINE.get(sid)                       # jemný motiv: menší můstek a otvor (a tím i nižší nejsilnější plech)
@@ -266,7 +391,9 @@ def main(svg_path):
             info['W'], H_MM, info['web'], hm, info['ball'], info['open'], json.dumps(anim),
             ',\n'.join('      ' + json.dumps(h, separators=(',', ':')) for h in holes))
         open(os.path.join(ROOT, 'assets', 'zabradli', 'motiv-' + sid + '.js'), 'w').write(js)
+        if not ONLY_FLAT: info['schody'] = stair_variants(sid, lab, raw, anim, wb, hm)
     json.dump(index, open(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', 'index.json'), 'w'), ensure_ascii=False, indent=1)
 
+ONLY_FLAT = '--bez-schodu' in sys.argv
 if __name__ == '__main__':
     main(sys.argv[1])

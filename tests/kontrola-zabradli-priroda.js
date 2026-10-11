@@ -8,6 +8,7 @@
    Použití: node tests/kontrola-zabradli-priroda.js */
 require("../core.js"); require("../gen.js");
 ["strom", "bunky", "jelen", "medved", "smrky", "los"].forEach((m) => require("../assets/zabradli/motiv-" + m + ".js"));
+require("fs").readdirSync(__dirname + "/../assets/zabradli/schody").forEach((f) => require("../assets/zabradli/schody/" + f));
 require("../zabradli-core.js");
 const Z = globalThis.Zabradli, G = globalThis.Generator, { validate } = require("./validate-step.js");
 const P = Z.PANEL;
@@ -38,23 +39,28 @@ function webBall(holes) {
 }
 /* plocha ořezu: u výřezů, které okraj protíná, plocha kusů z clipRect = plocha průniku spočítaná mřížkou 0,5 mm;
    a součet ploch výřezů plechu = součet ořezaných ploch všech výřezů motivu (data jdou do plechu celá) */
+function innerPlanes(inner) {
+  const ccw = area(inner) > 0;
+  return inner.map((a, i) => { const b = inner[(i + 1) % inner.length], e = [b[0] - a[0], b[1] - a[1]], L = Math.hypot(e[0], e[1]);
+    return [(q) => (ccw ? 1 : -1) * (e[0] * (q[1] - a[1]) - e[1] * (q[0] - a[0])) / L, [e[0] / L, e[1] / L]]; });
+}
 function clipCheck(m) {
-  const pn = m.pn, M = pn.motif, X0 = pn.x0 + P.border, X1 = pn.x1 - P.border, Y0 = P.border, Y1 = pn.h - P.border;
+  const pn = m.pn, V = pn.variant || pn.motif, inner = pn.inner, planes = innerPlanes(inner);
   let bad = 0, tot = 0, sumClip = 0;
-  M.holes.forEach((f) => {
+  V.holes.forEach((f) => {
     const pl = []; for (let i = 0; i < f.length; i += 3) pl.push(pn.map(f[i], f[i + 1]));
-    const b = bb(pl);
-    if (b[2] < X0 || b[0] > X1 || b[3] < Y0 || b[1] > Y1) return;
-    const pieces = Z.clipRect(pl, X0, Y0, X1, Y1).filter((q) => q.length > 2 && Math.abs(area(q)) > 10);
+    const b = bb(pl), ib = bb(inner);
+    if (b[2] < ib[0] || b[0] > ib[2] || b[3] < ib[1] || b[1] > ib[3]) return;
+    const pieces = Z.clipPlanes(pl, planes).filter((q) => q.length > 2 && Math.abs(area(q)) > 10);
     const pa = pieces.reduce((a, q) => a + Math.abs(area(q)), 0); sumClip += pa;
-    if (b[0] >= X0 && b[2] <= X1 && b[1] >= Y0 && b[3] <= Y1) return;
+    if (pl.every((q) => planes.every(([f]) => f(q) >= 0))) return;                // celý uvnitř
     let cnt = 0;
-    for (let x = Math.max(b[0], X0) + 0.13; x < Math.min(b[2], X1); x += 0.5) for (let y = Math.max(b[1], Y0) + 0.11; y < Math.min(b[3], Y1); y += 0.5) if (inside([x, y], pl)) cnt++;
+    for (let x = b[0] + 0.13; x < b[2]; x += 0.5) for (let y = b[1] + 0.11; y < b[3]; y += 0.5) if (inside([x, y], pl) && planes.every(([f]) => f([x, y]) >= 0)) cnt++;
     tot++; if (Math.abs(cnt * 0.25 - pa) > 0.03 * pa + 25) bad++;
   });
   const sumPanel = pn.holesXY.reduce((a, q) => a + Math.abs(area(q)), 0);
-  // drobné kusy u okraje, které by nechaly úzký můstek, konfigurátor záměrně vynechá – nanejvýš 1 % plochy
-  if (sumPanel > sumClip + 1 || sumClip - sumPanel > 0.01 * sumClip) bad += 1000;
+  // drobné kusy u okraje, které by nechaly úzký můstek, konfigurátor záměrně vynechá nebo výřez u okraje ustřihne dál – nanejvýš 3 % plochy
+  if (sumPanel > sumClip + 1 || sumClip - sumPanel > 0.03 * sumClip) { bad += 1000; console.log('     plocha výřezů ' + V.id + (pn.mirror ? ' zrcadlo' : '') + ': plech ' + sumPanel.toFixed(0) + ' / ořez ' + sumClip.toFixed(0)); }
   return { bad, tot };
 }
 const base = { vypln: "laser", rada: "priroda" };
@@ -64,9 +70,13 @@ const CASES = [
   ["smrky posun 0 a 1, patky, plech 3", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, anchor: "patka", plech: 3, pole: [{ m: "smrky", p: 0 }, { m: "smrky", p: 1 }] }],
   ["rozteč 700, čelo, plech 6", { segs: [{ L: 2100, rise: 0 }], postPitch: 700, anchor: "celo", plech: 6, pole: [{ m: "medved" }, { m: "jelen" }, { m: "smrky" }] }],
   ["los, posun 0 a 1, plech 5", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 5, pole: [{ m: "los", p: 0 }, { m: "los", p: 1 }] }],
+  ["schody 30° nahoru, čtyři motivy", { segs: [{ L: 2600, rise: 1500, steps: 9 }], anchor: "patka", postPitch: 1100, pole: [{ m: "los", p: 0.3 }, { m: "jelen" }, { m: "medved" }] }],
+  ["schody 35° dolů (zrcadlo)", { segs: [{ L: 2400, rise: -1700, steps: 9 }], pole: [{ m: "los", p: 1 }, { m: "smrky", p: 0 }, { m: "medved" }] }],
+  ["schody + podesta + roh", { segs: [{ L: 2380, rise: 1500, steps: 9 }, { L: 2000, rise: 0, turn: 90 }, { L: 1500, rise: 0 }], anchor: "patka", pole: [{ m: "smrky" }, { m: "los" }, { m: "jelen" }, { m: "medved", p: 0.4 }, { m: "los", p: 0.9 }] }],
   ["roh L, bez madla", { segs: [{ L: 2500, rise: 0, turn: 90 }, { L: 2000, rise: 0 }], madlo: false, pole: [{ m: "jelen", p: 0.2 }, { m: "smrky", p: 0.8 }, { m: "medved" }, { m: "jelen", p: 1 }, { m: "smrky" }] }]
 ];
 CASES.forEach(([lab, c], ci) => {
+  if (process.env.CASE && lab.indexOf(process.env.CASE) < 0) return;
   const t0 = Date.now(), A = Z.analyze(Object.assign({}, base, c)), lay = A.lay, cfg = A.cfg;
   const panels = lay.members.filter((m) => m.kind === "panel");
   if (cfg.rada !== "priroda") fail(lab, "konfigurace není Příroda");
@@ -82,15 +92,18 @@ CASES.forEach(([lab, c], ci) => {
     if (!G.checkClosed(s.verts, s.faces)) fail(lab, "plech " + (i + 1) + " není uzavřené těleso");
     const hs = Z.panelHoles(m, P.tol3d), net = (Math.abs(area(m.outline)) - hs.reduce((a, h) => a + Math.abs(area(h)), 0)) * m.t;
     if (Math.abs(Z.volume(s) - net) > 1e-6 * net + 1) fail(lab, "objem plechu nesedí");
-    const X0 = pn.x0 + P.border - 1e-6, X1 = pn.x1 - P.border + 1e-6, Y0 = P.border - 1e-6, Y1 = pn.h - P.border + 1e-6;
-    if (hs.some((h) => h.some((q) => q[0] < X0 || q[0] > X1 || q[1] < Y0 || q[1] > Y1))) fail(lab, "výřez zasahuje do okraje " + P.border + " mm");
+    const pls = innerPlanes(pn.inner);
+    if (hs.some((h) => h.some((q) => pls.some(([f]) => f(q) < -1e-6)))) fail(lab, "výřez zasahuje do okraje " + P.border + " mm");
+    const X0 = pn.inner[0][0], X1 = pn.inner[1][0];
+    if (m.pn.tan && !m.pn.variant) fail(lab, "šikmé pole bez šikmé verze motivu");
+    if (m.pn.tan && (m.pn.mirror !== m.pn.tan < 0)) fail(lab, "zrcadlo nesedí se směrem schodů");
     if (hs.some(selfX)) fail(lab, "výřez se kříží sám se sebou");
     const r = webBall(hs);
     if (r.web < 0) fail(lab, "pole " + (i + 1) + ": výřezy se navzájem kříží");
     minWeb = Math.min(minWeb, r.web); maxBall = Math.max(maxBall, r.ball);
     if (r.ball > 110 + 1) fail(lab, "otvor Ø" + r.ball.toFixed(0) + " mm");
     (M.anim || []).filter((a) => a[2]).forEach((a) => {
-      const xa = pn.map(a[0], 0)[0], xb = pn.map(a[1], 0)[0];
+      const xs = [pn.map(a[0], 0)[0], pn.map(a[1], 0)[0]], xa = Math.min(...xs), xb = Math.max(...xs);
       if (xa < X0 - 1 || xb > X1 + 1) fail(lab, "pole " + (i + 1) + ": hlavní zvíře " + M.lab + " je uříznuté (" + xa.toFixed(0) + "–" + xb.toFixed(0) + " mimo " + X0.toFixed(0) + "–" + X1.toFixed(0) + ")");
     });
     const cc = clipCheck(m); clipBad += cc.bad; clipTot += cc.tot;
@@ -102,7 +115,7 @@ CASES.forEach(([lab, c], ci) => {
     const nPoly = (txt.match(/\nPOLYLINE\n/g) || []).length;
     if (nPoly !== d.polys.length || d.polys.length !== r.part.pn.holesXY.length) fail(lab, "DXF: " + nPoly + " výřezů místo " + r.part.pn.holesXY.length);
     if (Math.min(...d.poly.flat()) < -1e-6) fail(lab, "DXF má záporné souřadnice");
-    if (!/_plech\d_motiv-(jelen|medved|smrky|los)_/.test(r.file)) fail(lab, "název DXF " + r.file);
+    if (!/_plech\d_motiv-(jelen|medved|smrky|los)(@\d+)?_/.test(r.file)) fail(lab, "název DXF " + r.file);
   });
   if (ci === 1) { const st = validate(G.stepFile("priroda", lay.members.map((m) => m.solid)), "priroda"); if (st.errs.length) fail(lab, "STEP: " + st.errs.slice(0, 2).join("; ")); }
   console.log((fails ? "…   " : "OK   ") + lab.padEnd(38) + " polí " + panels.length + "  plech " + Array.from(new Set(panels.map((m) => Math.round(m.w) + "×" + Math.round(m.l)))).join(", ") + " × " + cfg.plech +
@@ -110,7 +123,9 @@ CASES.forEach(([lab, c], ci) => {
 });
 // zákazy
 const nope = (lab, c, re) => { const A = Z.analyze(Object.assign({}, base, c)); if (!A.warns.some((w) => w.lvl === "bad" && re.test(w.t))) fail(lab, "chybí blokující varování"); else console.log("OK   zákaz: " + lab); };
-nope("schodiště", { segs: [{ L: 3000, rise: 1730, steps: 11 }] }, /schodišti/);
+nope("sklon 20°", { segs: [{ L: 3000, rise: 1092, steps: 8 }] }, /jiný sklon/);
+nope("sklon 45°", { segs: [{ L: 2000, rise: 2000, steps: 11 }] }, /jiný sklon/);
+nope("jelen na 40°", { segs: [{ L: 2400, rise: 2014, steps: 11 }], pole: [{ m: "jelen" }, { m: "jelen" }, { m: "jelen" }] }, /celé nevejde/);
 nope("výška 1200 z boku", { segs: [{ L: 3000, rise: 0 }], vyska: 1200 }, /moc vysoké/);
 // tloušťka: rozmezí z motivů, nabídka a doporučení
 const rg = Z.plechRange(["jelen", "medved", "smrky"]);

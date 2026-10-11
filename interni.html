@@ -336,9 +336,24 @@
 <script src="assets/zabradli/motiv-medved.js?v=20261013b"></script>
 <script src="assets/zabradli/motiv-smrky.js?v=20261013b"></script>
 <script src="assets/zabradli/motiv-los.js?v=20261013b"></script>
-<script src="zabradli-core.js?v=20261013b"></script>
+<script src="zabradli-core.js?v=20261014a"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script src="zabradli-dilna.js?v=20261011b"></script>
+<script>
+/* motivy Příroda pro šikminy se stahují, až je poptávka se schodištěm potřebuje; pak se otevřená poptávka přepočítá */
+(function () {
+  const L = {}; let last = null; const open0 = ZabDilna.open;
+  ZabDilna.open = function (it) { last = it; return open0.apply(this, arguments); };
+  window.ZabradliNacti = (id, a) => {
+    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014a';
+    if (L[f]) return; L[f] = true;
+    const sc = document.createElement('script'); sc.src = f;
+    sc.onload = () => { try { ZabDilna.render(); if (last) ZabDilna.open(last); } catch (e) { console.error(e); } };
+    sc.onerror = () => { L[f] = false; };
+    document.head.appendChild(sc);
+  };
+})();
+</script>
 <script src="stolecky-core.js?v=20261011c"></script>
 <script src="stolecky-viewer.js?v=20261011c"></script>
 <script src="stolecky-dilna.js?v=20261011c"></script>
