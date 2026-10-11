@@ -1,0 +1,428 @@
+{
+ "stav": "VAROVANI",
+ "soubor": "/home/arkeas/Desktop/cad_worker/motyli_podnoz.step",
+ "material": "ocel",
+ "material_je_predpoklad": true,
+ "pocet_teles": 33,
+ "celek_bbox_mm": [
+  1532.5,
+  842.0,
+  728.0
+ ],
+ "objem_mm3": 5060319,
+ "hmotnost_kg": 39.72,
+ "celky": [
+  [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32
+  ]
+ ],
+ "druhy": {
+  "plech": 29,
+  "ohnuty_plech": 4
+ },
+ "chyby": [],
+ "varovani": [
+  "těleso 1 (720×685×347 mm): vypadá jako ohýbaný plech – ohyb je NESTANDARD, potvrdit a cenu ohybu nepočítat",
+  "těleso 9 (720×682×346 mm): vypadá jako ohýbaný plech – ohyb je NESTANDARD, potvrdit a cenu ohybu nepočítat",
+  "těleso 17 (720×682×346 mm): vypadá jako ohýbaný plech – ohyb je NESTANDARD, potvrdit a cenu ohybu nepočítat",
+  "těleso 25 (720×685×347 mm): vypadá jako ohýbaný plech – ohyb je NESTANDARD, potvrdit a cenu ohybu nepočítat",
+  "nelze ověřit (chybí v data/Stroje.md): C2 max tloušťka (ocel)"
+ ],
+ "telesa": [
+  {
+   "i": 0,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 5.66,
+   "bbox": [
+    120.0,
+    120.0,
+    100.0
+   ]
+  },
+  {
+   "i": 1,
+   "valid": true,
+   "druh": "ohnuty_plech",
+   "tloustka_odhad_mm": 3.95,
+   "bbox": [
+    684.6,
+    346.8,
+    720.0
+   ]
+  },
+  {
+   "i": 2,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.57,
+   "bbox": [
+    589.4,
+    326.0,
+    379.9
+   ]
+  },
+  {
+   "i": 3,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.4,
+   "bbox": [
+    109.6,
+    78.3,
+    4.0
+   ]
+  },
+  {
+   "i": 4,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    261.6,
+    154.3,
+    420.4
+   ]
+  },
+  {
+   "i": 5,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.53,
+   "bbox": [
+    261.6,
+    154.3,
+    300.0
+   ]
+  },
+  {
+   "i": 6,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.54,
+   "bbox": [
+    445.0,
+    246.0,
+    4.0
+   ]
+  },
+  {
+   "i": 7,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    254.5,
+    158.5,
+    274.3
+   ]
+  },
+  {
+   "i": 8,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 6.58,
+   "bbox": [
+    132.7,
+    122.0,
+    8.0
+   ]
+  },
+  {
+   "i": 9,
+   "valid": true,
+   "druh": "ohnuty_plech",
+   "tloustka_odhad_mm": 3.95,
+   "bbox": [
+    682.4,
+    345.7,
+    720.0
+   ]
+  },
+  {
+   "i": 10,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.57,
+   "bbox": [
+    605.1,
+    333.6,
+    387.3
+   ]
+  },
+  {
+   "i": 11,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.4,
+   "bbox": [
+    109.6,
+    78.3,
+    4.0
+   ]
+  },
+  {
+   "i": 12,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    261.6,
+    154.3,
+    420.4
+   ]
+  },
+  {
+   "i": 13,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.53,
+   "bbox": [
+    261.6,
+    154.3,
+    300.0
+   ]
+  },
+  {
+   "i": 14,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.54,
+   "bbox": [
+    445.0,
+    246.0,
+    4.0
+   ]
+  },
+  {
+   "i": 15,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    270.1,
+    166.2,
+    286.7
+   ]
+  },
+  {
+   "i": 16,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 6.58,
+   "bbox": [
+    132.7,
+    122.0,
+    8.0
+   ]
+  },
+  {
+   "i": 17,
+   "valid": true,
+   "druh": "ohnuty_plech",
+   "tloustka_odhad_mm": 3.95,
+   "bbox": [
+    682.4,
+    345.7,
+    720.0
+   ]
+  },
+  {
+   "i": 18,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.57,
+   "bbox": [
+    605.1,
+    333.6,
+    387.3
+   ]
+  },
+  {
+   "i": 19,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.4,
+   "bbox": [
+    109.6,
+    78.3,
+    4.0
+   ]
+  },
+  {
+   "i": 20,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    261.6,
+    154.3,
+    420.4
+   ]
+  },
+  {
+   "i": 21,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.53,
+   "bbox": [
+    261.6,
+    154.3,
+    300.0
+   ]
+  },
+  {
+   "i": 22,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.54,
+   "bbox": [
+    445.0,
+    246.0,
+    4.0
+   ]
+  },
+  {
+   "i": 23,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    270.1,
+    166.2,
+    286.7
+   ]
+  },
+  {
+   "i": 24,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 6.58,
+   "bbox": [
+    132.7,
+    122.0,
+    8.0
+   ]
+  },
+  {
+   "i": 25,
+   "valid": true,
+   "druh": "ohnuty_plech",
+   "tloustka_odhad_mm": 3.95,
+   "bbox": [
+    684.6,
+    346.8,
+    720.0
+   ]
+  },
+  {
+   "i": 26,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.57,
+   "bbox": [
+    589.4,
+    326.0,
+    379.9
+   ]
+  },
+  {
+   "i": 27,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.4,
+   "bbox": [
+    109.6,
+    78.3,
+    4.0
+   ]
+  },
+  {
+   "i": 28,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    261.6,
+    154.3,
+    420.4
+   ]
+  },
+  {
+   "i": 29,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.53,
+   "bbox": [
+    261.6,
+    154.3,
+    300.0
+   ]
+  },
+  {
+   "i": 30,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.54,
+   "bbox": [
+    445.0,
+    246.0,
+    4.0
+   ]
+  },
+  {
+   "i": 31,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 3.55,
+   "bbox": [
+    254.5,
+    158.5,
+    274.3
+   ]
+  },
+  {
+   "i": 32,
+   "valid": true,
+   "druh": "plech",
+   "tloustka_odhad_mm": 6.58,
+   "bbox": [
+    132.7,
+    122.0,
+    8.0
+   ]
+  }
+ ]
+}

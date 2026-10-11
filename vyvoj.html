@@ -189,6 +189,7 @@
         <h2><small>Krok 1</small>Tvar podnože</h2>
         <div class="grid g4" id="models"></div>
         <p class="note" id="modelNote" style="margin:10px 0 0"></p>
+        <div class="box" id="motWarning" hidden>Jde o vizualizační síť z dodaného STEP. Rozměry, cena a nosnost nejsou upravitelné ani ověřené; model není výrobní podklad.</div>
         <h3 class="subh" id="laysHead">Rozmístění noh</h3>
         <div class="grid g2" id="lays"></div>
         <h3 class="subh" id="jointsHead">Spojení noh</h3>
@@ -292,6 +293,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
+<script src="motyli-podnoz-mesh.js?v=20261011a"></script>
+<script src="motyli-podnoz.js?v=20261011a"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -336,6 +339,18 @@
   }
 
   function render() {
+    if (cfg.model === 'MOT') { renderMotyli(); return; }
+    document.querySelectorAll('.panel .steps > .step').forEach((x) => { x.hidden = false; });
+    document.querySelector('.buy').hidden = false;
+    document.querySelector('.foot').hidden = false;
+    $('motWarning').hidden = true;
+    $('topDims').hidden = false;
+    ['L', 'W', 'H', 'Ln', 'Wn', 'Hn'].forEach((id) => { $(id).disabled = false; $(id).title = ''; });
+    [['L', '350', '2400', '10'], ['W', '300', '1100', '10'], ['H', '350', '1100', '10']].forEach(([id, min, max, step]) => { $(id).min = min; $(id).max = max; $(id).step = step; });
+    $('ohChip').hidden = false;
+    $('see').parentElement.hidden = false;
+    $('showDesk').parentElement.hidden = false;
+    $('person').parentElement.hidden = false;
     A = K.analyze(cfg, rates);
     const M = K.MODELS.find((m) => m.id === cfg.model), F = K.FIN.find((f) => f.id === cfg.fin), d = A.build.dims, circle = cfg.shape === 'circle';
     $('mName').textContent = M.lab;
@@ -352,7 +367,14 @@
     $('own').hidden = cfg.dmode !== 'own';
 
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => {
-      set({ model: id });
+      if (id === 'MOT' && cfg.model !== 'MOT') {
+        try { localStorage.setItem('podnoz-before-mot-wip', JSON.stringify(cfg)); localStorage.setItem('ui-before-mot-wip', JSON.stringify(ui)); } catch (e) {}
+        set({ model: id });
+      } else if (cfg.model === 'MOT' && id !== 'MOT') {
+        let back = cfg;
+        try { back = JSON.parse(localStorage.getItem('podnoz-before-mot-wip') || 'null') || cfg; ui = JSON.parse(localStorage.getItem('ui-before-mot-wip') || 'null') || ui; localStorage.removeItem('podnoz-before-mot-wip'); localStorage.removeItem('ui-before-mot-wip'); } catch (e) {}
+        set(Object.assign({}, back, { model: id }));
+      } else set({ model: id });
     });
 
     $('models').hidden = K.MODELS.length < 2;
@@ -481,6 +503,43 @@
       }
     }
     viewer.update(A, { showDesk: ui.showDesk, see: ui.see, person: ui.person });
+  }
+
+  function renderMotyli() {
+    A = K.analyze(cfg, rates);
+    const M = K.MODELS.find((m) => m.id === 'MOT');
+    $('mName').textContent = M.lab;
+    $('mSub').textContent = 'STEP · ' + K.nf(1532.526, 1) + ' × ' + K.nf(842.028, 1) + ' × 728 mm';
+    $('ohChip').hidden = true;
+    $('see').parentElement.hidden = true;
+    $('showDesk').parentElement.hidden = true;
+    $('person').parentElement.hidden = true;
+    $('modelNote').textContent = M.desc + ' · ' + M.note;
+    $('motWarning').hidden = false;
+    group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => {
+      let back = cfg;
+      try { back = JSON.parse(localStorage.getItem('podnoz-before-mot-wip') || 'null') || K.motyliBase.normalize({ model: id }); ui = JSON.parse(localStorage.getItem('ui-before-mot-wip') || 'null') || ui; localStorage.removeItem('podnoz-before-mot-wip'); localStorage.removeItem('ui-before-mot-wip'); } catch (e) {}
+      set(Object.assign({}, back, { model: id }));
+    });
+    $('models').hidden = false;
+    ['laysHead', 'lays', 'jointsHead', 'joints', 'topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
+    document.querySelectorAll('.panel .steps > .step').forEach((x, i) => { if (i > 1) x.hidden = true; });
+    $('step2Title').textContent = 'Rozměry zdrojového STEP';
+    $('frameNote').textContent = 'Zobrazený model zachovává geometrii dodaného STEP jako náhledovou síť. Ovládání rozměrů bude dostupné po parametrickém překreslení.';
+    [['L', 1533], ['W', 842], ['H', 728]].forEach(([k, value]) => {
+      const range = $(k), num = $(k + 'n');
+      range.min = range.max = String(value); range.step = '1';
+      range.value = value; num.value = value;
+      range.disabled = num.disabled = true;
+      range.title = num.title = 'Pevný rozměr podle zdrojového STEP';
+    });
+    $('wField').hidden = false;
+    document.querySelector('.buy').hidden = true;
+    document.querySelector('.foot').hidden = true;
+    ui.showDesk = false; ui.person = null; ui.see = false;
+    $('ohChip').hidden = true; $('pHwrap').hidden = true; $('personChip').hidden = true;
+    $('load').hidden = true;
+    viewer.update(A, { showDesk: false, see: false, person: null });
   }
 
   ['L', 'W', 'H'].forEach((k) => {
