@@ -171,7 +171,8 @@ if (std.lay.members.some((m) => m.kind === "panel")) fail("standard", "výplň s
 const ab = Z.analyze({ vypln: "laser", segs: [{ L: 3000, rise: 0 }] });
 if (ab.cfg.rada !== "abstrakt" || ab.lay.members.filter((m) => m.kind === "panel").some((m) => m.pn.crop || m.pn.motif.id !== "strom")) fail("laser", "abstraktní motiv se změnil");
 const appHtml = require("fs").readFileSync(__dirname + "/../zabradli.html", "utf8");
-if (!/id="prAllMotyl"/.test(appHtml) || !/data-motyl-variant/.test(appHtml)) fail("ovládání motýla", "chybí jeden náhled s kompaktní volbou A/B/C");
+if (!/function motylChoice\(/.test(appHtml) || !/data-motyl-variant/.test(appHtml)) fail("ovládání motýla", "chybí velká karta motýla s volbami A/B/C");
+if (/id="prAllMotylPreview"/.test(appHtml) || !/\.motyl-variants \{ display: flex; flex-direction: column/.test(appHtml)) fail("ovládání motýla", "A/B/C nemá být vedle samostatného náhledu a pod sebou");
 if (/data-motif-thumb/.test(appHtml)) fail("ovládání motýla", "v kartách se stále opakují velké náhledy A/B/C");
 console.log(fails ? "\n" + fails + " chyb" : "\nPříroda: vše v pořádku");
 process.exit(fails ? 1 : 0);
