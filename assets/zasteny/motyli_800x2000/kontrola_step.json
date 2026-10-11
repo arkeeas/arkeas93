@@ -1,0 +1,13 @@
+{
+  "step": "/home/arkeas/Documents/ChatGPT/konfigurator/zastena_motyli_800x2000/zastena_motyli_800x2000.step",
+  "valid": true,
+  "solid_count": 7,
+  "all_solids_valid": true,
+  "bbox_mm": [
+    800.0,
+    100.0,
+    2000.0
+  ],
+  "volume_mm3": 3700672.2,
+  "size_bytes": 3130883
+}
