@@ -237,12 +237,12 @@
         </div>
         <div class="facts" id="sFacts"></div>
         <div class="warns" id="sWarns"></div>
-        <h2>Řezný plán – jekly pro Bodor K2</h2>
+        <h2 id="sCutTitle">Řezný plán – jekly pro Bodor K2</h2>
         <div class="tbl"><table>
           <thead><tr><th>Díl</th><th>Popis</th><th class="num">Ks</th><th class="num">Délka venku / uvnitř</th><th>Začátek</th><th>Konec</th></tr></thead>
           <tbody id="sCut"></tbody>
         </table></div>
-        <h2 style="margin-top:18px">Stěny jeklů a plechy</h2>
+        <h2 id="sFlatsTitle" style="margin-top:18px">Stěny jeklů a plechy</h2>
         <div class="flats" id="sFlats"></div>
         <h2>Postup svařování</h2>
         <ol class="steps" id="sSteps"></ol>
@@ -259,7 +259,7 @@
         </div>
         <fieldset id="sFields"><legend>Zámečky a plechy</legend></fieldset>
         <div>
-          <div style="font-size:12px;color:var(--muted)">Cena (podle ceníku podnoží, bez desky)</div>
+          <div id="sPriceTitle" style="font-size:12px;color:var(--muted)">Cena (podle ceníku podnoží, bez desky)</div>
           <div class="mono" style="font-size:18px" id="sPrice"></div>
         </div>
         <div>
@@ -320,9 +320,9 @@
 <script src="zabradli-core.js?v=20261008g"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script src="zabradli-dilna.js?v=20261006a"></script>
-<script src="stolecky-core.js?v=20261009e"></script>
-<script src="stolecky-viewer.js?v=20261009e"></script>
-<script src="stolecky-dilna.js?v=20261009e"></script>
+<script src="stolecky-core.js?v=20261011a"></script>
+<script src="stolecky-viewer.js?v=20261011a"></script>
+<script src="stolecky-dilna.js?v=20261011a"></script>
 <script>
 (function () {
   const K = Podnoze, G = Generator, $ = (id) => document.getElementById(id);

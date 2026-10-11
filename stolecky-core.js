@@ -27,10 +27,15 @@
     { id: '20x40x2', hp: 20, hd: 40, wall: 2 }
   ];
   const DEFAULT_CFG = {
+    model: 'retez',
     H: 450, topD: 700, topT: 30, baseW: 340, baseT: 10, plT: 6,
     prof: '40x20x2', gamma: 40, spread: 240, weldGap: 0, sink: 'auto', clear: 0.15, tabMargin: 3, holeClear: 0.5,
     fin: 'black', qty: 1, top: 'plech', mount: 'vrut'
   };
+  const MODELS = [
+    { id: 'retez', lab: 'Řetěz' },
+    { id: 'motylek', lab: 'Motýlek', H: 500, topD: 600, topT: 4, plateT: 4, massKg: 14.46, surfaceM2: 1.032 }
+  ];
   /* horní část pod deskou – jeden díl pálený z plechu (C2), do něj se zasunou horní nohy */
   const TOPS = [
     { id: 'plech', lab: 'Čtvercový plech', icon: 'M12 6 H52 V42 H12 Z', p: 'Plech pod středem desky, nohy jdou do jeho otvorů. Nejjednodušší, deska je podepřená uprostřed.', c: 'Pod deskou je vidět hrana čtverce.' },
@@ -146,6 +151,7 @@
 
   function normalize(c) {
     const o = Object.assign({}, DEFAULT_CFG, c || {});
+    if (!MODELS.some((m) => m.id === o.model)) o.model = DEFAULT_CFG.model;
     const num = (k, lo, hi) => { const v = Number(o[k]); o[k] = Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : DEFAULT_CFG[k])); };
     num('H', 300, 800); num('topD', 400, 1400); num('topT', 10, 60); num('baseW', 150, 700); num('baseT', 4, 25); num('plT', 3, 12);
     num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); if (o.sink !== 'auto') num('sink', 0, 12); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
@@ -351,6 +357,19 @@
   /* ---------- vše pro zákazníka i dílnu ---------- */
   function build(c) {
     const cfg = normalize(c), warn = [];
+    if (cfg.model === 'motylek') {
+      const M = MODELS.find((m) => m.id === 'motylek');
+      return {
+        cfg, model: 'motylek', warn: [], kg: M.massKg, kgBars: 0, kgPlates: M.massKg,
+        meshAsset: 'assets/stolecky/motyli_stolek/preview.json',
+        productFiles: [
+          { label: 'STEP – sestava', path: 'assets/stolecky/motyli_stolek/motyli_stolek_600x500.step' },
+          { label: 'DXF – deska Ø 600', path: 'assets/stolecky/motyli_stolek/deska_600_4mm.dxf' },
+          { label: 'DXF – podnož A', path: 'assets/stolecky/motyli_stolek/podnoz_A_4mm.dxf' },
+          { label: 'DXF – podnož B', path: 'assets/stolecky/motyli_stolek/podnoz_B_4mm.dxf' }
+        ]
+      };
+    }
     const G0 = geom(cfg, 0), tipsOk = G0.Hs - 2 * G0.h - G0.hp / Math.sin(G0.g) >= 10;
     if (!tipsOk) warn.push('Nohy jsou na tuhle výšku moc dlouhé – hroty dolního a horního článku by se potkaly. Zmenši rozteč noh nebo zvětši úhel.');
     let ov0 = seat(cfg);
@@ -500,7 +519,14 @@
   /* orientační cena podnože stolku (bez desky) – stejný vzorec jako analyzeCore v core.js:
    * materiál + pálení dílů + svary + prášková barva + příprava, marže, DPH 21 % */
   function price(B, ratesIn) {
-    const R = Object.assign({}, DEFAULT_RATES, ratesIn || {}), c = B.cfg, P = B.G.P, F = FIN.find((f) => f.id === c.fin);
+    const R = Object.assign({}, DEFAULT_RATES, ratesIn || {}), c = B.cfg, F = FIN.find((f) => f.id === c.fin);
+    if (B.model === 'motylek') {
+      const cuts = 3, welds = 4, surf = MODELS.find((m) => m.id === 'motylek').surfaceM2;
+      const cost = B.kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava;
+      const p = Math.round(cost * (1 + R.marze / 100) / 10) * 10, vat = Math.round(p * 1.21 / 10) * 10;
+      return { price: p, vat, total: vat * c.qty, cuts, welds, surf };
+    }
+    const P = B.G.P;
     const barLen = B.parts.reduce((s, p) => s + (p.lo + p.li) / 2 * p.qty, 0);
     const cuts = B.parts.reduce((s, p) => s + p.qty, 0) + 2;
     const welds = 4 + 2 + 4 + 4;                                     // kosočtverec, hroty V/Λ, nohy v plechu, styky článků
@@ -512,12 +538,13 @@
   function describe(c) {
     c = normalize(c);
     const F = FIN.find((f) => f.id === c.fin);
+    if (c.model === 'motylek') return 'Stolek Motýlek · Ø 600 × výška 500 mm · ocelový plech 4 mm · ' + F.lab;
     return 'Stolek Řetěz ' + c.gamma + '° · výška ' + c.H + ' · deska Ø ' + c.topD + ' · jekl ' + c.prof.replace(/x/g, '×') + ' · ' + F.lab +
       ' · ' + TOPS.find((t) => t.id === c.top).lab.toLowerCase() + ' · ' + MOUNTS.find((m) => m.id === c.mount).lab.toLowerCase();
   }
 
   const API = {
-    FIN, TOPS, MOUNTS, DEFAULT_RATES, price, describe, sinkMinOf, sinkOf, subConvex, clipConvex, inPoly, hookCuts,
+    FIN, TOPS, MOUNTS, MODELS, DEFAULT_RATES, price, describe, sinkMinOf, sinkOf, subConvex, clipConvex, inPoly, hookCuts,
     PROFILES, DEFAULT_CFG, kgm, dxf, area, normalize, frame, locks, barFlat, geom, clash, seat, build, freecadMacro, orient, rad, deg, r1
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

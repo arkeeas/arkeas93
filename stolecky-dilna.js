@@ -85,12 +85,41 @@
   function render() {
     buildForm();
     const B = S.build(cfg), c = B.cfg, X = S.price(B, rates);
+    $('sFields').hidden = B.model === 'motylek';
     FIELDS.forEach(([k]) => { const el = $('sf-' + k); if (document.activeElement !== el) el.value = k === 'sink' && c.sink === 'auto' ? '' : c[k]; });
     $('sf-sink').placeholder = 'auto (' + S.sinkMinOf(c) + ')';
     $('sf-weldGap').disabled = B.sink > 0;
     const it = current, cu = (it && it.customer) || {};
     $('sOrder').innerHTML = it ? '<b>' + esc(it.id) + '</b> · ' + esc(cu.name) + ' · ' + esc(cu.email) + (cu.phone ? ' · ' + esc(cu.phone) : '') + (cu.address ? '<br>' + esc(cu.address) : '') + (it.note ? '<br>„' + esc(it.note) + '“' : '')
       : '<span style="color:var(--muted)">Bez poptávky – podklady pro konfiguraci z konfigurátoru stolečků v tomto prohlížeči.</span>';
+    if (B.model === 'motylek') {
+      $('sCfg').textContent = S.describe(c) + ' · pevná verze podle STEP';
+      $('sPriceTitle').textContent = 'Orientační cena podle ceníku, včetně ocelové desky';
+      $('sPrice').textContent = nf(X.vat) + ' Kč s DPH / ks · ' + nf(X.price) + ' Kč bez DPH';
+      $('sFacts').innerHTML = [['Deska', 'Ø 600 mm'], ['Výška', '500 mm'], ['Tloušťka plechu', '4 mm'], ['Hmotnost podle CAD', fmt(B.kg) + ' kg']]
+        .map(([a, b]) => '<div class="fact"><b>' + b + '</b><span>' + a + '</span></div>').join('');
+      $('sWarns').innerHTML = '';
+      $('sCutTitle').textContent = 'Výrobní díly – laserované plechy';
+      $('sCut').innerHTML = [
+        ['1', 'Kruhová deska Ø 600 mm, ocel 4 mm', c.qty],
+        ['A', 'Motýlí podnož A, ocel 4 mm', c.qty],
+        ['B', 'Motýlí podnož B, ocel 4 mm', c.qty]
+      ].map((p) => '<tr><td class="mono">' + p[0] + '</td><td>' + p[1] + '</td><td class="num">' + p[2] + '</td><td colspan="3">DXF podle dodaného výkresu</td></tr>').join('') +
+        '<tr><td colspan="6" style="color:var(--muted)">Pevná sestava Ø 600 × 500 mm. Řezné obrysy se stahují přímo z dodaných DXF souborů.</td></tr>';
+      $('sFlatsTitle').textContent = 'Zdrojové CAD soubory';
+      $('sFlats').innerHTML = '<figure class="wide"><figcaption><b>STEP sestava</b> obsahuje kruhovou ocelovou desku a křížovou podnož A/B. DXF soubory zachovávají původní křivky a otvory.</figcaption></figure>';
+      $('sDl').innerHTML = B.productFiles.map((f) => '<a class="btn" href="' + esc(f.path) + '" download>' + esc(f.label) + '</a>').join('');
+      $('sSteps').innerHTML = [
+        'Vyříznout desku a podnože A/B z příslušných DXF souborů.',
+        'Sestavit křížovou podnož A/B podle dodaného STEP modelu.',
+        'Přiložit podnož k rubu desky a dokončit svarové spoje podle geometrie sestavy STEP.'
+      ].map((t) => '<li>' + t + '</li>').join('');
+      if (viewer) { viewer.update(B, { see, showDesk: true }); requestAnimationFrame(() => viewer.view()); }
+      return;
+    }
+    $('sPriceTitle').textContent = 'Cena (podle ceníku podnoží, bez desky)';
+    $('sCutTitle').textContent = 'Řezný plán – jekly pro Bodor K2';
+    $('sFlatsTitle').textContent = 'Stěny jeklů a plechy';
     $('sCfg').textContent = S.describe(c) + ' · plotna ' + c.baseW + ' × ' + c.baseW + ' × ' + c.baseT + ' · rozteč noh ' + c.spread + ' · ' + c.qty + ' ks';
     $('sPrice').textContent = nf(X.vat) + ' Kč s DPH / ks · ' + nf(X.price) + ' Kč bez DPH';
     $('sFacts').innerHTML = [['Kosočtverec (v × š)', fmt(B.size.midH) + ' × ' + fmt(B.size.midW)], ['Výška noh', fmt(B.size.legH) + ' mm'],
