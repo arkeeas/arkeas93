@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+require('../core.js');
+require('../vyvoj.js');
+globalThis.window = globalThis;
+require('../motyli-podnoz-mesh.js');
+require('../motyli-podnoz.js');
+const V = globalThis.Vyvoj;
+assert(V.MODELS.some((m) => m.id === 'MOT'), 'MOT je v katalogu Umělecké');
+const cfg = V.normalize({ model: 'MOT' });
+assert.equal(cfg.model, 'MOT');
+const A = V.analyze(cfg);
+assert.equal(A.capacity, null, 'nosnost se netvrdí');
+assert.equal(A.cost, null, 'cena se netvrdí');
+assert.equal(A.build.parts.length, 33, 'STEP má 33 vykreslených těles');
+assert(A.build.parts.every((p) => p.solid.verts.length && p.solid.faces.length));
+const xyz = A.build.parts.flatMap((p) => p.solid.verts);
+const bounds = [0, 1, 2].map((axis) => [Math.min(...xyz.map((v) => v[axis])), Math.max(...xyz.map((v) => v[axis]))]);
+assert(Math.abs(bounds[0][1] - bounds[0][0] - A.build.dims.Lf) < 2);
+assert(Math.abs(bounds[1][1] - bounds[1][0] - A.build.dims.Wf) < 2);
+assert(Math.abs(bounds[2][1] - bounds[2][0] - A.build.dims.Hf) < 2);
+assert.deepEqual(A.build.dims, { Lf: 1532.526, Wf: 842.028, Hf: 728 });
+assert.equal(V.normalize({ model: 'PZ' }).model, 'PZ', 'ostatní modely zůstávají dostupné');
+assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /motyli-podnoz-mesh\.js[\s\S]*motyli-podnoz\.js/);
+assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /function renderMotyli\(\)/);
+console.log('OK kontrola MOT: katalog, náhled 33 těles, rozměry a neověřené výstupy');
