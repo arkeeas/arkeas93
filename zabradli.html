@@ -76,7 +76,9 @@
   .motyl-variant { min-width: 32px; flex: 1 1 0; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); font-weight: 700; }
   .motyl-variant[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   @media (max-width: 520px) { .motyl-variant { min-width: 28px; padding: 0 4px; } }
-  .field-preview { display: block; width: min(100%, 170px); max-height: 115px; height: auto; object-fit: contain; margin-top: 8px; border-radius: 6px; }
+  .field-preview { display: block; width: min(100%, 170px); max-height: 115px; height: auto; object-fit: contain; margin-top: 8px; border-radius: 6px; position: relative; z-index: 0; transform-origin: top left; transition: transform .16s ease, box-shadow .16s ease; cursor: zoom-in; }
+  .field-preview:hover, .field-preview:focus-visible, .field-preview:active { z-index: 20; transform: scale(2); box-shadow: 0 5px 20px rgba(0,0,0,.25); }
+  @media (prefers-reduced-motion: reduce) { .field-preview { transition: none; } }
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .num { display: flex; align-items: center; gap: 6px; color: var(--muted); }
@@ -390,16 +392,16 @@
 <script src="assets/zabradli/motiv-medved.js?v=20261014b"></script>
 <script src="assets/zabradli/motiv-smrky.js?v=20261014b"></script>
 <script src="assets/zabradli/motiv-los.js?v=20261014b"></script>
-<script src="assets/zabradli/motiv-motyl.js?v=20261014g"></script>
-<script src="assets/zabradli/motiv-motyl-a.js?v=20261014g"></script>
-<script src="assets/zabradli/motiv-motyl-b.js?v=20261014g"></script>
-<script src="zabradli-core.js?v=20261014g"></script>
+<script src="assets/zabradli/motiv-motyl.js?v=20261014h"></script>
+<script src="assets/zabradli/motiv-motyl-a.js?v=20261014h"></script>
+<script src="assets/zabradli/motiv-motyl-b.js?v=20261014h"></script>
+<script src="zabradli-core.js?v=20261014h"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261014g') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261014h') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -497,7 +499,7 @@
   // motivy pro šikminy se stahují, až je pole na schodišti potřebuje
   const loading = {};
   window.ZabradliNacti = (id, a) => {
-    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014g';
+    const f = 'assets/zabradli/schody/motiv-' + id + '-' + Math.round(a * 10) + '.js?v=20261014h';
     if (loading[f]) return; loading[f] = true;
     const sc = document.createElement('script'); sc.src = f;
     sc.onload = () => { if (cfg) render(); };
@@ -522,7 +524,7 @@
     el.innerHTML = pn.map((f, i) => '<div class="box" style="display:block;margin:0 0 10px;padding:10px">' +
       '<div class="row" style="margin-bottom:6px"><strong>Pole ' + f.field + '</strong><span class="note">' + (f.slope ? 'schodiště ' + nf(f.slope, 1) + '° · ' : '') + 'plech ' + nf(f.w) + ' × ' + nf(f.h) + ' mm</span></div>' +
       '<div class="grid g4" data-pm="' + i + '">' + otherIds.map((id) => { const m = Zb.motifOf(id), no = !!f.slope && m.schody === false; return optBtn(id, pole[i].m === id, m.lab, no ? 'jen na rovinu' : '', '', no && pole[i].m !== id, no ? 'Na schodišti vypadá zkosená scéna špatně – vyberte Los, Smrkový les nebo Motýla.' : ''); }).join('') + motylChoice(pole[i].m, i) + '</div>' +
-      '<canvas class="field-preview" data-cv="' + i + '" aria-label="Náhled výřezu scény v poli ' + f.field + '"></canvas>' +
+      '<canvas class="field-preview" data-cv="' + i + '" tabindex="0" title="Podržte ukazatel nebo fokusujte pro zvětšení" aria-label="Náhled výřezu scény v poli ' + f.field + '"></canvas>' +
       (f.ok && f.crop && f.crop.n > 1 ? '<input type="range" data-pp="' + i + '" min="0" max="1000" step="1" value="' + Math.round(pole[i].p * 1000) + '" aria-label="Posun výřezu v poli ' + f.field + '" style="width:100%;margin-top:6px">'
         : f.ok ? '<p class="note" style="margin:6px 0 0">Poloha je daná – hlavní zvíře se do pole vejde jen takhle.</p>' : '') +
       (!f.ok ? '<p class="note" style="margin:6px 0 0;color:var(--bad-ink)">' + esc((f.steep ? WHY.steep : WHY[f.why]) || 'Pole nejde osadit.') + '</p>' : '') + '</div>').join('');
