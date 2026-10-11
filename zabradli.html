@@ -234,6 +234,7 @@
         <h2><small>Krok 1</small>Konstrukce</h2>
         <p class="sub-h" style="margin-top:0">Provedení</p>
         <div class="grid g2" id="types"></div>
+        <div id="motivBox" hidden><p class="sub-h">Motiv v plechu</p><div class="grid g2" id="motivs"></div></div>
         <div class="field" id="postBox" style="margin-top:14px"><div class="row"><label for="pp">Rozteč sloupků (nejvýš)</label><span class="num"><input id="ppn" type="number" inputmode="numeric" aria-label="Rozteč sloupků v mm"> mm</span></div><input id="pp" type="range" min="600" max="1500" step="50"></div>
         <p class="sub-h">Madlo</p>
         <div class="grid g2" id="madla"></div>
@@ -434,6 +435,8 @@
       { id: 'L', l: 'Laserový motiv', s: 'plech s motivem v každém poli', ic: 'M4 8 H60 M4 40 H60 M4 8 V40 M60 8 V40 M32 8 V40 M10 34 C12 24 16 18 20 12 M16 22 L24 16 M20 34 C21 26 24 20 28 14 M38 34 C40 24 44 18 50 12 M44 22 L54 18 M48 34 C49 26 52 20 56 14' }],
       (t) => optBtn(t.id, t.id === (cfg.vypln === 'geometricky' ? 'G' : cfg.vypln === 'laser' ? 'L' : cfg.typ), t.l, t.s, t.ic),
       (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : id === 'L' ? set({ vypln: 'laser', sloupky: true }) : set({ sloupky: id === 'A', vypln: 'standard' }));
+    $('motivBox').hidden = cfg.vypln !== 'laser';
+    if (cfg.vypln === 'laser') group($('motivs'), Zb.MOTIFS, (m) => optBtn(m.id, m.id === cfg.motiv, m.lab, m.sub), (id) => set({ motiv: id }));
     $('postBox').hidden = !cfg.sloupky || cfg.vypln === 'geometricky';
     $('pp').min = cfg.vypln === 'laser' ? Zb.PANEL.postMin : Zb.POST_MIN; $('pp').max = cfg.vypln === 'laser' ? Zb.PANEL.postMax : Zb.POST_MAX;
     if (document.activeElement !== $('pp')) $('pp').value = cfg.postPitch;
@@ -464,15 +467,13 @@
     $('motifSettings').hidden = cfg.vypln !== 'geometricky';
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
-    $('profBox').innerHTML = (cfg.vypln === 'laser' ? '<p class="sub-h" style="margin-top:0">Motiv v plechu</p><div class="grid g2" id="motivs"></div>' : '') +
-      '<p class="sub-h"' + (cfg.vypln === 'laser' ? '' : ' style="margin-top:0"') + '>' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
+    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
       '<p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(cfg.motiv).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
       '<p class="note" style="margin:8px 0 0">Vnější i vnitřní rám motivu tvoří dutý jekl 20×20×2 mm. Čtyři konce se seříznou na 45° a v rozích svaří do pravého úhlu; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
       (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : ''));
     group($('profs'), Zb.RAILS[cfg.typ], (p) => optBtn(p.id, p.id === cfg.rail, 'Jekl ' + p.lab, p.sub), (id) => set({ rail: id }));
-    if (cfg.vypln === 'laser') group($('motivs'), Zb.MOTIFS, (m) => optBtn(m.id, m.id === cfg.motiv, m.lab, m.sub), (id) => set({ motiv: id }));
     if (cfg.vypln === 'standard') {
       group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
       if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
