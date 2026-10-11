@@ -1,0 +1,350 @@
+# Rebuild Motyli podnoz from the supplied STEP reference.
+# Edit TARGET_LENGTH_MM and TARGET_HEIGHT_MM below, then run this macro in FreeCAD.
+# Width follows the source footprint ratio so wing plan angles stay fixed.
+import FreeCAD as App
+import Part
+import Import
+import math
+import os
+import numpy as np
+from FreeCAD import Vector as V
+
+SOURCE_STEP = '/home/arkeas/Desktop/cad_worker/motyli_podnoz_jekl_40x40.step'
+OUTPUT_FCSTD = '/home/arkeas/src/arkeas93/motyli-podnoz/motyli_podnoz_parametricky.FCStd'
+TARGET_LENGTH_MM = 1532.526
+TARGET_HEIGHT_MM = 732.014
+SOURCE_LENGTH_MM = 1532.5262247
+SOURCE_WIDTH_MM = 842.0284332
+SOURCE_HEIGHT_MM = 732.0137884
+# The 120 mm hub and four fixed root junctions remain unchanged. Calibration
+# maps the requested outside dimensions to the linked wing spread.
+LENGTH_FIXED_MM = 193.72
+LENGTH_SPREAD_MM = 1338.81
+WIDTH_FIXED_MM = 172.53
+WIDTH_SPREAD_MM = 669.50
+HEIGHT_RATE_LOW = 685.0
+HEIGHT_RATE_HIGH = 689.0
+
+# Read edited dimensions from an existing/saved native model. Save and close the
+# document after changing Parameters.B2/B4, then rerun this macro to rebuild.
+_existing = None
+for _name in App.listDocuments():
+    _candidate = App.getDocument(_name)
+    if getattr(_candidate,'FileName','') == OUTPUT_FCSTD:
+        raise ValueError('Nejprve ulož a zavři parametrický FCStd, potom spusť přepočet.')
+if os.path.exists(OUTPUT_FCSTD):
+    _existing = App.openDocument(OUTPUT_FCSTD)
+if _existing is not None:
+    _sheet = _existing.getObject('Parametry')
+    if _sheet:
+        TARGET_LENGTH_MM = float(_sheet.get('B2'))
+        TARGET_HEIGHT_MM = float(_sheet.get('B4'))
+    App.closeDocument(_existing.Name)
+
+# Wing centerline ring: A—B—C—F—D—E—A. The edge order corresponds to
+# the six named 40x40x3 mm RHS members in the STEP assembly.
+NODE_INTERSECTIONS = [(0, 5), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]
+
+
+def unit(v):
+    out = V(v.x, v.y, v.z)
+    if out.Length < 1e-9:
+        raise ValueError('Nulový vektor při tvorbě jeklu')
+    out.normalize()
+    return out
+
+
+def axis_frame(obj):
+    # Determine tube axes from the two dominant orthogonal long-wall normals.
+    groups=[]
+    for face in obj.Shape.Faces:
+        try:
+            if 'Plane' not in str(type(face.Surface)) or face.Area < 200:
+                continue
+            n=unit(face.normalAt(0,0))
+            for group in groups:
+                if abs(group[0].dot(n)) > 0.999:
+                    group[1] += face.Area
+                    break
+            else:
+                groups.append([n,face.Area])
+        except Exception:
+            pass
+    groups.sort(key=lambda item:-item[1])
+    pairs=[]
+    for i in range(len(groups)):
+        for j in range(i+1,len(groups)):
+            if abs(groups[i][0].dot(groups[j][0])) < 0.05:
+                pairs.append((groups[i][1]+groups[j][1],groups[i][0],groups[j][0]))
+    if not pairs:
+        raise ValueError('Chybí kolmé roviny jeklu: '+obj.Label)
+    pairs.sort(key=lambda item:-item[0])
+    n1,n2=pairs[0][1],pairs[0][2]
+    axis=unit(n1.cross(n2))
+    pts=np.array([[v.Point.x,v.Point.y,v.Point.z] for v in obj.Shape.Vertexes])
+    a1=pts@np.array([n1.x,n1.y,n1.z]);a2=pts@np.array([n2.x,n2.y,n2.z])
+    c1=(a1.max()+a1.min())*0.5;c2=(a2.max()+a2.min())*0.5
+    cog=obj.Shape.CenterOfMass
+    rhs=np.array([c1,c2,axis.dot(V(cog.x,cog.y,cog.z))])
+    mat=np.array([[n1.x,n1.y,n1.z],[n2.x,n2.y,n2.z],[axis.x,axis.y,axis.z]])
+    xyz=np.linalg.solve(mat,rhs)
+    point=V(float(xyz[0]),float(xyz[1]),float(xyz[2]))
+    return axis,point,n1,n2
+
+
+def pca_axis(obj):
+    return axis_frame(obj)[0]
+
+
+def line_intersection(edge_a, edge_b):
+    u, p0 = edge_a
+    v, q0 = edge_b
+    uu = np.array([u.x, u.y, u.z])
+    vv = np.array([v.x, v.y, v.z])
+    delta = np.array([q0.x-p0.x, q0.y-p0.y, q0.z-p0.z])
+    t = np.linalg.lstsq(np.column_stack((uu, -vv)), delta, rcond=None)[0]
+    pa = p0 + u * float(t[0])
+    pb = q0 + v * float(t[1])
+    gap = (pa - pb).Length
+    if gap > 8.0:
+        raise ValueError('Osy sousedních jeklů se míjejí o %.3f mm' % gap)
+    return (pa + pb) * 0.5
+
+
+def rounded_profile(center, e1, e2, half, radius):
+    def pt(x, y):
+        return center + e1*x + e2*y
+    def line(a, b):
+        return Part.makeLine(pt(*a), pt(*b))
+    def arc(a, b, c, a0, a1):
+        am = (a0 + a1) * 0.5
+        m = pt(c[0] + radius*math.cos(am), c[1] + radius*math.sin(am))
+        return Part.Arc(pt(*a), m, pt(*b)).toShape()
+    h, r = half, radius
+    edges = [
+        line((-h+r,-h),(h-r,-h)),
+        arc((h-r,-h),(h,-h+r),(h-r,-h+r),-math.pi/2,0),
+        line((h,-h+r),(h,h-r)),
+        arc((h,h-r),(h-r,h),(h-r,h-r),0,math.pi/2),
+        line((h-r,h),(-h+r,h)),
+        arc((-h+r,h),(-h,h-r),(-h+r,h-r),math.pi/2,math.pi),
+        line((-h,h-r),(-h,-h+r)),
+        arc((-h,-h+r),(-h+r,-h),(-h+r,-h+r),math.pi,3*math.pi/2),
+    ]
+    return Part.Wire(edges)
+
+
+def positive_halfspace(point, normal):
+    normal = unit(normal)
+    rot = App.Rotation(V(0,0,1), normal)
+    box = Part.makeBox(5000, 5000, 5000, V(-2500,-2500,-0.000001))
+    box.Placement = App.Placement(point, rot)
+    return box
+
+
+def build_rhs(source_obj, root, hub_bbox, spread, height):
+    # Deform only along each member's axis. Cross-section dimensions stay exact.
+    # End cut planes are taken from the STEP and transformed by the same field,
+    # which keeps adjoining miter faces coincident.
+    src_axis = pca_axis(source_obj)
+    src_axis,src_point,profile_n1,profile_n2 = axis_frame(source_obj)
+    cog = src_point
+    def field(v):
+        return V(spread*v.x,spread*v.y,height*v.z)
+    axis_origin = root + field(cog-root)
+    axis = unit(field(src_axis))
+
+    projected_vertical = V(0,0,1) - src_axis*src_axis.z
+    if projected_vertical.Length < 0.1:
+        projected_vertical = V(1,0,0) - src_axis*src_axis.x
+    projected_vertical = unit(projected_vertical)
+    face_normals = []
+    for face in source_obj.Shape.Faces:
+        try:
+            if 'Plane' not in str(type(face.Surface)) or face.Area < 1000:
+                continue
+            n = face.normalAt(0,0)
+            n = n - src_axis*n.dot(src_axis)
+            if n.Length > 0.9:
+                face_normals.append(unit(n))
+        except Exception:
+            pass
+    old_e1 = max(face_normals,key=lambda n:abs(n.dot(projected_vertical))) if face_normals else projected_vertical
+    new_e1 = field(old_e1) - axis*field(old_e1).dot(axis)
+    if new_e1.Length < 0.1:
+        new_e1 = V(0,0,1) - axis*axis.z
+    new_e1 = unit(new_e1)
+    new_e2 = unit(axis.cross(new_e1))
+
+    cap_planes=[]
+    cog_side = source_obj.Shape.CenterOfMass
+    side_point = V(cog_side.x,cog_side.y,cog_side.z)
+    for face in source_obj.Shape.Faces:
+        try:
+            if 'Plane' not in str(type(face.Surface)) or face.Area > 2000:
+                continue
+            n = unit(face.normalAt(0,0))
+            if abs(n.dot(src_axis)) < 0.28:
+                continue
+            c = face.CenterOfMass
+            cp = V(c.x,c.y,c.z)
+            # Keep the cap planes that seat on the unchanged central hub fixed.
+            on_hub = ((abs(abs(n.x)-1)<0.01 and (abs(c.x-hub_bbox.XMin)<0.05 or abs(c.x-hub_bbox.XMax)<0.05)) or
+                      (abs(abs(n.y)-1)<0.01 and (abs(c.y-hub_bbox.YMin)<0.05 or abs(c.y-hub_bbox.YMax)<0.05)))
+            point = cp if on_hub else root + field(cp-root)
+            normal = V(n.x/spread,n.y/spread,n.z/height)
+            normal = unit(normal)
+            if (side_point-cp).dot(n) < 0:
+                normal = -normal
+            if not any(abs(normal.dot(old_n))>0.9999 and abs(normal.dot(point-old_p))<0.02 for old_n,old_p in cap_planes):
+                cap_planes.append((normal,point))
+        except Exception:
+            pass
+    if len(cap_planes) < 2:
+        raise ValueError('Nelze odvodit řezné roviny: '+source_obj.Label)
+    stations=[]
+    for normal,point in cap_planes:
+        den=normal.dot(axis)
+        if abs(den)>1e-5:
+            stations.append(normal.dot(point-axis_origin)/den)
+    if len(stations)<2:
+        raise ValueError('Řezné roviny neprotínají osu: '+source_obj.Label)
+    lo,hi=min(stations),max(stations)
+    if hi-lo < 5:
+        raise ValueError('Nulová délka jeklu: '+source_obj.Label)
+    margin=100.0
+    origin=axis_origin+axis*(lo-margin)
+    outer=Part.Face(rounded_profile(origin,new_e1,new_e2,20.0,6.0)).extrude(axis*(hi-lo+2*margin))
+    inner=Part.Face(rounded_profile(origin,new_e1,new_e2,17.0,3.0)).extrude(axis*(hi-lo+2*margin))
+    tube=outer.cut(inner)
+    for normal,point in cap_planes:
+        tube=tube.common(positive_halfspace(point,normal))
+    tube=tube.removeSplitter()
+    if tube.isNull() or len(tube.Solids)!=1 or not tube.isValid() or tube.Volume<=0:
+        raise ValueError('Neplatná generovaná geometrie jeklu: '+source_obj.Label)
+    return tube
+
+
+def transform_plate(shape, root, normal, spread, height):
+    # Laser-cut sheet is planar. Scale its in-plane horizontal and vertical
+    # directions while retaining its 5 mm thickness along the sheet normal.
+    n = unit(V(normal.x, normal.y, 0))
+    t = unit(V(-n.y, n.x, 0))
+    z = V(0,0,1)
+    M = App.Matrix()
+    axes = [(n,1.0),(t,spread),(z,height)]
+    cols = []
+    for basis, scale in axes:
+        cols.append((basis, scale))
+    # A = 1*n*nT + spread*t*tT + height*z*zT
+    vectors = [n,t,z]
+    scales = [1.0,spread,height]
+    vals = [[sum(scales[k]*vectors[k][i]*vectors[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+    M.A11,M.A12,M.A13 = vals[0]
+    M.A21,M.A22,M.A23 = vals[1]
+    M.A31,M.A32,M.A33 = vals[2]
+    # Translate around the wing root so the panel's attachment stays put.
+    r = [root.x,root.y,root.z]
+    tr = [r[i]-sum(vals[i][j]*r[j] for j in range(3)) for i in range(3)]
+    M.A14,M.A24,M.A34 = tr
+    return shape.transformGeometry(M)
+
+
+def add_shape(doc, group, name, shape):
+    obj = doc.addObject('Part::Feature', 'Part')
+    obj.Label = name
+    obj.Shape = shape
+    group.addObject(obj)
+    return obj
+
+# Load source assembly and keep each of the 33 solids as the reference basis.
+if 'MotyliSource' in App.listDocuments():
+    App.closeDocument('MotyliSource')
+src = App.newDocument('MotyliSource')
+Import.insert(SOURCE_STEP, src.Name)
+src.recompute()
+source_groups = [o for o in src.Objects if o.TypeId == 'App::Part' and 'kridlo' in o.Label.lower()]
+if len(source_groups) != 4:
+    raise ValueError('STEP musí obsahovat čtyři pojmenovaná křídla; nalezeno %d' % len(source_groups))
+
+spread = (TARGET_LENGTH_MM - LENGTH_FIXED_MM) / LENGTH_SPREAD_MM
+height_rate = HEIGHT_RATE_LOW if TARGET_HEIGHT_MM < SOURCE_HEIGHT_MM else HEIGHT_RATE_HIGH
+height_scale = 1.0 + (TARGET_HEIGHT_MM - SOURCE_HEIGHT_MM) / height_rate
+if not 1400.0 <= TARGET_LENGTH_MM <= 1650.0 or not 680.0 <= TARGET_HEIGHT_MM <= 800.0:
+    raise ValueError('Ověřený rozsah je délka 1400–1650 mm a výška 680–800 mm')
+if spread <= 0 or height_scale <= 0:
+    raise ValueError('Rozměr je mimo použitelný rozsah')
+width_mm = WIDTH_FIXED_MM + WIDTH_SPREAD_MM * spread
+
+out = App.newDocument('MotyliPodnozParametricky')
+root_group = out.addObject('App::Part','Sestava')
+root_group.Label = 'Motýlí podnož — parametrická rekonstrukce'
+
+# Center hub stays dimensionally exact.
+hub_src = next(o for o in src.Objects if o.TypeId == 'Part::Feature' and 'Stredovy svarovaci uzel' in o.Label)
+add_shape(out, root_group, 'Středový uzel — trubka 120×120×6', hub_src.Shape.copy())
+
+# Simple parameter table. Width is derived from length to preserve the plan angle.
+sheet = out.addObject('Spreadsheet::Sheet','Parametry')
+sheet.Label = 'Parametry a průřezy'
+for cell,text in [('A1','Parametr'),('B1','Hodnota'),('C1','Pravidlo'),('A2','Délka [mm]'),('B2',str(TARGET_LENGTH_MM)),('C2','Vstup; určuje rozteč'),('A3','Hloubka [mm]'),('B3','%.3f'%width_mm),('C3','Odvozena poměrem STEP, půdorysné úhly zůstávají'),('A4','Výška [mm]'),('B4',str(TARGET_HEIGHT_MM)),('C4','Vstup; délky a sklony jeklů se přepočítají'),('A5','Jekl [mm]'),('B5','40×40×3'),('A6','Rohy profilu [mm]'),('B6','R6 vnější / R3 vnitřní'),('A7','Laserovaná výplň [mm]'),('B7','5'),('A8','Horní deska [mm]'),('B8','110×86×8; 4×Ø9'),('A9','Omezení'),('B9','Pouze geometrická rekonstrukce'),('C9','Neověřuje svary, pevnost ani výrobu'),('A10','Výsledná délka [mm]'),('A11','Výsledná hloubka [mm]'),('A12','Výsledná výška [mm]'),('A13','Přepočet'),('B13','Uložit a zavřít FCStd, potom spustit makro')]:
+    sheet.set(cell,text)
+
+# Generate each wing from its own STEP members; no quadrant is cloned.
+for gi, wing_src in enumerate(source_groups):
+    beam_src = sorted([o for o in wing_src.Group if 'Obvodovy jekl' in o.Label], key=lambda o:int(o.Label.split('jekl ')[1][0]))
+    panel_src = next(o for o in wing_src.Group if 'Zapustena laserovana' in o.Label)
+    plate_src = next(o for o in wing_src.Group if 'Horni montazni deska' in o.Label)
+    if len(beam_src) != 6:
+        raise ValueError('Křídlo %s nemá 6 jeklů' % wing_src.Label)
+    axes = [pca_axis(o) for o in beam_src]
+    centers = [V(o.Shape.CenterOfMass.x,o.Shape.CenterOfMass.y,o.Shape.CenterOfMass.z) for o in beam_src]
+    edge_lines = list(zip(axes,centers))
+    nodes = [line_intersection(edge_lines[a],edge_lines[b]) for a,b in NODE_INTERSECTIONS]
+    root = nodes[0]
+    def map_node(p):
+        d = p-root
+        return root + V(spread*d.x, spread*d.y, height_scale*d.z)
+    moved = [map_node(p) for p in nodes]
+
+    wing_out = out.addObject('App::Part','Kridlo%02d'%(gi+1))
+    wing_out.Label = wing_src.Label + ' — přepočtené'
+    for i,src_beam in enumerate(beam_src):
+        shape = build_rhs(src_beam,root,hub_src.Shape.BoundBox,spread,height_scale)
+        add_shape(out,wing_out,src_beam.Label.split('/')[-1],shape)
+    # Sheet normal from its least-variance PCA direction.
+    pts = np.array([[v.Point.x,v.Point.y,v.Point.z] for v in panel_src.Shape.Vertexes])
+    vals,vecs = np.linalg.eigh(np.cov((pts-pts.mean(axis=0)).T))
+    n = vecs[:,int(np.argmin(vals))]
+    panel_normal = V(float(n[0]),float(n[1]),float(n[2]))
+    panel_shape = transform_plate(panel_src.Shape,root,panel_normal,spread,height_scale)
+    if not panel_shape.isValid() or len(panel_shape.Solids)!=1:
+        raise ValueError('Neplatná transformace 5mm výplně: '+wing_src.Label)
+    add_shape(out,wing_out,panel_src.Label.split('/')[-1]+' — zachovaná tloušťka 5 mm',panel_shape)
+    # Top plate follows the outer upper node while its 8 mm thickness is preserved.
+    old_c = nodes[2]
+    new_c = moved[2]
+    plate_shape = plate_src.Shape.copy()
+    plate_shape.translate(new_c-old_c)
+    if not plate_shape.isValid():
+        raise ValueError('Neplatná montážní deska: '+wing_src.Label)
+    add_shape(out,wing_out,plate_src.Label.split('/')[-1],plate_shape)
+    root_group.addObject(wing_out)
+
+out.recompute()
+for o in out.Objects:
+    if o.TypeId == 'Part::Feature' and hasattr(o,'Shape') and not o.Shape.isNull():
+        if not o.Shape.isValid() or len(o.Shape.Solids)!=1:
+            raise ValueError('Kontrola tělesa selhala: '+o.Label)
+out.recompute()
+out.saveAs(OUTPUT_FCSTD)
+print('PARAMETRIC_MODEL',OUTPUT_FCSTD)
+print('DIMENSIONS_MM',TARGET_LENGTH_MM,width_mm,TARGET_HEIGHT_MM,'SCALES',spread,height_scale)
+print('GENERATED_PARTS',sum(1 for o in out.Objects if o.TypeId=='Part::Feature'))
+print('SOLIDS_VALID',sum(1 for o in out.Objects if o.TypeId=='Part::Feature' and o.Shape.isValid()))
+b = root_group.Shape.BoundBox
+sheet.set('B10','%.3f'%b.XLength); sheet.set('B11','%.3f'%b.YLength); sheet.set('B12','%.3f'%b.ZLength)
+out.recompute()
+out.save()
+print('ASSEMBLY_BBOX',b.XLength,b.YLength,b.ZLength,b.ZMin,b.ZMax)
+print('ASSEMBLY_VOLUME',root_group.Shape.Volume)

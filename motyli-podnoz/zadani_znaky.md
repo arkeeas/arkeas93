@@ -2,16 +2,17 @@
 
 | Znak | Zjištěná hodnota | Zdroj a jistota |
 |---|---|---|
-| Celková obálka | 1 532,526 × 842,028 × 728 mm | STEP B-rep; přesná obálka importovaného tvaru |
-| Počet samostatných těles | 33 | STEP; všechna tělesa byla platná |
-| Vizuální skladba | Čtyři symetricky rozmístěná křídlová ramena a středový uzel | STEP a fotografie `motyl velky stul.jpg`; vizuální interpretace |
-| Středový díl | Obálka 120 × 120 × 100 mm | STEP těleso 1; obálka, ne nutně profilový rozměr |
-| Plechové díly | Automatická kontrola je klasifikuje jako plech; většina odhadů tloušťky je přibližně 3,4–4,0 mm, některé díly přibližně 6,6 mm | `kontrola.py`; heuristický odhad, ne výrobní specifikace |
-| Čtyři složité díly | Automatická kontrola hlásí nestandardní ohýbaný plech; odhad tloušťky 3,95 mm | `kontrola.py`; varování vyžaduje potvrzení výrobního postupu |
-| Otvory a připojovací plochy | Nejsou popsány jako výrobní rozhraní | STEP geometrie; bez výkresu nelze potvrdit funkci |
+| Celková obálka B-rep | 1 532,526 × 842,028 × 732,014 mm (Z −4,014…728 mm) | FreeCAD 1.1.3 / OCC 7.8.1; 4 jekly zasahují 4,014 mm pod Z=0. Připojený backend FreeCAD 1.1.1 uvádí 728 mm. |
+| Počet samostatných těles | 33, všechna jsou validní | Aktualizovaný STEP; FreeCAD 1.1.3 a CAD audit. |
+| Hlavní průřez | Zaoblený dutý profil 40×40 mm, stěna 3 mm; vnější rádius 6 mm, vnitřní 3 mm | Řez tělesy a cylindrické plochy v aktualizovaném STEP; přímá geometrická evidence. |
+| Křídlo | 6 obvodových jeklů 40×40×3 mm, laserovaná výplň tloušťky 5 mm, horní deska 110×86×8 mm / 4× Ø9 mm | Názvy dílů a B-rep tělesa v STEP; výplň má složitou geometrii bez parametrické historie. |
+| Symetrie sestavy | Čtyři opakované části kolem středového uzlu | STEP a porovnání s referenční fotografií `zadani_foto1.jpg`; půdorys sestavy odpovídá fotografii. |
+| Výchozí rozměry | Délka 1 532,526 mm, hloubka 842,028 mm; B-rep výška 732,014 mm, vrchol v Z=728 mm | FreeCAD 1.1.3 / OCC 7.8.1; viz poznámka k rozdílné obálce v 1.1.1. |
 
-## Co není potvrzeno
+## Předpoklady a neověřené body
 
-- Materiál ocel je v kontrole pouze předpoklad.
-- Nejsou potvrzeny průřezy, ohyby, výrobní tolerance, svařovací symboly ani únosnost.
-- Katalogový model je zatím jen pevný vizualizační náhled; nemění se natahováním sítě.
+- Uživatel zvolil zachovat půdorysné úhly křídel a měnit jejich rozteč. Délka a hloubka jsou proto svázané společným faktorem; výška se může měnit nezávisle a sklony jeklů se přepočítají.
+- Parametrický generátor odvozuje šest profilových os na každé křídlo a původní řezné roviny z B-rep. Výplň se mění v její rovině se zachováním tloušťky 5 mm; její kontura je převzatá a protažená podle rámu, nikoli znovu navržená podle výrobního výkresu.
+- Generátor přijímá délku 1 400–1 650 mm a výšku 680–800 mm; krajní kombinace vytvářejí 33 validních těles. Kontakty dílů mimo nominální rozměr nejsou ověřené, zejména dosednutí transformované výplně na rám.
+- Nativní FCStd obsahuje generovanou B-rep geometrii a tabulku parametrů; změna rozměrů vyžaduje zavřít soubor a znovu spustit makro. Nejde o historii plně editovatelných náčrtů/prvků. Výrobní výkres ani ověřená pravidla pro novou konturu výplně nejsou k dispozici.
+- Materiál, svary, tolerance, únosnost a výrobní schválení nejsou potvrzené.
