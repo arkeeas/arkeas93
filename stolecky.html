@@ -217,10 +217,10 @@
       <div class="step" id="stepDimensions">
         <h2><small>Krok 2</small>Rozměry stolku (s deskou)</h2>
         <div class="grid" style="gap:16px">
-          <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="800" step="10"></div>
-          <div class="field"><div class="row"><label for="topD">Průměr desky</label><span class="num"><input id="topDn" type="number" inputmode="numeric" aria-label="Průměr desky v mm"> mm</span></div><input id="topD" type="range" min="400" max="1400" step="10"></div>
-          <div class="field"><div class="row"><label for="spread">Rozteč noh</label><span class="num"><input id="spreadn" type="number" inputmode="numeric" aria-label="Rozteč noh v mm"> mm</span></div><input id="spread" type="range" min="60" max="500" step="10"></div>
-          <div class="field"><div class="row"><label for="baseW">Plotna dole</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="700" step="10"></div>
+          <div class="field" id="heightField"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="800" step="10"></div>
+          <div class="field" id="diameterField"><div class="row"><label for="topD">Průměr desky</label><span class="num"><input id="topDn" type="number" inputmode="numeric" aria-label="Průměr desky v mm"> mm</span></div><input id="topD" type="range" min="400" max="1400" step="10"></div>
+          <div class="field" id="spreadField"><div class="row"><label for="spread">Rozteč noh</label><span class="num"><input id="spreadn" type="number" inputmode="numeric" aria-label="Rozteč noh v mm"> mm</span></div><input id="spread" type="range" min="60" max="500" step="10"></div>
+          <div class="field" id="baseWidthField"><div class="row"><label for="baseW">Plotna dole</label><span class="num"><input id="baseWn" type="number" inputmode="numeric" aria-label="Plotna v mm"> mm</span></div><input id="baseW" type="range" min="150" max="700" step="10"></div>
           <div class="note" id="frameNote"></div>
         </div>
       </div>
@@ -292,8 +292,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="stolecky-core.js?v=20261011a"></script>
-<script src="stolecky-viewer.js?v=20261011a"></script>
+<script src="stolecky-core.js?v=20261011b"></script>
+<script src="stolecky-viewer.js?v=20261011b"></script>
 <script>
 (function () {
   'use strict';
@@ -302,7 +302,7 @@
   const ANGLES = [35, 40, 45, 50];
   const MODELS = [
     { id: 'retez', lab: 'Řetěz', desc: 'Tři články z jeklu zavěšené do sebe: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Plotna je otočená o 45°, nohy míří do jejích rohů.' },
-    { id: 'motylek', lab: 'Motýlek', desc: 'Pevná varianta podle dodaného CAD modelu: kruhová ocelová deska Ø 600 mm, výška stolku 500 mm a křížová podnož z plechu tloušťky 4 mm.' }
+    { id: 'motylek', lab: 'Motýlek', desc: 'Nastavitelná varianta: výška 400–650 mm a kruhová deska Ø 500–800 mm. Podnož se roztáhne s deskou a středový zámek zachová vůli pro plech 4 mm.' }
   ];
   /* profily seskupené podle rozměru (šířka × hloubka), tloušťka stěny zvlášť – jako u podnoží */
   const SIZES = [];
@@ -321,7 +321,7 @@
   function bindRange(k) {
     const r = $(k), n = $(k + 'n');
     r.addEventListener('input', () => set({ [k]: Number(r.value) }));
-    n.addEventListener('change', () => set({ [k]: Number(n.value) }));
+    n.addEventListener('change', () => { set({ [k]: Number(n.value) }); n.value = cfg[k]; });
   }
   const curSize = () => { const P = S.PROFILES.find((p) => p.id === cfg.prof); return SIZES.find((z) => z.hp === P.hp && z.hd === P.hd); };
   const profOf = (z, wall) => S.PROFILES.find((p) => p.hp === z.hp && p.hd === z.hd && p.wall === wall) || S.PROFILES.find((p) => p.hp === z.hp && p.hd === z.hd);
@@ -329,11 +329,18 @@
   function syncForm() {
     RANGES.forEach((k) => { if (document.activeElement !== $(k + 'n')) $(k + 'n').value = cfg[k]; $(k).value = cfg[k]; });
     $('topT').value = cfg.topT; $('topTv').textContent = cfg.topT + ' mm';
-    group($('models'), MODELS.map((m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.id === 'retez' ? chainIcon(cfg.gamma) : 'M32 3 L54 15 L42 25 L56 38 L32 46 L8 38 L22 25 L10 15 Z M22 25 L42 25 M32 3 L32 46') + '<span class="l">' + m.lab + '</span></button>').join(''), (id) => set({ model: id }));
+    group($('models'), MODELS.map((m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.id === 'retez' ? chainIcon(cfg.gamma) : 'M32 3 L54 15 L42 25 L56 38 L32 46 L8 38 L22 25 L10 15 Z M22 25 L42 25 M32 3 L32 46') + '<span class="l">' + m.lab + '</span></button>').join(''), (id) => set(id === 'motylek' && cfg.model !== 'motylek' ? { model: id, H: 500, topD: 600, topT: 4 } : { model: id }));
     const butterfly = cfg.model === 'motylek';
+    const dimensionLimits = butterfly ? { H: [400, 650, 10], topD: [500, 800, 50] } : { H: [300, 800, 10], topD: [400, 1400, 10] };
+    Object.keys(dimensionLimits).forEach((k) => {
+      const [min, max, step] = dimensionLimits[k];
+      [$(k), $(k + 'n')].forEach((el) => { el.min = min; el.max = max; el.step = step; });
+    });
+    $('spreadField').hidden = butterfly; $('baseWidthField').hidden = butterfly;
     $('modelNote').textContent = MODELS.find((m) => m.id === cfg.model).desc;
     $('angleOptions').hidden = butterfly;
-    ['stepDimensions', 'stepProfile', 'stepTop', 'stepMount'].forEach((id) => { $(id).hidden = butterfly; });
+    $('stepDimensions').hidden = false;
+    ['stepProfile', 'stepTop', 'stepMount'].forEach((id) => { $(id).hidden = butterfly; });
     group($('angles'), ANGLES.map((g) => '<button type="button" class="pill" data-id="' + g + '" aria-pressed="' + (g === cfg.gamma) + '">' + g + '°</button>').join(''), (id) => set({ gamma: Number(id) }));
     const Z = curSize(), P = S.PROFILES.find((p) => p.id === cfg.prof);
     group($('sizes'), SIZES.map((z) => '<button type="button" class="opt" data-id="' + z.id + '" aria-pressed="' + (z === Z) + '"><span class="l" style="font-weight:600;font-size:15px">' + z.hp + '×' + z.hd + '</span><span class="s">' + z.hp + ' zepředu · ' + z.hd + ' hloubka</span></button>').join(''),
@@ -355,15 +362,15 @@
     const F = S.FIN.find((f) => f.id === cfg.fin), X = S.price(B, rates);
     if (B.model === 'motylek') {
       $('mName').textContent = 'Motýlek';
-      $('mSub').textContent = 'Deska Ø 600 mm · výška 500 mm · ocelový plech 4 mm · ' + F.lab;
+      $('mSub').textContent = 'Deska Ø ' + cfg.topD + ' mm · výška ' + cfg.H + ' mm · ocelový plech 4 mm · ' + F.lab;
       $('ohChip').textContent = 'Kruhová deska + křížová podnož A/B';
-      $('frameNote').textContent = 'Pevný model podle dodaného STEP; rozměry a obrysy dílů se nemění.';
+      $('frameNote').textContent = 'Podnože A/B se roztáhnou podle průměru desky a prodlouží podle výšky. Středový zámek zachová zdrojovou vůli 0,3 mm.';
       $('price').textContent = nf(X.total) + ' Kč';
       $('priceSub').textContent = 'orientačně s DPH' + (cfg.qty > 1 ? ' · ' + nf(X.vat) + ' Kč / ks' : '') + ' · ' + nf(X.price * cfg.qty) + ' Kč bez DPH';
       $('qty').textContent = cfg.qty + ' ks';
-      $('priceNote').textContent = 'Orientační cena zahrnuje ocelovou desku a podnož podle dodaného CAD modelu.';
+      $('priceNote').textContent = 'Orientační cena zahrnuje ocelovou desku a podnož upravené na zvolenou výšku a průměr.';
       $('load').className = 'load lvl-ok';
-      $('load').innerHTML = '<div class="head"><span>Hmotnost podle CAD ≈ ' + fmt(B.kg) + ' kg</span><span style="font-weight:400;font-size:13px">Pevný model</span></div><p>Model i výrobní soubory vycházejí z dodaného STEP a DXF.</p><p class="fine">Tři laserované díly z ocelového plechu 4 mm: kruhová deska a podnože A/B.</p>';
+      $('load').innerHTML = '<div class="head"><span>Odhad hmotnosti ≈ ' + fmt(B.kg) + ' kg</span><span style="font-weight:400;font-size:13px">Rozměry přepočteny</span></div><p>3D náhled i výrobní DXF odpovídají zvolené výšce a průměru. Zámek A/B zachová původní šířku 4,3 mm.</p><p class="fine">Tři laserované díly z ocelového plechu 4 mm. Nosnost není staticky přepočítána.</p>';
       $('ask').disabled = false; $('ask').title = '';
       return;
     }

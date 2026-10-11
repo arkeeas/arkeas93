@@ -93,26 +93,44 @@
     $('sOrder').innerHTML = it ? '<b>' + esc(it.id) + '</b> · ' + esc(cu.name) + ' · ' + esc(cu.email) + (cu.phone ? ' · ' + esc(cu.phone) : '') + (cu.address ? '<br>' + esc(cu.address) : '') + (it.note ? '<br>„' + esc(it.note) + '“' : '')
       : '<span style="color:var(--muted)">Bez poptávky – podklady pro konfiguraci z konfigurátoru stolečků v tomto prohlížeči.</span>';
     if (B.model === 'motylek') {
-      $('sCfg').textContent = S.describe(c) + ' · pevná verze podle STEP';
+      $('sCfg').textContent = S.describe(c) + ' · parametrická varianta';
       $('sPriceTitle').textContent = 'Orientační cena podle ceníku, včetně ocelové desky';
       $('sPrice').textContent = nf(X.vat) + ' Kč s DPH / ks · ' + nf(X.price) + ' Kč bez DPH';
-      $('sFacts').innerHTML = [['Deska', 'Ø 600 mm'], ['Výška', '500 mm'], ['Tloušťka plechu', '4 mm'], ['Hmotnost podle CAD', fmt(B.kg) + ' kg']]
+      $('sFacts').innerHTML = [['Deska', 'Ø ' + c.topD + ' mm'], ['Výška', c.H + ' mm'], ['Tloušťka plechu', '4 mm'], ['Odhad hmotnosti', fmt(B.kg) + ' kg']]
         .map(([a, b]) => '<div class="fact"><b>' + b + '</b><span>' + a + '</span></div>').join('');
-      $('sWarns').innerHTML = '';
+      $('sWarns').innerHTML = '<div>Kontrola: výška se změří od podlahy k horní ploše. Podnože A/B se roztahují souměrně; středový zámek zůstává široký 4,3 mm.</div>' +
+        (c.H === 500 && c.topD === 600 ? '' : '<div>Původní STEP je referenční pouze pro Ø600 × 500 mm; výrobní DXF níže se generují podle aktuálních rozměrů.</div>');
       $('sCutTitle').textContent = 'Výrobní díly – laserované plechy';
       $('sCut').innerHTML = [
-        ['1', 'Kruhová deska Ø 600 mm, ocel 4 mm', c.qty],
+        ['1', 'Kruhová deska Ø ' + c.topD + ' mm, ocel 4 mm', c.qty],
         ['A', 'Motýlí podnož A, ocel 4 mm', c.qty],
         ['B', 'Motýlí podnož B, ocel 4 mm', c.qty]
-      ].map((p) => '<tr><td class="mono">' + p[0] + '</td><td>' + p[1] + '</td><td class="num">' + p[2] + '</td><td colspan="3">DXF podle dodaného výkresu</td></tr>').join('') +
-        '<tr><td colspan="6" style="color:var(--muted)">Pevná sestava Ø 600 × 500 mm. Řezné obrysy se stahují přímo z dodaných DXF souborů.</td></tr>';
+      ].map((p) => '<tr><td class="mono">' + p[0] + '</td><td>' + p[1] + '</td><td class="num">' + p[2] + '</td><td colspan="3">DXF přepočtené pro Ø ' + c.topD + ' × ' + c.H + ' mm</td></tr>').join('') +
+        '<tr><td colspan="6" style="color:var(--muted)">Obrysy vycházejí z původních DXF; výška a průměr se přepočítají, šířka zámku zůstává podle zdroje.</td></tr>';
       $('sFlatsTitle').textContent = 'Zdrojové CAD soubory';
-      $('sFlats').innerHTML = '<figure class="wide"><figcaption><b>STEP sestava</b> obsahuje kruhovou ocelovou desku a křížovou podnož A/B. DXF soubory zachovávají původní křivky a otvory.</figcaption></figure>';
-      $('sDl').innerHTML = B.productFiles.map((f) => '<a class="btn" href="' + esc(f.path) + '" download>' + esc(f.label) + '</a>').join('');
+      $('sFlats').innerHTML = '<figure class="wide"><figcaption><b>STEP sestava</b> je zdrojový model Ø600 × 500 mm. Pro jiné rozměry použijte přepočtené výrobní DXF; 3D náhled je transformovaný podle poptávky.</figcaption></figure>';
+      $('sDl').innerHTML = B.productFiles.map((f) => f.part
+        ? '<button type="button" class="btn" data-motylek-part="' + esc(f.part) + '" data-source="' + esc(f.path) + '">' + esc(f.label) + '</button>'
+        : '<a class="btn" href="' + esc(f.path) + '" download title="Zdrojový model, rozměr Ø600 × 500 mm">' + esc(f.label) + '</a>').join('');
+      $('sDl').querySelectorAll('[data-motylek-part]').forEach((button) => button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const res = await fetch(button.dataset.source);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const source = await res.text();
+          const output = S.transformMotylekDxf(source, button.dataset.motylekPart, c);
+          const name = button.dataset.motylekPart === 'deska'
+            ? 'motylek-deska-D' + c.topD + 'mm.dxf'
+            : 'motylek-podnoz-' + button.dataset.motylekPart + '-H' + c.H + '-D' + c.topD + 'mm.dxf';
+          await download(name, output, 'application/dxf');
+        } catch (error) {
+          $('sWarns').innerHTML += '<div>DXF se nepodařilo připravit. Zkuste stránku načíst znovu.</div>';
+        } finally { button.disabled = false; }
+      }));
       $('sSteps').innerHTML = [
-        'Vyříznout desku a podnože A/B z příslušných DXF souborů.',
-        'Sestavit křížovou podnož A/B podle dodaného STEP modelu.',
-        'Přiložit podnož k rubu desky a dokončit svarové spoje podle geometrie sestavy STEP.'
+        'Vyříznout desku Ø ' + c.topD + ' mm a podnože A/B z právě stažených DXF souborů.',
+        'Sestavit kolmé podnože A/B; jejich středový zámek má šířku 4,3 mm podle původního CAD.',
+        'Přiložit podnož k rubu desky tak, aby horní hrany lícovaly s její spodní plochou ve výšce ' + (c.H - 4) + ' mm, a dokončit svarové spoje.'
       ].map((t) => '<li>' + t + '</li>').join('');
       if (viewer) { viewer.update(B, { see, showDesk: true }); requestAnimationFrame(() => viewer.view()); }
       return;

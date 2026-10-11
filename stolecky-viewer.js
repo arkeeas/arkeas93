@@ -10,7 +10,7 @@
   /* postava z figure.js (stejná jako u podnoží) – potřebuje jen obrys desky a výšku */
   function personBodies(c, person) {
     if (!person || !root.Postava || !root.Podnoze) return [];
-    const H = c.model === 'motylek' ? 500 : c.H, D = c.model === 'motylek' ? 600 : c.topD, T = c.model === 'motylek' ? 4 : c.topT;
+    const H = c.H, D = c.topD, T = c.model === 'motylek' ? 4 : c.topT;
     const A = { cfg: { shape: 'circle', H, size: 0 }, DL: D, DW: D, build: { dims: { Hf: H - T } } };
     try { return root.Postava.build(A, person).bodies; } catch (e) { return []; }
   }
@@ -41,7 +41,7 @@
       st.v = v || st.v;
       if (!st.B) return;
       size();
-      const c = st.B.cfg, H = c.model === 'motylek' ? 500 : c.H, D = c.model === 'motylek' ? 600 : c.topD;
+      const c = st.B.cfg, H = c.H, D = c.topD;
       const p = st.o.person, hh = p ? Math.max(H, p.S * (p.pose === 'sit' ? 0.75 : 1)) : H;
       const m = new THREE.Vector3(0, p ? -D * 0.35 : 0, hh * 0.45), d = Math.max(hh, D) * 2.4;
       cam.position.copy(m).add(new THREE.Vector3(...VIEWS[st.v]).normalize().multiplyScalar(d)); ctl.target.copy(m); ctl.update();
@@ -63,7 +63,8 @@
       if (B.model === 'motylek') {
         const show = (meshes) => {
           if (st.B !== B) return;
-          meshes.forEach((part) => {
+          meshes.forEach((sourcePart) => {
+            const part = root.Stolecky ? root.Stolecky.transformMotylekMesh(sourcePart, sourcePart.name, c) : sourcePart;
             const isDesk = /deska/i.test(part.name);
             if (st.o.showDesk === false && isDesk) return;
             const g = new THREE.BufferGeometry();

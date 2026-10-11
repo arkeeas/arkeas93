@@ -34,7 +34,8 @@
   };
   const MODELS = [
     { id: 'retez', lab: 'Řetěz' },
-    { id: 'motylek', lab: 'Motýlek', H: 500, topD: 600, topT: 4, plateT: 4, massKg: 14.46, surfaceM2: 1.032 }
+    { id: 'motylek', lab: 'Motýlek', H: 500, topD: 600, topT: 4, plateT: 4, massKg: 14.46, surfaceM2: 1.032,
+      desc: 'Nastavitelný Motýlek: výška 400–650 mm a kruhová deska Ø 500–800 mm. Podnož se roztáhne s deskou a středový zámek zůstane ve zdrojovém rozměru pro plech 4 mm.' }
   ];
   /* horní část pod deskou – jeden díl pálený z plechu (C2), do něj se zasunou horní nohy */
   const TOPS = [
@@ -155,6 +156,11 @@
     const num = (k, lo, hi) => { const v = Number(o[k]); o[k] = Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : DEFAULT_CFG[k])); };
     num('H', 300, 800); num('topD', 400, 1400); num('topT', 10, 60); num('baseW', 150, 700); num('baseT', 4, 25); num('plT', 3, 12);
     num('gamma', 25, 60); num('spread', 60, 500); num('weldGap', 0, 3); if (o.sink !== 'auto') num('sink', 0, 12); num('clear', 0, 0.5); num('tabMargin', 1, 8); num('holeClear', 0, 2);
+    if (o.model === 'motylek') {
+      o.H = 400 + Math.round((Math.min(650, Math.max(400, o.H)) - 400) / 10) * 10;
+      o.topD = 500 + Math.round((Math.min(800, Math.max(500, o.topD)) - 500) / 50) * 50;
+      o.topT = 4;
+    }
     if (!PROFILES.some((p) => p.id === o.prof)) o.prof = DEFAULT_CFG.prof;
     if (o.sink === 'auto' || o.sink > 0) o.weldGap = 0;             // zámeček v háčku a vůle se vylučují
     if (!FIN.some((f) => f.id === o.fin)) o.fin = DEFAULT_CFG.fin;
@@ -162,6 +168,64 @@
     if (!MOUNTS.some((m) => m.id === o.mount)) o.mount = DEFAULT_CFG.mount;
     o.qty = Math.min(99, Math.max(1, Math.round(Number(o.qty)) || 1));
     return o;
+  }
+
+  const MOTYLEK_JOINT_HALF = 2.15;                                  // zdrojový zámek má 4,3 mm
+  function motylekRadialScale(diameter) { return (diameter / 2 - MOTYLEK_JOINT_HALF) / (300 - MOTYLEK_JOINT_HALF); }
+  function mapMotylekRadial(x, scale) {
+    const a = Math.abs(x);
+    if (a <= MOTYLEK_JOINT_HALF) return x;
+    return Math.sign(x) * (MOTYLEK_JOINT_HALF + (a - MOTYLEK_JOINT_HALF) * scale);
+  }
+  function transformMotylekMesh(mesh, part, c0) {
+    const c = normalize(Object.assign({ model: 'motylek' }, c0 || {})), sd = motylekRadialScale(c.topD), sh = c.H / 500;
+    if (sd === 1 && sh === 1) return mesh;
+    const desk = /deska/i.test(part || mesh.name || ''), a = /\bA\b|podnoz.?a/i.test(part || mesh.name || '');
+    const positions = mesh.positions.slice();
+    for (let i = 0; i + 2 < positions.length; i += 3) {
+      const x = mesh.positions[i], y = mesh.positions[i + 1], z = mesh.positions[i + 2];
+      if (desk) {
+        let xx = mapMotylekRadial(x, sd), yy = mapMotylekRadial(y, sd);
+        const r = Math.hypot(xx, yy), limit = c.topD / 2;
+        if (r > limit) { xx *= limit / r; yy *= limit / r; }
+        positions[i] = xx; positions[i + 1] = yy; positions[i + 2] = z + c.H - 500;
+      } else {
+        positions[i + 2] = z * sh;
+        if (a && i % 3 === 0) positions[i] = mapMotylekRadial(x, sd);
+        if (!a) positions[i + 1] = mapMotylekRadial(y, sd);
+      }
+    }
+    return Object.assign({}, mesh, { positions });
+  }
+  function dxfNumber(n) {
+    const s = (Math.abs(n) < 0.0000005 ? 0 : n).toFixed(6).replace(/(\.\d*?[1-9])0+$|\.0+$/, '$1');
+    return s === '-0' ? '0' : s;
+  }
+  function transformMotylekDxf(source, part, c0) {
+    const c = normalize(Object.assign({ model: 'motylek' }, c0 || {})), sd = motylekRadialScale(c.topD), sh = c.H / 500;
+    if (sd === 1 && sh === 1) return source;
+    const desk = String(part).toLowerCase() === 'deska', lines = source.replace(/\r\n/g, '\n').split('\n');
+    const mapX = (x) => mapMotylekRadial(x, sd);
+    const mapY = (y) => desk ? mapMotylekRadial(y, sd) : y * sh;
+    for (let i = 0; i + 1 < lines.length;) {
+      if (lines[i].trim() !== '0') { i += 2; continue; }
+      const type = lines[i + 1].trim();
+      let end = i + 2;
+      while (end + 1 < lines.length && lines[end].trim() !== '0') end += 2;
+      if (type === 'CIRCLE' || type === 'LINE' || type === 'SPLINE') {
+        let x = null, xIndex = -1;
+        for (let j = i + 2; j < end; j += 2) {
+          const code = lines[j].trim(), value = Number(lines[j + 1]);
+          if ((code === '10' || code === '11') && Number.isFinite(value)) { x = mapX(value); xIndex = j + 1; }
+          else if ((code === '20' || code === '21') && Number.isFinite(value) && x !== null) {
+            lines[xIndex] = dxfNumber(x);
+            lines[j + 1] = dxfNumber(mapY(value)); x = null;
+          } else if (type === 'CIRCLE' && code === '40' && desk && value >= 100) lines[j + 1] = dxfNumber(value * c.topD / 600);
+        }
+      }
+      i = end;
+    }
+    return lines.join('\n');
   }
 
   /* ---------- článek: lomená osa C (otevřená nebo uzavřená), jekl šířky hp v rovině ----------
@@ -359,14 +423,21 @@
     const cfg = normalize(c), warn = [];
     if (cfg.model === 'motylek') {
       const M = MODELS.find((m) => m.id === 'motylek');
+      const sd = motylekRadialScale(cfg.topD), dd = cfg.topD / 600, sh = cfg.H / 500;
+      const volume0 = 994051.25 + 429251.312 + 429355.59;
+      const volume = 994051.25 * dd * dd + (429251.312 + 429355.59) * sd * sh;
+      const surface0 = 0.545330 + 0.253439 + 0.253406;
+      const surface = M.surfaceM2 * (0.545330 * dd * dd + (0.253439 + 0.253406) * sd * sh) / surface0;
       return {
-        cfg, model: 'motylek', warn: [], kg: M.massKg, kgBars: 0, kgPlates: M.massKg,
+        cfg, model: 'motylek', warn: [], kg: M.massKg * volume / volume0, kgBars: 0, kgPlates: M.massKg * volume / volume0,
+        massKg: M.massKg * volume / volume0, surfaceM2: surface,
+        meshScale: { radial: sd, height: sh, jointWidth: 2 * MOTYLEK_JOINT_HALF, tabletopZOffset: cfg.H - 500 },
         meshAsset: 'assets/stolecky/motyli_stolek/preview.json',
         productFiles: [
-          { label: 'STEP – sestava', path: 'assets/stolecky/motyli_stolek/motyli_stolek_600x500.step' },
-          { label: 'DXF – deska Ø 600', path: 'assets/stolecky/motyli_stolek/deska_600_4mm.dxf' },
-          { label: 'DXF – podnož A', path: 'assets/stolecky/motyli_stolek/podnoz_A_4mm.dxf' },
-          { label: 'DXF – podnož B', path: 'assets/stolecky/motyli_stolek/podnoz_B_4mm.dxf' }
+          { label: 'DXF – deska Ø ' + cfg.topD, path: 'assets/stolecky/motyli_stolek/deska_600_4mm.dxf', part: 'deska' },
+          { label: 'DXF – podnož A', path: 'assets/stolecky/motyli_stolek/podnoz_A_4mm.dxf', part: 'A' },
+          { label: 'DXF – podnož B', path: 'assets/stolecky/motyli_stolek/podnoz_B_4mm.dxf', part: 'B' },
+          { label: 'STEP – původní sestava Ø600 × 500 (referenční)', path: 'assets/stolecky/motyli_stolek/motyli_stolek_600x500.step', referenceOnly: true }
         ]
       };
     }
@@ -521,7 +592,7 @@
   function price(B, ratesIn) {
     const R = Object.assign({}, DEFAULT_RATES, ratesIn || {}), c = B.cfg, F = FIN.find((f) => f.id === c.fin);
     if (B.model === 'motylek') {
-      const cuts = 3, welds = 4, surf = MODELS.find((m) => m.id === 'motylek').surfaceM2;
+      const cuts = 3, welds = 4, surf = B.surfaceM2;
       const cost = B.kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava;
       const p = Math.round(cost * (1 + R.marze / 100) / 10) * 10, vat = Math.round(p * 1.21 / 10) * 10;
       return { price: p, vat, total: vat * c.qty, cuts, welds, surf };
@@ -538,13 +609,14 @@
   function describe(c) {
     c = normalize(c);
     const F = FIN.find((f) => f.id === c.fin);
-    if (c.model === 'motylek') return 'Stolek Motýlek · Ø 600 × výška 500 mm · ocelový plech 4 mm · ' + F.lab;
+    if (c.model === 'motylek') return 'Stolek Motýlek · Ø ' + c.topD + ' × výška ' + c.H + ' mm · ocelový plech 4 mm · ' + F.lab;
     return 'Stolek Řetěz ' + c.gamma + '° · výška ' + c.H + ' · deska Ø ' + c.topD + ' · jekl ' + c.prof.replace(/x/g, '×') + ' · ' + F.lab +
       ' · ' + TOPS.find((t) => t.id === c.top).lab.toLowerCase() + ' · ' + MOUNTS.find((m) => m.id === c.mount).lab.toLowerCase();
   }
 
   const API = {
     FIN, TOPS, MOUNTS, MODELS, DEFAULT_RATES, price, describe, sinkMinOf, sinkOf, subConvex, clipConvex, inPoly, hookCuts,
+    mapMotylekRadial, motylekRadialScale, transformMotylekMesh, transformMotylekDxf,
     PROFILES, DEFAULT_CFG, kgm, dxf, area, normalize, frame, locks, barFlat, geom, clash, seat, build, freecadMacro, orient, rad, deg, r1
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
