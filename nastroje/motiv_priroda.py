@@ -21,6 +21,7 @@ H_MM = 820.0                 # výška scény = výška plechu bez okraje u záb
 WEB = 6.0                    # nejužší můstek oceli (mm) → plech max 6 mm
 WEB_R = 6.9                  # v rastru se drží širší (rezerva na zjednodušení obrysu ±0,3 mm a mřížku 0,5 mm)
 HOLE_MIN = 6.0               # nejužší otvor (mm)
+FINE = {'los': 5.0}           # motivy s jemnější kresbou: můstek a otvor 5 mm → plech nejvýš 5 mm
 ISL_KEEP = 300.0             # ostrůvek větší než tolik mm² se připojí, menší zmizí
 EPS = 0.3                    # tolerance zjednodušení obrysu (mm)
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -29,6 +30,7 @@ SCENES = [  # id, popis, rámeček scény v SVG (x0, y0, x1, y1), zvířata [x o
     ('jelen',  'Jelen v lese',   'jelen, srnec, smrky', (31, 294, 352, 478), [[975, 1430, 1], [270, 410, 0]]),
     ('medved', 'Medvěd',         'medvěd, srnec, smrky', (364, 294, 660, 478), [[970, 1319, 1], [280, 410, 0]]),
     ('smrky',  'Smrkový les',    'smrky a hejno ptáků',  (672, 294, 992, 478), []),
+    ('los',    'Los',            'los, ptáci, smrky',    None,                 [[609, 1070, 1]]),
 ]
 
 def disk(r_mm):
@@ -41,11 +43,12 @@ def _ballmap(M):
     c = M.copy(); b = 1; c[:b] = 1; c[-b:] = 1; c[:, :b] = 1; c[:, -b:] = 1
     return cv2.distanceTransform((1 - c).astype(np.uint8), cv2.DIST_L2, 5)
 
-def _attach(M, B):
-    """připojí tvar B nejbližším bodem k oceli M (můstek WEB), vrací délku můstku v mm"""
+def _attach(M, B, avoid=None):
+    """připojí tvar B nejbližším bodem k oceli M (můstek WEB), mimo oblast avoid (např. tělo zvířete); vrací délku můstku v mm"""
     H, W = M.shape
-    dist, lbl = cv2.distanceTransformWithLabels(1 - M, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
-    yy, xx = np.where(M > 0); lut = np.zeros(lbl.max() + 1, np.int64); lut[lbl[yy, xx]] = yy * W + xx
+    T = M if avoid is None else (M & (1 - avoid)).astype(np.uint8)
+    dist, lbl = cv2.distanceTransformWithLabels(1 - T, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
+    yy, xx = np.where(T > 0); lut = np.zeros(lbl.max() + 1, np.int64); lut[lbl[yy, xx]] = yy * W + xx
     by, bx = np.where(B > 0); k = np.argmin(dist[by, bx]); q = lut[lbl[by[k], bx[k]]]
     cv2.line(M, (int(bx[k]), int(by[k])), (int(q % W), int(q // W)), 1, _mm(WEB))
     return dist[by[k], bx[k]] * PX
@@ -77,19 +80,92 @@ def prep_smrky(raw):
     tmpl = []
     for b in birds:
         ys, xs = np.where(b > 0); c = b[ys.min():ys.max() + 1, xs.min():xs.max() + 1]; tmpl += [c, c[:, ::-1]]
-    for added in range(12):
+    BIRDS[:] = tmpl
+    return add_flock(M)
+
+BIRDS = []                   # siluety ptáků ze scény Smrky (i zrcadlově) – doplňují se do velkých otvorů oblohy
+
+def add_flock(M, limit=110, maxn=12, avoid=None):
+    """do největších otvorů (koule nad limit) postupně vloží ptáky, každého připojí můstkem k nejbližší oceli"""
+    M = M.astype(np.uint8); H, W = M.shape; tmpl = BIRDS
+    for added in range(maxn):
         d = _ballmap(M)
-        if 2 * d.max() * PX <= 110: break
+        if 2 * d.max() * PX <= limit: break
         y, x = np.unravel_index(np.argmax(d), d.shape); r = d[y, x]
         t = tmpl[added % len(tmpl)]; s = min(1.0, 1.5 * r / max(t.shape))
         tt = cv2.resize(t, (max(3, int(t.shape[1] * s)), max(3, int(t.shape[0] * s))), interpolation=cv2.INTER_NEAREST)
         h, w = tt.shape; y0, x0 = y - h // 2, x - w // 2
         if y0 < 0 or x0 < 0 or y0 + h > H or x0 + w > W: break
         B = np.zeros_like(M); B[y0:y0 + h, x0:x0 + w] = tt
-        _attach(M, B); M |= B
+        if avoid is not None and (B & avoid).any(): avoid = avoid.copy()
+        _attach(M, B, avoid); M |= B
     return M.astype(bool)
 
-def clean(mat, pad):
+def add_branches(M, limit=110, maxn=8, avoid=None):
+    """do největších otvorů natáhne mírně prohnutou větev (šířka WEB + 2 mm) od oceli k oceli, dokud koule ≤ limit;
+    větev nesmí vést přes chráněnou oblast (zvíře) – pak se zkusí jiný sklon"""
+    M = M.astype(np.uint8); H, W = M.shape; wpx = int(round((WEB + 2) / PX))
+    for it in range(maxn):
+        d = _ballmap(M)
+        if 2 * d.max() * PX <= limit: break
+        y, x = np.unravel_index(np.argmax(d), d.shape)
+        done = False
+        for ang in (-7, 7, -15, 15, 0, -25, 25):
+            t = np.radians(ang); ux, uy = np.cos(t), np.sin(t)
+            def run(sg):
+                for r in range(1, W):
+                    px, py = int(round(x + sg * r * ux)), int(round(y + sg * r * uy))
+                    if px < 0 or py < 0 or px >= W or py >= H or M[py, px]: return (px, py), r
+                return None, 0
+            (a, ra), (b, rb) = run(-1), run(1)
+            if a is None or b is None: continue
+            n = 24; pts = []
+            for i in range(n + 1):
+                u = i / n; sag = 0.06 * (ra + rb) * 4 * u * (1 - u)            # větev se mírně prohne dolů
+                pts.append([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u + sag])
+            L = np.zeros_like(M); cv2.polylines(L, [np.int32(pts)], False, 1, wpx)
+            if avoid is not None and (L & avoid).any(): continue
+            M |= L; done = True; break
+        if not done: break
+    return M.astype(bool)
+
+def prep_los(svg):
+    """Los: schodišťový panel (sklon 28,8°) narovnaný svislým zkosením – stromy zůstanou svislé, zem vodorovná.
+    Los by se tím naklonil o 28,8° (vypadal by, že se pase z kopce), proto se vyřízne zvlášť a vloží zpět vzpřímený;
+    mezeru pod předníma nohama vyplní pahorek. Vrací masku scény v rozlišení PX a výšce H_MM."""
+    sc, X0, Y0 = 8, 15, 490
+    m = rasterize(svg, (X0, Y0, 495, 990), sc).astype(np.uint8)
+    H, W = m.shape
+    k = (751 - 503.5) / 450.0
+    def unshear(img):
+        return cv2.warpAffine(img, np.float32([[1, 0, 0], [k, 1, 0]]), (W, H + int(k * W)), flags=cv2.INTER_NEAREST, borderValue=0)
+    U = unshear(m)
+    bx0, by0, bx1, by1 = [int((v - o) * sc) for v, o in zip((160, 698, 292, 791), (X0, Y0, X0, Y0))]
+    box = np.zeros_like(m); box[by0:by1, bx0:bx1] = m[by0:by1, bx0:bx1]
+    op = cv2.morphologyEx(box, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (19, 19)))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(op, 8)
+    body = (lab == 1 + np.argmax(st[1:, cv2.CC_STAT_AREA])).astype(np.uint8)
+    near = (cv2.distanceTransform(1 - body, cv2.DIST_L2, 5) < 22).astype(np.uint8)
+    moose = body.copy()
+    for _ in range(14):
+        moose = cv2.dilate(moose, np.ones((3, 3), np.uint8)) & box & near
+    U[cv2.dilate(unshear(moose), np.ones((5, 5), np.uint8)) > 0] = 0
+    dy = int(round(k * (bx0 + bx1) / 2))
+    U3 = U.copy(); U3[by0 + dy:by1 + dy, bx0:bx1] |= moose[by0:by1, bx0:bx1]
+    MZ = np.zeros_like(U3); MZ[by0 + dy:by1 + dy, bx0:bx1] = cv2.dilate(moose, np.ones((25, 25), np.uint8))[by0:by1, bx0:bx1]
+    for x in range(bx0, bx1):
+        col = np.where(moose[by0:by1, x] > 0)[0]
+        if not len(col) or col.max() < (by1 - by0) - 25: continue
+        yb = by0 + col.max() + dy
+        below = np.where(U3[yb + 1:, x] > 0)[0]
+        if len(below): U3[yb:yb + 1 + below[0], x] = 1
+    scene = U3[2280:3720, 110:3800]
+    f = (H_MM / PX) / scene.shape[0]
+    out = cv2.resize(scene * 255, None, fx=f, fy=f, interpolation=cv2.INTER_AREA) > 127
+    zone = cv2.resize(MZ[2280:3720, 110:3800] * 255, (out.shape[1], out.shape[0]), interpolation=cv2.INTER_NEAREST) > 127
+    return out, zone.astype(np.uint8)
+
+def clean(mat, pad, WEB_R=WEB_R, HOLE_MIN=HOLE_MIN):
     """otvory ≥ HOLE_MIN, ocel ≥ WEB_R, žádné volné ostrůvky; opakuje se, protože smazaný ostrůvek nebo můstek
     k ptákovi může vedle sebe udělat nové úzké místo"""
     M = mat.astype(np.uint8)
@@ -119,7 +195,7 @@ def clean(mat, pad):
             cv2.line(M, p, q, 1, max(2, int(round(WEB_R / PX))))
     return M
 
-def measure(M, pad):
+def measure(M, pad, WEB=WEB):
     H = (1 - M).astype(np.uint8)
     dH = cv2.distanceTransform(H, cv2.DIST_L2, 5)
     ball = 2 * dH.max() * PX
@@ -134,7 +210,7 @@ def measure(M, pad):
     yb, xb = np.unravel_index(np.argmax(dH), dH.shape)
     return ball, web, open_ratio, (xb, yb)
 
-def trace(M, pad):
+def trace(M, pad, HOLE_MIN=HOLE_MIN):
     H = (1 - M).astype(np.uint8)
     cs, hier = cv2.findContours(H, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     hh, ww = M.shape
@@ -154,14 +230,20 @@ def main(svg_path):
     svg = open(svg_path).read()
     index = []
     for sid, lab, sub, box, anim in SCENES:
-        sc = (H_MM / PX) / (box[3] - box[1])
-        mat = rasterize(svg, box, sc)
+        if sid == 'los':
+            mat, zone = prep_los(svg)
+            mat = add_branches(mat, avoid=zone)           # velký otvor nad losem přepaží větev (ne přes losa)
+        else:
+            sc = (H_MM / PX) / (box[3] - box[1])
+            mat = rasterize(svg, box, sc)
         if sid == 'smrky': mat = prep_smrky(mat)
         pad = int(round(10 / PX))
         mat = np.pad(mat, pad, constant_values=True)
-        M = clean(mat, pad)
-        ball, web, opr, bpos = measure(M, pad)
-        holes, kids = trace(M, pad)
+        fine = FINE.get(sid)                       # jemný motiv: menší můstek a otvor (a tím i nižší nejsilnější plech)
+        wb, hm = (fine, fine) if fine else (WEB, HOLE_MIN)
+        M = clean(mat, pad, WEB_R=wb + 0.9, HOLE_MIN=hm)
+        ball, web, opr, bpos = measure(M, pad, WEB=wb)
+        holes, kids = trace(M, pad, HOLE_MIN=hm)
         Wmm = (M.shape[1] - 2 * pad) * PX
         cut = sum(sum(math.hypot(h[3*i] - h[3*((i+1) % (len(h)//3))], h[3*i+1] - h[3*((i+1) % (len(h)//3))+1]) for i in range(len(h)//3)) for h in holes) / 1000
         info = dict(id=sid, lab=lab, sub=sub, W=round(Wmm, 1), H=H_MM, web=round(web, 1), ball=round(ball), open=round(opr, 3),
@@ -179,9 +261,9 @@ def main(svg_path):
               "(function (root) {\n  'use strict';\n  const M = root.ZabradliMotivy = root.ZabradliMotivy || {};\n"
               "  M[%s] = { id: %s, lab: %s, sub: %s, rada: 'priroda', mode: 'crop', W: %s, H: %s, web: %s, holeMin: %s, ball: %s, open: %s,\n    anim: %s,\n    holes: [\n%s\n    ] };\n"
               "})(typeof globalThis !== 'undefined' ? globalThis : this);\n") % (
-            lab, info['W'], H_MM, info['web'], HOLE_MIN, info['ball'], round(opr * 100),
+            lab, info['W'], H_MM, info['web'], hm, info['ball'], round(opr * 100),
             json.dumps(sid), json.dumps(sid), json.dumps(lab, ensure_ascii=False), json.dumps(sub, ensure_ascii=False),
-            info['W'], H_MM, info['web'], HOLE_MIN, info['ball'], info['open'], json.dumps(anim),
+            info['W'], H_MM, info['web'], hm, info['ball'], info['open'], json.dumps(anim),
             ',\n'.join('      ' + json.dumps(h, separators=(',', ':')) for h in holes))
         open(os.path.join(ROOT, 'assets', 'zabradli', 'motiv-' + sid + '.js'), 'w').write(js)
     json.dump(index, open(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', 'index.json'), 'w'), ensure_ascii=False, indent=1)
