@@ -237,5 +237,218 @@
     "fit": true
    }
   ]
+ },
+ {
+  "id": "motyl-a",
+  "lab": "Motýl A",
+  "sub": "motýl s květy",
+  "W": 2009.5,
+  "H": 820.0,
+  "web": 8.0,
+  "ball": 97,
+  "open": 0.335,
+  "n": 71,
+  "cutM": 33.0,
+  "kids": 0,
+  "schody": [
+   {
+    "key": "motyl-a@250",
+    "deg": 25.0,
+    "ball": 100,
+    "web": 8.0,
+    "n": 87,
+    "fit": true
+   },
+   {
+    "key": "motyl-a@275",
+    "deg": 27.5,
+    "ball": 101,
+    "web": 8.0,
+    "n": 82,
+    "fit": true
+   },
+   {
+    "key": "motyl-a@300",
+    "deg": 30.0,
+    "ball": 100,
+    "web": 8.0,
+    "n": 91,
+    "fit": true
+   },
+   {
+    "key": "motyl-a@325",
+    "deg": 32.5,
+    "ball": 100,
+    "web": 8.0,
+    "n": 88,
+    "fit": true
+   },
+   {
+    "key": "motyl-a@350",
+    "deg": 35.0,
+    "ball": 100,
+    "web": 8.0,
+    "n": 77,
+    "fit": true
+   },
+   {
+    "key": "motyl-a@375",
+    "deg": 37.5,
+    "ball": 104,
+    "web": 8.0,
+    "n": 76,
+    "fit": true
+   },
+   {
+    "key": "motyl-a@400",
+    "deg": 40.0,
+    "ball": 108,
+    "web": 8.0,
+    "n": 77,
+    "fit": true
+   }
+  ]
+ },
+ {
+  "id": "motyl-b",
+  "lab": "Motýl B",
+  "sub": "motýl s květy",
+  "W": 2010.0,
+  "H": 820.0,
+  "web": 8.0,
+  "ball": 98,
+  "open": 0.333,
+  "n": 103,
+  "cutM": 36.3,
+  "kids": 0,
+  "schody": [
+   {
+    "key": "motyl-b@250",
+    "deg": 25.0,
+    "ball": 99,
+    "web": 8.0,
+    "n": 120,
+    "fit": true
+   },
+   {
+    "key": "motyl-b@275",
+    "deg": 27.5,
+    "ball": 100,
+    "web": 8.0,
+    "n": 113,
+    "fit": true
+   },
+   {
+    "key": "motyl-b@300",
+    "deg": 30.0,
+    "ball": 100,
+    "web": 8.0,
+    "n": 120,
+    "fit": true
+   },
+   {
+    "key": "motyl-b@325",
+    "deg": 32.5,
+    "ball": 99,
+    "web": 8.0,
+    "n": 117,
+    "fit": true
+   },
+   {
+    "key": "motyl-b@350",
+    "deg": 35.0,
+    "ball": 98,
+    "web": 8.0,
+    "n": 111,
+    "fit": true
+   },
+   {
+    "key": "motyl-b@375",
+    "deg": 37.5,
+    "ball": 98,
+    "web": 8.0,
+    "n": 113,
+    "fit": true
+   },
+   {
+    "key": "motyl-b@400",
+    "deg": 40.0,
+    "ball": 97,
+    "web": 8.0,
+    "n": 114,
+    "fit": true
+   }
+  ]
+ },
+ {
+  "id": "motyl",
+  "lab": "Motýl C",
+  "sub": "velký motýl mezi rostlinami",
+  "W": 1393.5,
+  "H": 820.0,
+  "web": 8.0,
+  "ball": 64,
+  "open": 0.189,
+  "n": 183,
+  "cutM": 25.0,
+  "kids": 0,
+  "schody": [
+   {
+    "key": "motyl@250",
+    "deg": 25.0,
+    "ball": 67,
+    "web": 8.0,
+    "n": 184,
+    "fit": true
+   },
+   {
+    "key": "motyl@275",
+    "deg": 27.5,
+    "ball": 68,
+    "web": 8.0,
+    "n": 188,
+    "fit": true
+   },
+   {
+    "key": "motyl@300",
+    "deg": 30.0,
+    "ball": 69,
+    "web": 8.0,
+    "n": 189,
+    "fit": true
+   },
+   {
+    "key": "motyl@325",
+    "deg": 32.5,
+    "ball": 70,
+    "web": 8.0,
+    "n": 189,
+    "fit": true
+   },
+   {
+    "key": "motyl@350",
+    "deg": 35.0,
+    "ball": 71,
+    "web": 8.0,
+    "n": 184,
+    "fit": true
+   },
+   {
+    "key": "motyl@375",
+    "deg": 37.5,
+    "ball": 71,
+    "web": 8.0,
+    "n": 177,
+    "fit": true
+   },
+   {
+    "key": "motyl@400",
+    "deg": 40.0,
+    "ball": 71,
+    "web": 8.0,
+    "n": 170,
+    "fit": true
+   }
+  ]
  }
 ]

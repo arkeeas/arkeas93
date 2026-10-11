@@ -1,14 +1,14 @@
-# Zadání motivu Motýl
+# Zadání variant motýla A/B/C
 
-1. Zákazník si může v laserové řadě Příroda vybrat motiv „Motýl“ pro každé pole zábradlí — požadavek ze zprávy René.
-2. V motivu je jeden velký, jasně rozeznatelný motýl; kolem něj jsou rostliny a květy. Bez jelena, losa a dalších zvířat — podle upřesnění „stačí jen motýl“.
-3. Motiv je černá spojitá ocelová plocha s bílými laserovými výřezy, ve stylu stávající přírodní řady.
-4. Základní scéna má být použitelná na rovné výplni a šikmině schodiště.
-5. Nejmenší můstek oceli a nejmenší výřez: alespoň 6 mm; největší uzavřený otvor: do 110 mm.
+1. Zákazník může v řadě Příroda zvolit pro každé pole jednu ze tří variant: A = první dodaný obrázek, B = druhý dodaný obrázek, C = původní připravený motiv.
+2. Všechny tři motivy tvoří jeden velký, jasně rozeznatelný motýl s květinami a rostlinami; bez dalších zvířat.
+3. A a B jsou přesně dodané náhledy převedené na černou spojitou ocelovou plochu s bílými laserovými výřezy. C zachovává původní identifikátor `motyl`, aby fungovaly již uložené konfigurace.
+4. Volby A/B/C zobrazují v konfigurátoru náhled motivu a lze je použít na rovné výplni i podporovaných schodištích 25–40°.
+5. Generátor cílí na ocelové můstky 8 mm a výřezy od 6 mm; všechny uzavřené otvory musejí zůstat do 110 mm.
 
 ## Předpoklady
 
-- Nebyl přiložen konkrétní výkres motýla ani rozměry pro zábradlí. `motyl_predloha.png` je nová koncepční varianta odvozená stylem od dodaného výřezu zástěny; `motyl_zdroj.png` je z ní vytvořený výrobní náhled.
-- Výška scény odpovídá generátoru řady Příroda (820 mm). Šířka vychází z poměru stran návrhu (1394 mm); konfigurátor obraz přiměřeně ořezává podle rozměru pole.
-- Jemnější kresba je zjednodušena tolerancí 0,8 mm, aby DXF zůstal přehledný a laserové křivky neměly zbytečně mnoho vrcholů.
-- Počítačová kontrola ověřuje geometrii a návaznost výřezů. Před sériovou výrobou doporučuji zkušební výpalek v konečné tloušťce plechu.
+- Obrázky A a B jsou oříznuty na vlastní panel, převedeny na 1bitovou geometrii a upraveny generátorem, který odstraňuje příliš drobné prvky a spojuje ostrůvky.
+- Výška scény odpovídá generátoru řady Příroda (820 mm); šířka odpovídá poměru stran jednotlivých předloh. Konfigurátor scénu přiměřeně ořízne podle rozměru pole.
+- Obrysy jsou zjednodušeny tolerancí 0,8 mm, aby DXF zůstal přehledný.
+- Počítačová kontrola ověřuje geometrii, můstky a otvory na rovině i všech sedmi podporovaných sklonech. Před sériovou výrobou doporučuji zkušební výpalek v konečné tloušťce plechu.
