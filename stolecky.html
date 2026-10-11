@@ -211,10 +211,10 @@
         <h2><small>Krok 1</small>Tvar stolku</h2>
         <div class="grid g4" id="models"></div>
         <p class="note" id="modelNote" style="margin:10px 0 0"></p>
-        <div class="thk"><span>Úhel článků</span><div class="pills" id="angles" role="group" aria-label="Úhel článků"></div></div>
+        <div class="thk" id="angleOptions"><span>Úhel článků</span><div class="pills" id="angles" role="group" aria-label="Úhel článků"></div></div>
       </div>
 
-      <div class="step">
+      <div class="step" id="stepDimensions">
         <h2><small>Krok 2</small>Rozměry stolku (s deskou)</h2>
         <div class="grid" style="gap:16px">
           <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="300" max="800" step="10"></div>
@@ -225,7 +225,7 @@
         </div>
       </div>
 
-      <div class="step">
+      <div class="step" id="stepProfile">
         <h2><small>Krok 3</small>Profil jeklu</h2>
         <div class="grid g4" id="sizes"></div>
         <div class="thk"><span id="thkLab">Tloušťka stěny</span><div class="pills" id="thks" role="group" aria-label="Tloušťka stěny"></div></div>
@@ -237,7 +237,7 @@
         <div class="grid g4" id="fins"></div>
       </div>
 
-      <div class="step">
+      <div class="step" id="stepTop">
         <h2><small>Krok 5</small>Deska a horní část</h2>
         <div class="field"><div class="row"><label for="topT">Tloušťka vaší desky</label><span id="topTv"></span></div><input id="topT" type="range" min="10" max="60" step="2"></div>
         <p class="note" style="margin:10px 0 14px">Kulatou desku dodáváte sami. Desky z našeho e-shopu připravujeme.</p>
@@ -245,7 +245,7 @@
         <div class="grid g3" id="tops"></div>
       </div>
 
-      <div class="step">
+      <div class="step" id="stepMount">
         <h2><small>Krok 6</small>Uchycení k desce</h2>
         <p class="note" style="margin:0 0 10px">Vyberte, jak stolek k desce připevní váš truhlář. Podle volby připravíme díry v plechu a přibalíme spojovací materiál.</p>
         <div class="grid g2" id="mounts"></div>
@@ -264,7 +264,7 @@
         <button class="btn ghost" type="button" disabled title="Platba online – připravujeme">Koupit</button>
       </div>
     </div>
-    <div class="foot"><span>Ceny jsou orientační, bez desky. Finální potvrdíme v odpovědi na poptávku.</span><a href="interni.html#stolecky" target="_self" id="staffLink" hidden>Pro dílnu</a></div>
+    <div class="foot"><span id="priceNote">Ceny jsou orientační, bez desky. Finální potvrdíme v odpovědi na poptávku.</span><a href="interni.html#stolecky" target="_self" id="staffLink" hidden>Pro dílnu</a></div>
   </section>
 </main>
 
@@ -292,15 +292,18 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="stolecky-core.js?v=20261009e"></script>
-<script src="stolecky-viewer.js?v=20261009e"></script>
+<script src="stolecky-core.js?v=20261011a"></script>
+<script src="stolecky-viewer.js?v=20261011a"></script>
 <script>
 (function () {
   'use strict';
   const S = window.Stolecky, $ = (id) => document.getElementById(id);
   const RANGES = ['spread', 'H', 'topD', 'baseW'];
   const ANGLES = [35, 40, 45, 50];
-  const MODELS = [{ id: 'retez', lab: 'Řetěz', desc: 'Tři články z jeklu zavěšené do sebe: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Plotna je otočená o 45°, nohy míří do jejích rohů.' }];
+  const MODELS = [
+    { id: 'retez', lab: 'Řetěz', desc: 'Tři články z jeklu zavěšené do sebe: dole dvě nohy na plotně, nahoře dvě pod deskou, uprostřed kosočtverec otočený o 90°. Plotna je otočená o 45°, nohy míří do jejích rohů.' },
+    { id: 'motylek', lab: 'Motýlek', desc: 'Pevná varianta podle dodaného CAD modelu: kruhová ocelová deska Ø 600 mm, výška stolku 500 mm a křížová podnož z plechu tloušťky 4 mm.' }
+  ];
   /* profily seskupené podle rozměru (šířka × hloubka), tloušťka stěny zvlášť – jako u podnoží */
   const SIZES = [];
   S.PROFILES.forEach((p) => { const k = p.hp + 'x' + p.hd; let z = SIZES.find((q) => q.id === k); if (!z) SIZES.push(z = { id: k, hp: p.hp, hd: p.hd, walls: [] }); z.walls.push(p.wall); });
@@ -326,8 +329,11 @@
   function syncForm() {
     RANGES.forEach((k) => { if (document.activeElement !== $(k + 'n')) $(k + 'n').value = cfg[k]; $(k).value = cfg[k]; });
     $('topT').value = cfg.topT; $('topTv').textContent = cfg.topT + ' mm';
-    group($('models'), MODELS.map((m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="true">' + svg(chainIcon(cfg.gamma)) + '<span class="l">' + m.lab + '</span></button>').join(''), () => {});
-    $('modelNote').textContent = MODELS[0].desc;
+    group($('models'), MODELS.map((m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.id === 'retez' ? chainIcon(cfg.gamma) : 'M32 3 L54 15 L42 25 L56 38 L32 46 L8 38 L22 25 L10 15 Z M22 25 L42 25 M32 3 L32 46') + '<span class="l">' + m.lab + '</span></button>').join(''), (id) => set({ model: id }));
+    const butterfly = cfg.model === 'motylek';
+    $('modelNote').textContent = MODELS.find((m) => m.id === cfg.model).desc;
+    $('angleOptions').hidden = butterfly;
+    ['stepDimensions', 'stepProfile', 'stepTop', 'stepMount'].forEach((id) => { $(id).hidden = butterfly; });
     group($('angles'), ANGLES.map((g) => '<button type="button" class="pill" data-id="' + g + '" aria-pressed="' + (g === cfg.gamma) + '">' + g + '°</button>').join(''), (id) => set({ gamma: Number(id) }));
     const Z = curSize(), P = S.PROFILES.find((p) => p.id === cfg.prof);
     group($('sizes'), SIZES.map((z) => '<button type="button" class="opt" data-id="' + z.id + '" aria-pressed="' + (z === Z) + '"><span class="l" style="font-weight:600;font-size:15px">' + z.hp + '×' + z.hd + '</span><span class="s">' + z.hp + ' zepředu · ' + z.hd + ' hloubka</span></button>').join(''),
@@ -347,6 +353,21 @@
 
   function facts(B) {
     const F = S.FIN.find((f) => f.id === cfg.fin), X = S.price(B, rates);
+    if (B.model === 'motylek') {
+      $('mName').textContent = 'Motýlek';
+      $('mSub').textContent = 'Deska Ø 600 mm · výška 500 mm · ocelový plech 4 mm · ' + F.lab;
+      $('ohChip').textContent = 'Kruhová deska + křížová podnož A/B';
+      $('frameNote').textContent = 'Pevný model podle dodaného STEP; rozměry a obrysy dílů se nemění.';
+      $('price').textContent = nf(X.total) + ' Kč';
+      $('priceSub').textContent = 'orientačně s DPH' + (cfg.qty > 1 ? ' · ' + nf(X.vat) + ' Kč / ks' : '') + ' · ' + nf(X.price * cfg.qty) + ' Kč bez DPH';
+      $('qty').textContent = cfg.qty + ' ks';
+      $('priceNote').textContent = 'Orientační cena zahrnuje ocelovou desku a podnož podle dodaného CAD modelu.';
+      $('load').className = 'load lvl-ok';
+      $('load').innerHTML = '<div class="head"><span>Hmotnost podle CAD ≈ ' + fmt(B.kg) + ' kg</span><span style="font-weight:400;font-size:13px">Pevný model</span></div><p>Model i výrobní soubory vycházejí z dodaného STEP a DXF.</p><p class="fine">Tři laserované díly z ocelového plechu 4 mm: kruhová deska a podnože A/B.</p>';
+      $('ask').disabled = false; $('ask').title = '';
+      return;
+    }
+    $('priceNote').textContent = 'Ceny jsou orientační, bez desky. Finální potvrdíme v odpovědi na poptávku.';
     $('mName').textContent = 'Řetěz ' + cfg.gamma + '°';
     $('mSub').textContent = 'Výška ' + cfg.H + ' mm · deska Ø ' + cfg.topD + ' mm · jekl ' + cfg.prof.replace(/x/g, '×') + ' · ' + F.lab;
     $('ohChip').textContent = 'Rozteč noh ' + cfg.spread + ' mm · plotna ' + cfg.baseW + ' mm';
@@ -400,7 +421,7 @@
   $('ask').addEventListener('click', () => {
     const X = S.price(B, rates);
     $('formTitle').textContent = 'Poptávka stolku';
-    $('formSummary').innerHTML = '<strong>' + esc(S.describe(cfg)) + '</strong><br>' + cfg.qty + ' ks · ' + nf(X.total) + ' Kč s DPH (orientačně, bez desky)';
+    $('formSummary').innerHTML = '<strong>' + esc(S.describe(cfg)) + '</strong><br>' + cfg.qty + ' ks · ' + nf(X.total) + ' Kč s DPH (orientačně' + (cfg.model === 'motylek' ? ', včetně ocelové desky' : ', bez desky') + ')';
     $('formMsg').hidden = true; $('form').querySelectorAll('input,textarea,#send').forEach((x) => { x.disabled = false; });
     $('modal').hidden = false; $('fName').focus();
   });

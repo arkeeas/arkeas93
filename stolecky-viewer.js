@@ -5,11 +5,13 @@
   'use strict';
   const METAL = { black: [0x26272A, 0.35, 0.55], anth: [0x3E444B, 0.4, 0.5], white: [0xE9E9E4, 0.1, 0.6], raw: [0x8A847B, 0.75, 0.38] };
   const VIEWS = { iso: [-0.62, -1, 0.5], front: [0, -1, 0.08], side: [1, 0, 0.08], top: [0, -0.0001, 1], bottom: [-0.55, -1, -0.62] };
+  let butterflyMeshes = null, butterflyLoad = null;
 
   /* postava z figure.js (stejná jako u podnoží) – potřebuje jen obrys desky a výšku */
   function personBodies(c, person) {
     if (!person || !root.Postava || !root.Podnoze) return [];
-    const A = { cfg: { shape: 'circle', H: c.H, size: 0 }, DL: c.topD, DW: c.topD, build: { dims: { Hf: c.H - c.topT } } };
+    const H = c.model === 'motylek' ? 500 : c.H, D = c.model === 'motylek' ? 600 : c.topD, T = c.model === 'motylek' ? 4 : c.topT;
+    const A = { cfg: { shape: 'circle', H, size: 0 }, DL: D, DW: D, build: { dims: { Hf: H - T } } };
     try { return root.Postava.build(A, person).bodies; } catch (e) { return []; }
   }
 
@@ -39,8 +41,9 @@
       st.v = v || st.v;
       if (!st.B) return;
       size();
-      const c = st.B.cfg, p = st.o.person, hh = p ? Math.max(c.H, p.S * (p.pose === 'sit' ? 0.75 : 1)) : c.H;
-      const m = new THREE.Vector3(0, p ? -c.topD * 0.35 : 0, hh * 0.45), d = Math.max(hh, c.topD) * 2.4;
+      const c = st.B.cfg, H = c.model === 'motylek' ? 500 : c.H, D = c.model === 'motylek' ? 600 : c.topD;
+      const p = st.o.person, hh = p ? Math.max(H, p.S * (p.pose === 'sit' ? 0.75 : 1)) : H;
+      const m = new THREE.Vector3(0, p ? -D * 0.35 : 0, hh * 0.45), d = Math.max(hh, D) * 2.4;
       cam.position.copy(m).add(new THREE.Vector3(...VIEWS[st.v]).normalize().multiplyScalar(d)); ctl.target.copy(m); ctl.update();
     }
     function bodyMesh(b) {
@@ -57,6 +60,35 @@
       const steel = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2] });
       const wood = new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0, transparent: see, opacity: see ? 0.32 : 1, depthWrite: !see });
       const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
+      if (B.model === 'motylek') {
+        const show = (meshes) => {
+          if (st.B !== B) return;
+          meshes.forEach((part) => {
+            const isDesk = /deska/i.test(part.name);
+            if (st.o.showDesk === false && isDesk) return;
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(part.positions, 3));
+            g.setIndex(part.indices);
+            g.computeVertexNormals();
+            const transparent = see && isDesk;
+            const mat = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2], transparent, opacity: transparent ? 0.4 : 1, depthWrite: !transparent, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(g, mat); mesh.castShadow = true; mesh.receiveShadow = true; grp.add(mesh);
+          });
+          personBodies(c, st.o.person).forEach((b) => grp.add(bodyMesh(b)));
+          if (!st.fitted) { st.fitted = true; view('iso'); }
+        };
+        if (butterflyMeshes) show(butterflyMeshes);
+        else {
+          if (!butterflyLoad) butterflyLoad = fetch(B.meshAsset).then((res) => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          }).then((asset) => { butterflyMeshes = asset.meshes; return butterflyMeshes; });
+          butterflyLoad.then(show).catch(() => {
+            if (st.B === B) { const hint = host.parentElement.querySelector('#hint'); if (hint) { hint.hidden = false; hint.textContent = '3D model Motýlek se nepodařilo načíst.'; } }
+          });
+        }
+        return;
+      }
       const ccw = (q) => { let pts = q.map((p) => new THREE.Vector2(p[0], p[1])); if (THREE.ShapeUtils.isClockWise(pts)) pts = pts.reverse(); return pts; };
       const bars = (polys, plane, zc) => polys.forEach((q) => {
         const g = new THREE.ExtrudeGeometry(new THREE.Shape(ccw(q)), { depth: G.hd, bevelEnabled: false });
