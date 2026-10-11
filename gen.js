@@ -96,6 +96,12 @@
     const pts = p.poly || [[0, 0], [p.w, 0], [p.w, p.l], [0, p.l]];   // obrys (obecný polygon nebo obdélník w × l)
     for (let i = 0; i < pts.length; i++) line(pts[i], pts[(i + 1) % pts.length]);
     (p.holes || []).forEach((hh) => e.push('0', 'CIRCLE', '8', 'REZ', '10', hh[0], '20', hh[1], '30', 0, '40', hh[2]));
+    // obecné výřezy (laserový motiv): uzavřené polyline, ať je CAM bere jako jeden obrys
+    (p.polys || []).forEach((pl) => {
+      e.push('0', 'POLYLINE', '8', 'REZ', '66', 1, '10', 0, '20', 0, '30', 0, '70', 1);
+      pl.forEach((q) => e.push('0', 'VERTEX', '8', 'REZ', '10', q[0], '20', q[1], '30', 0));
+      e.push('0', 'SEQEND', '8', 'REZ');
+    });
     // podélné otvory (ovály) [cx, cy, délka, šířka] podél osy X
     (p.ovals || []).forEach(([cx, cy, L, w]) => {
       const r = w / 2, hl = (L - w) / 2;
@@ -103,7 +109,8 @@
       e.push('0', 'ARC', '8', 'REZ', '10', cx + hl, '20', cy, '30', 0, '40', r, '50', 270, '51', 90);
       e.push('0', 'ARC', '8', 'REZ', '10', cx - hl, '20', cy, '30', 0, '40', r, '50', 90, '51', 270);
     });
-    e.push('0', 'TEXT', '8', 'ZNACENI', '10', 3, '20', 3, '30', 0, '40', 4, '1', p.poz);
+    const tx = p.text || [3, 3];
+    e.push('0', 'TEXT', '8', 'ZNACENI', '10', tx[0], '20', tx[1], '30', 0, '40', 4, '1', p.poz);
     const lay = [];
     [['REZ', 7], ['ZNACENI', 1]].forEach(([nm, c]) => lay.push('0', 'LAYER', '2', nm, '70', 0, '62', c, '6', 'CONTINUOUS'));
     return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', 4, '0', 'ENDSEC',

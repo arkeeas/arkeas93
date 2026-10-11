@@ -366,13 +366,14 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261007l"></script>
-<script src="zabradli-core.js?v=20261012d"></script>
+<script src="assets/zabradli/motiv-strom.js?v=20261011a"></script>
+<script src="zabradli-core.js?v=20261012e"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261012d') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261012e') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -424,19 +425,24 @@
   function render() {
     A = Zb.analyze(cfg, rates);
     const T = Zb.TYPES.find((t) => t.id === cfg.typ);
-    $('mName').textContent = cfg.vypln === 'geometricky' ? 'Zábradlí s geometrickým motivem' : 'Zábradlí ' + T.lab.toLowerCase();
+    $('mName').textContent = cfg.vypln === 'geometricky' ? 'Zábradlí s geometrickým motivem' : cfg.vypln === 'laser' ? 'Zábradlí s laserovým motivem' : 'Zábradlí ' + T.lab.toLowerCase();
     $('mSub').textContent = nf(A.lenM, 1) + ' m · výška ' + cfg.vyska + ' mm · ' + Zb.FIN.find((f) => f.id === cfg.fin).lab;
     $('factChip').textContent = A.anchorsN + ' kotev · ' + nf(A.kg) + ' kg oceli';
 
-    group($('types'), [{ id: 'B', l: 'Bez sloupků', s: 'pole do 1,5 m, styky na vložkách', ic: Zb.TYPES[1].icon }, { id: 'A', l: 'Se sloupky', s: 'rozteč si nastavíte', ic: Zb.TYPES[0].icon }, { id: 'G', l: 'Geometrický motiv', s: 'dvojité rámy s vlastními patkami', ic: 'M5 7 H59 M18 7 V14 M46 7 V14 M14 14 H50 V43 H14 Z M22 20 H42 V37 H22 Z M14 47 H50 M18 43 V47 M46 43 V47' }],
-      (t) => optBtn(t.id, t.id === (cfg.vypln === 'geometricky' ? 'G' : cfg.typ), t.l, t.s, t.ic), (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : set({ sloupky: id === 'A', vypln: 'standard' }));
+    group($('types'), [{ id: 'B', l: 'Bez sloupků', s: 'pole do 1,5 m, styky na vložkách', ic: Zb.TYPES[1].icon }, { id: 'A', l: 'Se sloupky', s: 'rozteč si nastavíte', ic: Zb.TYPES[0].icon }, { id: 'G', l: 'Geometrický motiv', s: 'dvojité rámy s vlastními patkami', ic: 'M5 7 H59 M18 7 V14 M46 7 V14 M14 14 H50 V43 H14 Z M22 20 H42 V37 H22 Z M14 47 H50 M18 43 V47 M46 43 V47' },
+      { id: 'L', l: 'Laserový motiv', s: 'plech s motivem v každém poli', ic: 'M4 8 H60 M4 40 H60 M4 8 V40 M60 8 V40 M32 8 V40 M10 34 C12 24 16 18 20 12 M16 22 L24 16 M20 34 C21 26 24 20 28 14 M38 34 C40 24 44 18 50 12 M44 22 L54 18 M48 34 C49 26 52 20 56 14' }],
+      (t) => optBtn(t.id, t.id === (cfg.vypln === 'geometricky' ? 'G' : cfg.vypln === 'laser' ? 'L' : cfg.typ), t.l, t.s, t.ic),
+      (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : id === 'L' ? set({ vypln: 'laser', sloupky: true }) : set({ sloupky: id === 'A', vypln: 'standard' }));
     $('postBox').hidden = !cfg.sloupky || cfg.vypln === 'geometricky';
+    $('pp').min = cfg.vypln === 'laser' ? Zb.PANEL.postMin : Zb.POST_MIN; $('pp').max = cfg.vypln === 'laser' ? Zb.PANEL.postMax : Zb.POST_MAX;
     if (document.activeElement !== $('pp')) $('pp').value = cfg.postPitch;
     if (document.activeElement !== $('ppn')) $('ppn').value = cfg.postPitch;
     group($('madla'), [{ id: 'y', l: 'Dřevěné madlo', s: '60×40 navrch rámu' }, { id: 'n', l: 'Bez dřevěného madla', s: 'horní rám je madlo' }], (o) => optBtn(o.id, (o.id === 'y') === cfg.madlo, o.l, o.s), (id) => set({ madlo: id === 'y' }));
     const nPost = A.parts.filter((m) => m.role === 'post').length;
     $('typeNote').textContent = cfg.vypln === 'geometricky'
       ? 'Dvojité rámy tvoří jekl 20×20×2 mm s pokosovými spoji 45°, které se v rozích skládají do pravého úhlu. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
+      : cfg.vypln === 'laser'
+      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + Zb.PANEL.t + ' mm s motivem stromů; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.'
       : cfg.sloupky
       ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
       : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');
@@ -457,13 +463,14 @@
     $('motifSettings').hidden = cfg.vypln !== 'geometricky';
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
-    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'geometricky' ?
+    $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
+      '<p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(Zb.PANEL.motif).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
       '<p class="note" style="margin:8px 0 0">Vnější i vnitřní rám motivu tvoří dutý jekl 20×20×2 mm. Čtyři konce se seříznou na 45° a v rozích svaří do pravého úhlu; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +
       (cfg.sloupky ? '<p class="note" style="margin:8px 0 0">Se sloupky jen čtvercový jekl – sloupek z plochého jeklu 40×20 je v ohybu napříč zábradlím příliš slabý.</p>' : ''));
     group($('profs'), Zb.RAILS[cfg.typ], (p) => optBtn(p.id, p.id === cfg.rail, 'Jekl ' + p.lab, p.sub), (id) => set({ rail: id }));
-    if (cfg.vypln !== 'geometricky') {
+    if (cfg.vypln === 'standard') {
       group($('barsU'), Zb.BARS, (b) => optBtn(b.id, b.id === cfg.bar, b.lab, b.sub || (b.w > jt.rail.w ? 'širší než rám' : '')), (id) => set({ bar: id }));
       if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
     }
@@ -475,8 +482,8 @@
     $('ovNote').textContent = [ov.whyTop, ov.whyBot].filter(Boolean).join(' ') + (pieces.length ? (ov.whyTop || ov.whyBot ? ' ' : '') + 'Špruše na rovině: ' + pieces.map((r) => r.name + ' ' + r.len + ' mm').join(', ') + '.' : '');
     $('lockBox').hidden = cfg.vypln === 'geometricky';
     $('lockBox').className = 'box lock' + (A.locks.ok ? ' on' : '');
-    $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.', vlozeni: 'Tyče v otvorech madla.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
-    $('overBox').hidden = cfg.vypln === 'geometricky';
+    $('lockBox').innerHTML = '<span><strong>' + { drazka: 'Drážky v rámu.', zamek: 'Zámečky.', tupo: 'Na tupo.', vlozeni: 'Tyče v otvorech madla.', panel: 'Plech v poli.' }[A.locks.mode] + '</strong> ' + esc(A.locks.why) + '</span>';
+    $('overBox').hidden = cfg.vypln !== 'standard';
 
     const pOK = Zb.patkaAllowed(cfg), stairs = cfg.segs.some((s) => s.rise);
     $('anchors').hidden = cfg.vypln === 'geometricky';

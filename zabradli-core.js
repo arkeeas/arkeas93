@@ -127,25 +127,46 @@
     return solidFrom(F);
   }
 
-  /* vytažení rovinného obrysu (konvexní) s otvory: deska, plotna, tyč */
+  /* vytažení rovinného obrysu s otvory (i nekonvexními): deska, plotna, tyč, laserový plech */
   function extrudeSolid(outer, holes, o, ex, ey, ez, t) {
     const P = (q, z) => add(add(add(o, mul(ex, q[0])), mul(ey, q[1])), mul(ez, z));
     const F = [];
     F.push({ loops: [outer.map((q) => P(q, 0))].concat(holes.map((h) => h.map((q) => P(q, 0)))), n: mul(ez, -1) });
     F.push({ loops: [outer.map((q) => P(q, t))].concat(holes.map((h) => h.map((q) => P(q, t)))), n: ez });
+    // normála boční stěny podle orientace obrysu (plocha se znaménkem) – platí i pro nekonvexní výřezy (laserový motiv)
     const sides = (poly, inward) => {
-      const c = poly.reduce((a, q) => [a[0] + q[0] / poly.length, a[1] + q[1] / poly.length], [0, 0]);
+      let ar = 0;
+      poly.forEach((a, i) => { const b = poly[(i + 1) % poly.length]; ar += a[0] * b[1] - b[0] * a[1]; });
+      const sg = (ar > 0) !== inward ? 1 : -1;
       poly.forEach((a, i) => {
         const b = poly[(i + 1) % poly.length];
-        let n2 = [b[1] - a[1], -(b[0] - a[0])];
-        const mid = [(a[0] + b[0]) / 2 - c[0], (a[1] + b[1]) / 2 - c[1]];
-        if ((n2[0] * mid[0] + n2[1] * mid[1] > 0) === inward) n2 = [-n2[0], -n2[1]];
+        const n2 = [sg * (b[1] - a[1]), -sg * (b[0] - a[0])];
         F.push({ loops: [[P(a, 0), P(b, 0), P(b, t), P(a, t)]], n: add(mul(ex, n2[0]), mul(ey, n2[1])) });
       });
     };
     sides(outer, false);
     holes.forEach((h) => sides(h, true));
     return solidFrom(F);
+  }
+  /* totéž co extrudeSolid, ale přímo s indexy (bez slučování vrcholů přes klíče) – laserový plech má tisíce vrcholů */
+  function extrudeFast(outer, holes, o, ex, ey, ez, t) {
+    const clean = (pl) => pl.filter((q, i) => { const r = pl[(i + 1) % pl.length]; return Math.hypot(q[0] - r[0], q[1] - r[1]) > 1e-6; });
+    const loops = [clean(outer)].concat(holes.map(clean)).filter((l) => l.length >= 3);
+    const verts = [], faces = [];
+    const P = (q, z) => [o[0] + ex[0] * q[0] + ey[0] * q[1] + ez[0] * z, o[1] + ex[1] * q[0] + ey[1] * q[1] + ez[1] * z, o[2] + ex[2] * q[0] + ey[2] * q[1] + ez[2] * z];
+    const idx = loops.map((l) => { const b = verts.length; l.forEach((q) => verts.push(P(q, 0))); l.forEach((q) => verts.push(P(q, t))); return b; });
+    faces.push({ outer: loops[0].map((_, k) => idx[0] + k), inner: loops.slice(1).map((l, j) => l.map((_, k) => idx[j + 1] + k)), n: mul(ez, -1) });
+    faces.push({ outer: loops[0].map((_, k) => idx[0] + loops[0].length + k), inner: loops.slice(1).map((l, j) => l.map((_, k) => idx[j + 1] + l.length + k)), n: ez });
+    loops.forEach((l, li) => {
+      let ar = 0; l.forEach((a, i) => { const b = l[(i + 1) % l.length]; ar += a[0] * b[1] - b[0] * a[1]; });
+      const sg = (ar > 0) !== (li > 0) ? 1 : -1, b0 = idx[li], n = l.length;
+      l.forEach((a, i) => {
+        const j = (i + 1) % n, b = l[j], n2 = [sg * (b[1] - a[1]), -sg * (b[0] - a[0])], L = Math.hypot(n2[0], n2[1]);
+        faces.push({ outer: [b0 + i, b0 + j, b0 + n + j, b0 + n + i], inner: [], n: unit(add(mul(ex, n2[0] / L), mul(ey, n2[1] / L))) });
+      });
+    });
+    faces[0].n = unit(faces[0].n); faces[1].n = unit(faces[1].n);
+    return { verts, faces };
   }
   const circle = (cx, cy, r, n) => { const out = []; n = n || 16; for (let k = 0; k < n; k++) { const a = 2 * Math.PI * k / n; out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } return out; };
   const rect2 = (w, l) => [[-w / 2, -l / 2], [w / 2, -l / 2], [w / 2, l / 2], [-w / 2, l / 2]];
@@ -254,6 +275,7 @@
     kg: 42, rez: 35, svar: 90, drazka: 15, zinek: 28, lak: 180, prasek: 280, madlo: 1150, priprava: 1500, marze: 35,
     kotva: { beton: 190, zdivo: 260, ocel: 90 }, zamereni: 1500, kotveni: 1200, montazM: 950, montazKotva: 150, slotClear: 0.5,
     zamekSpruse: 45,
+    laserM: 30,                                  // laserový plech s motivem – Kč za metr řezu, orientačně
     podlozka: 220,                               // tepelně oddělující podložka pod plotnu – Kč/ks, orientačně                             // vyřezání zámečku na konci špruše (pila to neumí) – Kč/ks, orientačně
     // kotvy – meze nastavuje dílna (zatím výchozí odhad, NE statický výpočet): mezera mezi kotvami a přesah konce za poslední kotvu [mm]
     kotvaMax: 1500, kotvaDop: 1200, kotvaKonecMax: 600, kotvaKonecDop: 400,
@@ -268,11 +290,11 @@
   function normalize(c) {
     c = Object.assign({}, DEFAULT_CFG, c || {});
     const o = {};
-    o.vypln = c.vypln === 'geometricky' ? 'geometricky' : 'standard';
+    o.vypln = c.vypln === 'geometricky' || c.vypln === 'laser' ? c.vypln : 'standard';
     // jeden typ zábradlí: sloupky ano/ne (interně typ A = se sloupky, B = pole bez sloupků – kvůli uloženým poptávkám)
-    o.sloupky = o.vypln === 'geometricky' ? true : c.sloupky != null ? !!c.sloupky : c.typ === 'A';
+    o.sloupky = o.vypln !== 'standard' ? true : c.sloupky != null ? !!c.sloupky : c.typ === 'A';
     o.typ = o.sloupky ? 'A' : 'B';
-    o.postPitch = Math.round(num(c.postPitch, POST_MIN, POST_MAX, 1000));
+    o.postPitch = o.vypln === 'laser' ? Math.round(num(c.postPitch, PANEL.postMin, PANEL.postMax, 1000)) : Math.round(num(c.postPitch, POST_MIN, POST_MAX, 1000));
     o.motifPitch = Math.round(num(c.motifPitch, 150, 400, 250));
     let segs = Array.isArray(c.segs) && c.segs.length ? c.segs.slice(0, 8) : DEFAULT_CFG.segs;
     o.segs = segs.map((s, i) => {
@@ -304,6 +326,7 @@
     const ov = overAllowed(o);
     o.overTop = ov.top ? Math.round(c.overTop == null ? 0 : num(c.overTop, 0, OVER_MAX, 0)) : 0;
     o.overBot = ov.bot ? Math.round(c.overBot == null ? (o.typ === 'B' ? 150 : 0) : num(c.overBot, 0, OVER_MAX, 0)) : 0;
+    if (o.vypln === 'laser') { o.overTop = 0; o.overBot = 0; }          // plech je jen v poli mezi madly
     o.base = pick(BASE, c.base, 'beton');
     o.facade = Math.round(num(c.facade, 0, 400, 200));
     o.arm = Math.round(num(c.arm, 60, 600, o.facade + 50));
@@ -500,6 +523,125 @@
     patka: { w: 100, l: 120, t: 8 }, patka_long: 160,
     floor_off: null, seg_steps: null, celo_corner: CELO_CORNER, pad: 0, zed: null
   };
+
+  /* ======================================================================
+     LASEROVÝ MOTIV – v každém poli mezi sloupky a madly jeden plech s výřezy (motiv z assets/zabradli/motiv-*.js).
+     Plech má od líců sloupků i madel mezeru PANEL.gap, okraj bez výřezů PANEL.border (kolmo na hranu).
+     Na šikmině je pole kosodélník: motiv se afinně roztáhne (svislé zůstane svislé) – můstky a otvory se
+     přepočítají podle singulárních hodnot zobrazení (nejužší můstek × σmin, největší otvor × σmax).
+     ====================================================================== */
+  const PANEL = { gap: 5, t: 5, border: 25, motif: 'strom', minWidth: 300, tol3d: 0.4, tolDxf: 0.05, minWeb: 5, webTarget: 6, postMin: 700, postMax: 1300 };
+  /* výřezy plechu v jeho rovině (mm); tol = max. odchylka tětivy oblouku */
+  const panelHoles = (m, tol) => [].concat.apply([], m.pn.motif.holes.map((h) => m.pn.shrink > 1e-9 ? untangle(shrinkLoop(bulgePoints(h, m.pn.map, m.pn.smax, tol), m.pn.shrink), PANEL.webTarget / 2 + 0.5) : [bulgePoints(h, m.pn.map, m.pn.smax, tol)]));
+  /* zmenšení výřezu o d kolmo na obrys (posun bodů po ose úhlu sousedních hran dovnitř výřezu).
+     Výřezy motivu nemají ostré vnitřní rohy (ocel je zaoblená R ≥ 3,5 mm), takže při d < 3 mm se obrys nepřekříží. */
+  function shrinkLoop(pl, d) {
+    if (!(d > 1e-9)) return pl;
+    let ar = 0; pl.forEach((p, i) => { const q = pl[(i + 1) % pl.length]; ar += p[0] * q[1] - q[0] * p[1]; });
+    const sg = ar > 0 ? 1 : -1, n = pl.length;            // dovnitř výřezu = vlevo u CCW, vpravo u CW
+    return pl.map((p, i) => {
+      const a = pl[(i + n - 1) % n], b = pl[(i + 1) % n];
+      const e1 = [p[0] - a[0], p[1] - a[1]], e2 = [b[0] - p[0], b[1] - p[1]], l1 = Math.hypot(e1[0], e1[1]) || 1, l2 = Math.hypot(e2[0], e2[1]) || 1;
+      const n1 = [-e1[1] / l1 * sg, e1[0] / l1 * sg], n2 = [-e2[1] / l2 * sg, e2[0] / l2 * sg];
+      let m = [n1[0] + n2[0], n1[1] + n2[1]]; const ml = Math.hypot(m[0], m[1]) || 1; m = [m[0] / ml, m[1] / ml];
+      const k = d / Math.max(0.5, m[0] * n1[0] + m[1] * n1[1]);
+      return [p[0] + m[0] * k, p[1] + m[1] * k];
+    });
+  }
+  /* po zmenšení se může obrys překřížit: ostrá špička výřezu (poloměr < d) se překlopí do malé obrácené smyčky,
+     úzký krček výřezu se zavře. Obrys se v průsečíku rozdělí na dvě smyčky; ponechají se jen ty se stejnou
+     orientací jako původní výřez a s plochou aspoň minA (obrácené smyčky = zaniklé špičky). */
+  function untangle(pl, rBridge, minA) {
+    minA = minA == null ? 20 : minA; rBridge = rBridge || 0;
+    const sarea = (q) => { let a = 0; q.forEach((p, i) => { const r = q[(i + 1) % q.length]; a += p[0] * r[1] - r[0] * p[1]; }); return a / 2; };
+    const sg = Math.sign(sarea(pl));
+    const X = (a, b, c, e) => {
+      const r = [b[0] - a[0], b[1] - a[1]], q = [e[0] - c[0], e[1] - c[1]], den = r[0] * q[1] - r[1] * q[0];
+      if (Math.abs(den) < 1e-12) return null;
+      const t = ((c[0] - a[0]) * q[1] - (c[1] - a[1]) * q[0]) / den, u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / den;
+      return t > 0 && t < 1 && u > 0 && u < 1 ? [a[0] + t * r[0], a[1] + t * r[1]] : null;
+    };
+    const done = [], todo = [pl];
+    let guard = 0;
+    while (todo.length && guard++ < 500) {
+      const q = todo.pop(), n = q.length;
+      let hit = null;
+      // obálky hran pro rychlé vyřazení dvojic
+      for (let i = 0; i < n && !hit; i++) {
+        const a = q[i], b = q[(i + 1) % n];
+        const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+        for (let j = i + 2; j < n && !hit; j++) {
+          if (i === 0 && j === n - 1) continue;
+          const c = q[j], e = q[(j + 1) % n];
+          if (Math.max(c[0], e[0]) < x0 || Math.min(c[0], e[0]) > x1 || Math.max(c[1], e[1]) < y0 || Math.min(c[1], e[1]) > y1) continue;
+          const P = X(a, b, c, e);
+          if (P) hit = [i, j, P];
+        }
+      }
+      if (!hit) { if (Math.sign(sarea(q)) === sg && Math.abs(sarea(q)) >= minA) done.push(q); continue; }
+      const [i, j, P] = hit;
+      let A = [P].concat(q.slice(i + 1, j + 1)), B = [P].concat(q.slice(j + 1), q.slice(0, i + 1));
+      const real = (L) => Math.sign(sarea(L)) === sg && Math.abs(sarea(L)) >= minA;
+      if (rBridge > 0 && real(A) && real(B)) {
+        // zavřený krček: obě části odříznout kolem průsečíku – vznikne můstek široký asi 2 × rBridge
+        const trim = (L) => L.filter((p) => Math.hypot(p[0] - P[0], p[1] - P[1]) > rBridge);
+        A = trim(A); B = trim(B);
+      }
+      if (A.length >= 3) todo.push(A);
+      if (B.length >= 3) todo.push(B);
+    }
+    return done;
+  }
+  /* podklad pro DXF: obrys a výřezy posunuté do kladných souřadnic, místo pro číslo dílu v okraji */
+  function panelDxf(m, tol) {
+    const pts = m.outline, mx = Math.min.apply(null, pts.map((q) => q[0])), my = Math.min.apply(null, pts.map((q) => q[1]));
+    const sh = (q) => [Math.round((q[0] - mx) * 1e4) / 1e4, Math.round((q[1] - my) * 1e4) / 1e4];
+    return { poly: pts.map(sh), polys: panelHoles(m, tol || PANEL.tolDxf).map((h) => h.map(sh)), text: sh([pts[0][0] + 8, pts[0][1] + 6 + 22 * Math.max(0, m.pn.tan)]) };
+  }
+  const motifOf = (id) => {
+    const M = root.ZabradliMotivy && root.ZabradliMotivy[id];
+    if (!M) throw new Error('Chybí data laserového motivu „' + id + '“ (assets/zabradli/motiv-' + id + '.js).');
+    return M;
+  };
+  /* uzavřená křivka [x, y, bulge, …] -> body; oblouky rozdělené tak, aby po zobrazení (σmax) byla odchylka tětivy ≤ tol */
+  function bulgePoints(flat, map, smax, tol) {
+    const out = [], n = flat.length / 3;
+    for (let i = 0; i < n; i++) {
+      const x0 = flat[3 * i], y0 = flat[3 * i + 1], b = flat[3 * i + 2], j = (i + 1) % n, x1 = flat[3 * j], y1 = flat[3 * j + 1];
+      out.push(map(x0, y0));
+      if (!b) continue;
+      const th = 4 * Math.atan(b), cx = x1 - x0, cy = y1 - y0, L = Math.hypot(cx, cy);
+      const R = L / (2 * Math.sin(Math.abs(th) / 2)), d = R * Math.cos(Math.abs(th) / 2) * Math.sign(b);
+      const mx = (x0 + x1) / 2 - cy / L * d, my = (y0 + y1) / 2 + cx / L * d;
+      const ca = Math.max(-1, 1 - tol / (R * smax)), step = 2 * Math.acos(ca);
+      const k = Math.max(1, Math.ceil(Math.abs(th) / (step || 1e-9)));
+      const a0 = Math.atan2(y0 - my, x0 - mx);
+      for (let q = 1; q < k; q++) { const a = a0 + th * q / k; out.push(map(mx + R * Math.cos(a), my + R * Math.sin(a))); }
+    }
+    return out;
+  }
+  const sv2 = (a, b, c, d) => {                  // singulární hodnoty matice [[a, b], [c, d]]
+    const s1 = a * a + b * b + c * c + d * d, det = Math.abs(a * d - b * c), r = Math.sqrt(Math.max(0, s1 * s1 / 4 - det * det));
+    return [Math.sqrt(Math.max(0, s1 / 2 - r)), Math.sqrt(s1 / 2 + r)];
+  };
+  /* plech jednoho pole v rovině úseku: x vodorovně podél trasy od bodu A, y svisle od líce spodního madla v x = 0 */
+  function panelField(o) {
+    const M = motifOf(o.motif), g = o.gap, bm = M.border;
+    const tan = o.tan, cos = o.cos;
+    const x0 = o.extA + g, x1 = o.Lh - o.extB - g, h = o.H - 2 * (o.a + g) / cos;     // mezera g kolmo na líc madla i na šikmině
+    const bx = o.border, by = o.border / cos;
+    const wi = x1 - x0 - 2 * bx, hi = h - 2 * by;
+    if (wi < o.minWidth - 2 * bx || hi < 200) return { ok: false, w: x1 - x0, h };
+    const sx = wi / (M.W - 2 * bm), sy = hi / (M.H - 2 * bm);
+    const ox = x0 + bx - sx * bm;
+    const map = (u, v) => { const x = ox + sx * u; return [x, x * tan + by + sy * (v - bm)]; };
+    const [smin, smax] = sv2(sx, 0, sx * tan, sy);
+    // stlačený / zkosený motiv: výřezy se zmenší o shrink (kolmo na obrys), aby můstky zůstaly aspoň o.webMin
+    const shrink = Math.max(0, (o.webMin - M.web * smin) / 2);
+    const outline = [[x0, x0 * tan], [x1, x1 * tan], [x1, x1 * tan + h], [x0, x0 * tan + h]];
+    return { ok: true, outline, x0, x1, h, sx, sy, smin, smax, map, tan, shrink, motif: M, web: M.web * smin + 2 * shrink, ball: M.ball * smax - 2 * shrink };
+  }
+
   function layoutA(path, kw) {
     const P = Object.assign({}, STD_A, kw || {});
     const a = P.tube / 2, H = P.rail_spacing, T = P.wall;
@@ -634,12 +776,31 @@
       members.push(m);
     });
 
-    // výplň: pásovina, v každém poli vystředěná
-    const cl = P.slot_clear, barInfo = [], gapS = [];
+    // výplň: pásovina, v každém poli vystředěná (nebo laserový plech s motivem)
+    const cl = P.slot_clear, barInfo = [], gapS = [], panels = [];
     fields.forEach(({ k, t0, t1 }) => {
       const s = segs[k], d = s.d, pitch = s.sloped ? P.pitch_slope : P.pitch_flat;
       const A = add(s.p0, mul(sub(s.p1, s.p0), t0)), B = add(s.p0, mul(sub(s.p1, s.p0), t1));
       const fieldLen = len(sub(B, A)), cosS = Math.cos(s.slope / DEG);
+      if (P.panel) {
+        const hz = hproj(d), wb = unit(cross(Z, hz));
+        // přesah sloupku do roviny pole: rohový sloupek je natočený podle dalšího úseku
+        let extB = a;
+        if (t1 === 1 && k < segs.length - 1) { const c = Math.abs(dot(hz, hproj(segs[k + 1].d))); extB = a * (c + Math.sqrt(Math.max(0, 1 - c * c))); }
+        const pn = panelField({ motif: P.panel.motif, gap: P.panel.gap, border: P.panel.border, minWidth: P.panel.minWidth, tan: d[2] / cosS, cos: cosS,
+          Lh: fieldLen * cosS, extA: a, extB, H, a, webMin: P.panel.webMin });
+        const info = { seg: k, field: panels.length + 1, ok: pn.ok, w: r1(pn.w || (pn.x1 - pn.x0)), h: r1(pn.h) };
+        if (pn.ok) {
+          const zref = A[2] - H + (a + P.panel.gap) / cosS, t = P.panel.t;
+          const o = sub([A[0], A[1], zref], mul(wb, t / 2));
+          Object.assign(info, { sx: pn.sx, sy: pn.sy, web: r1(pn.web), ball: r1(pn.ball) });
+          members.push({ kind: 'panel', role: 'panel', name: 'laserový plech – motiv ' + pn.motif.lab + (s.sloped ? ' šikmý' : ''), prof: 'plech ' + t + ' mm',
+            o, ex: hz, ey: Z, ez: wb, t, outline: pn.outline, pn, holes: [], w: r1(pn.x1 - pn.x0), l: r1(pn.h), L: pn.x1 - pn.x0, seg: k, a1: 0, a2: 0 });
+        }
+        panels.push(info);
+        gapS.push(sOf(k, mul(add(A, B), 0.5)));            // rameno kotvy z boku jde i doprostřed pole (pod spodním madlem, mimo plech)
+        return;
+      }
       const clearH = fieldLen * cosS - P.tube, pitchH = pitch * cosS;
       let n = 0;
       while ((clearH - (n * pitchH + P.bar_t)) / 2 >= P.min_end_gap) n++;
@@ -798,7 +959,7 @@
       zs.forEach((z) => sidePlate('zed', 'plotna ke zdi', add([ap.pt[0], ap.pt[1], z], mul(out, a)), pw, out, ZED_PLATE, [[40, 0, 7], [-40, 0, 7]], true));
       anch.fixed.push(ap.s);
     });
-    return { P, segs, members: members.concat(anchors), fields, barInfo, locks: joint !== 'tupo', joint, anch };
+    return { P, segs, members: members.concat(anchors), fields, barInfo, panels, locks: joint !== 'tupo', joint, anch };
   }
 
   /* kotevní sada: rameno z jeklu 40×20×3, plotna P10 120×120, 2× závitová tyč M12 */
@@ -1055,6 +1216,7 @@
     if (m.connectorPair) return connectorSolid(m);
     if (m.kind === 'bar' && (m.tab0 || m.tab1)) return tabBarSolid(m);
     if (m.kind === 'plate' || m.kind === 'pad') return extrudeSolid(rect2(m.w, m.l), m.holes.map((h) => circle(h[0], h[1], h[2], 16)), m.o, m.ex, m.ey, m.ez, m.t);
+    if (m.kind === 'panel') return extrudeFast(m.outline, panelHoles(m, PANEL.tol3d), m.o, m.ex, m.ey, m.ez, m.t);
     if (m.kind === 'rod') { const e1 = unit(cross(m.dir, Math.abs(m.dir[2]) < 0.9 ? Z : [1, 0, 0])), e2 = cross(m.dir, e1); return extrudeSolid(circle(0, 0, m.r, 12), [], m.o, e1, e2, m.dir, m.L); }
     return prismSolid(m);
   }
@@ -1062,11 +1224,11 @@
   function toLocal(m) {
     const s = m.solid || memberSolid(m);
     let o, ax;
-    if (m.kind === 'plate' || m.kind === 'pad') { o = m.o; ax = [m.ex, m.ey, m.ez]; } else { o = m.p0; ax = [m.d, m.e1, m.e2]; }
+    if (m.kind === 'plate' || m.kind === 'pad' || m.kind === 'panel') { o = m.o; ax = [m.ex, m.ey, m.ez]; } else { o = m.p0; ax = [m.d, m.e1, m.e2]; }
     if (dot(cross(ax[0], ax[1]), ax[2]) < 0) ax = [ax[0], ax[1], mul(ax[2], -1)];   // pravotočivá soustava – jinak by díl vyšel zrcadlově
     let loc = s.verts.map((v) => { const q = sub(v, o); return [dot(q, ax[0]), dot(q, ax[1]), dot(q, ax[2])]; });
     const x0 = Math.min.apply(null, loc.map((p) => p[0]));
-    if (m.kind !== 'plate' && m.kind !== 'pad') loc = loc.map((p) => [p[0] - x0, p[1], p[2]]);
+    if (m.kind !== 'plate' && m.kind !== 'pad' && m.kind !== 'panel') loc = loc.map((p) => [p[0] - x0, p[1], p[2]]);
     const faces = s.faces.map((f) => ({ outer: f.outer, inner: f.inner, n: [dot(f.n, ax[0]), dot(f.n, ax[1]), dot(f.n, ax[2])] }));
     return { verts: loc, faces };
   }
@@ -1305,23 +1467,27 @@
       lay = layoutGeometric(pts, { handrail_height: cfg.vyska - (cfg.madlo ? 40 : 0), pitch: cfg.motifPitch,
         rail_w: pr.w, rail_h: pr.h, rail_t: pr.t, handrail: cfg.madlo });
     } else if (cfg.typ === 'A') {
+      const laser = cfg.vypln === 'laser';
       const a = pr.w / 2, zt = cfg.vyska - a - (cfg.madlo ? STD_A.handrail_h : 0), stairs = cfg.segs.some((s) => s.rise);
       // spodní rám: z boku pod podlahou, na patkách (na schodišti s mezerou nad hranami stupňů), jinak na čáře podlahy
       const zbAxis = cfg.anchor === 'bocni' ? -100 : cfg.anchor === 'patka' ? (stairs ? PATKA_STAIR_GAP : STD_A.patka.t) + a : a;
       lay = layoutA(pts.map((p) => add(p, [0, 0, zt])), Object.assign({ tube: pr.w, wall: pr.t, rail_spacing: zt - zbAxis, joint: jt.mode, over_bot: cfg.overBot,
         floor_off: zt, seg_steps: cfg.segs.map(stepsOf),
-        pitch_flat: 106 + br.t, pitch_slope: 113 + br.t, post_max_flat: cfg.postPitch, post_max_slope: cfg.postPitch * 1.35, handrail: cfg.madlo }, common));
+        pitch_flat: 106 + br.t, pitch_slope: 113 + br.t, post_max_flat: cfg.postPitch, post_max_slope: cfg.postPitch * (laser ? 1.15 : 1.35), handrail: cfg.madlo,
+        panel: laser ? { motif: PANEL.motif, gap: PANEL.gap, border: PANEL.border, t: PANEL.t, minWidth: PANEL.minWidth, webMin: PANEL.webTarget } : null }, common, laser ? { over_top: 0 } : {}));
     } else {
       lay = layoutB(pts, Object.assign({ rail_w: pr.w, rail_h: pr.h, rail_t: pr.t, insert_w: pr.ins[0], insert_h: pr.ins[1], insert_t: pr.ins[2],
         handrail: cfg.madlo, handrail_top: cfg.vyska, bar_joint: jt.mode, overhang: cfg.overBot, pitch_max: 106 + br.t }, common));
     }
     lay.members.forEach((m) => { m.solid = memberSolid(m); });
     const locks = cfg.vypln === 'geometricky' ? { ok: true, mode: 'vlozeni', choice: false,
-      why: 'Svislé tyče se zasouvají do otvorů v horním jeklu a přivaří.' } : jt;
+      why: 'Svislé tyče se zasouvají do otvorů v horním jeklu a přivaří.' }
+      : cfg.vypln === 'laser' ? { ok: true, mode: 'panel', choice: false, rail: jt.rail, bar: jt.bar,
+        why: 'V každém poli je laserovaný plech ' + PANEL.t + ' mm s motivem ' + motifOf(PANEL.motif).lab + ' – kolem dokola ' + PANEL.gap + ' mm od líce sloupků a madel, přivaří se stehy.' } : jt;
     return { cfg, pts, lay, locks, context: context(cfg, pts, lay) };
   }
 
-  const ROLE_ORDER = ['rail', 'end_post', 'post', 'stub', 'insert', 'arm', 'motif', 'bar', 'over', 'overtop', 'patka', 'plotna', 'celo', 'zed', 'handrail'];
+  const ROLE_ORDER = ['rail', 'end_post', 'post', 'stub', 'insert', 'arm', 'motif', 'panel', 'bar', 'over', 'overtop', 'patka', 'plotna', 'celo', 'zed', 'handrail'];
   const hwName = (base) => (base === 'ocel' ? 'šroub M12 + matice, podložka' : 'závitová tyč M12 + ' + (base === 'zdivo' ? 'chemická kotva se sítkem' : 'chemická kotva') + ', matice, podložka');
   function analyze(cfgIn, ratesIn) {
     const R = rates0(ratesIn), B = build(cfgIn), cfg = B.cfg, lay = B.lay;
@@ -1329,18 +1495,27 @@
     const pads = lay.members.filter((m) => m.kind === 'pad');
     const groups = new Map();
     parts.forEach((m) => {
-      const k = m.kind === 'plate' ? m.role + '|' + m.w + 'x' + m.l + 'x' + m.t + '|' + m.holes.length : shapeKey(m);
+      const k = m.kind === 'plate' ? m.role + '|' + m.w + 'x' + m.l + 'x' + m.t + '|' + m.holes.length
+        : m.kind === 'panel' ? 'panel|' + m.pn.motif.id + '|' + m.t + '|' + m.outline.map((q) => Math.round(q[0] - m.outline[0][0]) + ',' + Math.round(q[1] - m.outline[0][1])).join(';') : shapeKey(m);
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(m);
     });
     const gl = Array.from(groups.values()).sort((x, y) => (ROLE_ORDER.indexOf(x[0].role) - ROLE_ORDER.indexOf(y[0].role)) || (y[0].L || 0) - (x[0].L || 0));
     const rows = [], problems = [];
-    let kg = 0, area = 0, tubeM = 0, barM = 0, woodM = 0, slots = 0, tabs = 0, n = 0;
+    let kg = 0, area = 0, tubeM = 0, barM = 0, woodM = 0, slots = 0, tabs = 0, n = 0, laserM = 0, pierces = 0;
     gl.forEach((g) => {
       const m = g[0], poz = 'Z' + String(++n).padStart(2, '0'), q = g.length;
       const names = Array.from(new Set(g.map((x) => x.name)));
       const name = names.length === 1 ? m.name : names.join(' + ');
       g.forEach((x) => { x.poz = poz; });
+      if (m.kind === 'panel') {
+        const vol = volume(m.solid), hs = panelHoles(m, 0.2), per = (pl) => pl.reduce((a, p, i) => a + Math.hypot(pl[(i + 1) % pl.length][0] - p[0], pl[(i + 1) % pl.length][1] - p[1]), 0);
+        const cutL = per(m.outline) + hs.reduce((a, h) => a + per(h), 0);
+        kg += vol * 7.85e-6 * q; area += 2 * vol / m.t * 1e-6 * q; laserM += cutL / 1000 * q; pierces += (hs.length + 1) * q;
+        rows.push({ poz, kind: 'panel', role: 'panel', name: m.name, prof: m.prof, len: nf(m.w) + ' × ' + nf(m.l), L: m.l, cut: 'laser', feat: hs.length + ' výřezů, řez ' + nf(cutL / 1000, 1) + ' m', q, stroj: 'C2',
+          file: poz + '_plech' + m.t + '_motiv-' + m.pn.motif.id + '_' + Math.round(m.w) + 'x' + Math.round(m.l) + '_' + q + 'ks.dxf', part: m, cutM: cutL / 1000 });
+        return;
+      }
       if (m.kind === 'plate') {
         kg += m.w * m.l * m.t * 7.85e-6 * q; area += 2 * m.w * m.l * 1e-6 * q;
         rows.push({ poz, kind: 'plate', role: m.role, name: m.name, prof: m.prof, len: nf(m.w) + ' × ' + nf(m.l), L: m.l, cut: 'pálení', feat: m.holes.length + '× otvor Ø' + (2 * m.holes[0][2]), q, stroj: 'C2', file: poz + '_plech' + m.t + '_' + m.w + 'x' + m.l + '_' + q + 'ks.dxf', part: m });
@@ -1376,11 +1551,11 @@
     const cnt = (r) => parts.filter((m) => m.role === r).length;
     const motifFrameMembers = parts.filter((m) => m.role === 'motif' && /vnější rám|vnitřní rám/.test(m.name)).length;
     const motifFrameWelds = Math.round(motifFrameMembers / 4) * 4;
-    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + parts.filter((m) => m.role === 'corner' && m.kind === 'tube').length * 2 + cnt('bar') * 2 + motifFrameWelds + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed');
-    const cutsN = rows.filter((r) => r.kind === 'tube' || r.kind === 'bar' || r.kind === 'plate').reduce((a, r) => a + r.q, 0);
+    const welds = cnt('post') * 2 + cnt('end_post') * 2 + (lay.segs.length - 1) * 2 + parts.filter((m) => m.role === 'corner' && m.kind === 'tube').length * 2 + cnt('bar') * 2 + motifFrameWelds + cnt('over') + cnt('overtop') + cnt('insert') + cnt('arm') * 2 + cnt('patka') + cnt('stub') + cnt('celo') + cnt('zed') + cnt('panel') * 8;
+    const cutsN = rows.filter((r) => r.kind === 'tube' || r.kind === 'bar' || r.kind === 'plate' || r.kind === 'panel').reduce((a, r) => a + r.q, 0);
     const fin = cfg.fin;
     const finCost = (fin === 'zn' ? kg * R.zinek : fin === 'znpu' ? kg * R.zinek + area * R.lak : fin === 'prasek' ? area * R.prasek : kg * R.zinek + area * R.prasek);
-    const cost = kg * R.kg + cutsN * R.rez + welds * R.svar + slots * R.drazka + tabs * R.zamekSpruse + finCost + woodM * R.madlo + rodsMain * (R.kotva[cfg.base] || 0) + rodsWall * (R.kotva[cfg.zedBase] || 0) + pads.length * R.podlozka + R.priprava;
+    const cost = kg * R.kg + cutsN * R.rez + welds * R.svar + slots * R.drazka + tabs * R.zamekSpruse + finCost + woodM * R.madlo + rodsMain * (R.kotva[cfg.base] || 0) + rodsWall * (R.kotva[cfg.zedBase] || 0) + pads.length * R.podlozka + laserM * R.laserM + R.priprava;
     const price = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
     const lenM = cfg.segs.reduce((a, s) => a + Math.hypot(s.L, s.rise), 0) / 1000;
     const svc = [];
@@ -1395,6 +1570,15 @@
     const warns = [];
     if (cfg.vypln === 'geometricky') {
       if (lay.gapMax > 110) warns.push({ lvl: 'warn', t: 'Světlá mezera mezi motivy ' + nf(lay.gapMax) + ' mm – víc než 110 mm.' });
+    } else if (cfg.vypln === 'laser') {
+      const pn = lay.panels || [], okp = pn.filter((x) => x.ok);
+      const bad = pn.filter((x) => !x.ok).map((x) => x.field);
+      if (bad.length) warns.push({ lvl: 'bad', t: 'Pole ' + bad.join(', ') + ' je na laserový plech moc malé – zvětšete rozteč sloupků nebo délku úseku.' });
+      const wmin = okp.length ? Math.min.apply(null, okp.map((x) => x.web)) : 0, bmax = okp.length ? Math.max.apply(null, okp.map((x) => x.ball)) : 0;
+      if (okp.length && wmin < PANEL.minWeb) warns.push({ lvl: 'bad', t: 'Motiv je v nejužším poli stlačený – nejužší můstek vychází ' + nf(wmin, 1) + ' mm, méně než ' + PANEL.minWeb + ' mm. Zvětšete rozteč sloupků.' });
+      if (bmax > 110) warns.push({ lvl: 'warn', t: 'Motiv je v některém poli roztažený – největší otvor může mít až ' + nf(bmax) + ' mm (odhad), víc než 110 mm. Zmenšete rozteč sloupků.' });
+      const st = okp.filter((x) => Math.abs(x.sx / x.sy - 1) > 0.2);
+      if (st.length) warns.push({ lvl: 'info', t: 'Motiv se v ' + st.length + ' poli/polích roztáhne nerovnoměrně (víc než o 20 %) – vzor tam bude znatelně širší nebo užší.' });
     } else if (cfg.typ === 'A') {
       const gm = Math.max.apply(null, lay.barInfo.map((b) => Math.max(b.gapMid, b.gapEnd)));
       if (gm > 110) warns.push({ lvl: 'warn', t: 'Světlá mezera ve výplni ' + nf(gm) + ' mm – víc než 110 mm.' });
@@ -1421,7 +1605,7 @@
     meas.remeasure.forEach((m) => warns.push({ lvl: m.lvl || 'warn', t: m.t }));
     const kotvy = anchorCheck(lay.anch, R, cfg);
     kotvy.msgs.forEach((m) => warns.push(m));
-    return { cfg, R, build: B, lay, rows, parts, pads, rodsWall, kg, area, tubeM, barM, woodM, slots, tabs, kotvy, meas, welds, rods, anchorsN, lenM, price, svc, svcPrice, total, vatOf: vat, warns, problems, locks: B.locks };
+    return { cfg, R, build: B, lay, rows, parts, pads, rodsWall, kg, area, tubeM, barM, woodM, laserM, pierces, slots, tabs, kotvy, meas, welds, rods, anchorsN, lenM, price, svc, svcPrice, total, vatOf: vat, warns, problems, locks: B.locks };
   }
 
   /* ---------- řezný plán: kusy na tyče (první vhodná, od nejdelšího) ----------
@@ -1494,11 +1678,11 @@
     const zd = cfg.zed.start || cfg.zed.end ? ', ' + (cfg.zed.start && cfg.zed.end ? 'oba konce' : cfg.zed.start ? 'začátek' : 'konec') + ' ke zdi (' + WALL_BASE.find((b) => b.id === cfg.zedBase).lab.replace('Zeď – ', '') + ')' : '';
     const an = cfg.anchor === 'bez' ? 'bez kotev' : ({ patka: 'kotvení shora', celo: 'sloupky přes čelo', bocni: 'kotvení z boku' }[cfg.anchor]) + ' – ' + BASE.find((b) => b.id === cfg.base).lab.toLowerCase() + zd + (cfg.podlozka && padAllowed(cfg) ? ', tepelně oddělující podložky' : '');
     const ms = cfg.stavba && cfg.stavba.on ? stavbaCheck(cfg) : null;
-    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
+    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.vypln === 'laser' ? 's laserovým motivem ' + motifOf(PANEL.motif).lab + ', sloupky po max. ' + cfg.postPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : cfg.vypln === 'laser' ? ', v polích laserovaný plech ' + PANEL.t + ' mm' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
       (cfg.overTop || cfg.overBot ? ', přesah ' + [cfg.overTop ? 'nahoře ' + cfg.overTop : '', cfg.overBot ? 'dole ' + cfg.overBot : ''].filter(Boolean).join(' / ') + ' mm' : '') + (cfg.madlo ? ', dřevěné madlo' : ', bez dřevěného madla') + ', ' + an + ', ' + FIN.find((f) => f.id === cfg.fin).lab.toLowerCase() +
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261012d', WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261012e', PANEL, motifOf, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
