@@ -378,17 +378,17 @@
 <script src="core.js?v=20261007l"></script>
 <script src="assets/zabradli/motiv-strom.js?v=20261011a"></script>
 <script src="assets/zabradli/motiv-bunky.js?v=20261011a"></script>
-<script src="assets/zabradli/motiv-jelen.js?v=20261013b"></script>
-<script src="assets/zabradli/motiv-medved.js?v=20261013b"></script>
-<script src="assets/zabradli/motiv-smrky.js?v=20261013b"></script>
-<script src="assets/zabradli/motiv-los.js?v=20261013b"></script>
-<script src="zabradli-core.js?v=20261014a"></script>
+<script src="assets/zabradli/motiv-jelen.js?v=20261014b"></script>
+<script src="assets/zabradli/motiv-medved.js?v=20261014b"></script>
+<script src="assets/zabradli/motiv-smrky.js?v=20261014b"></script>
+<script src="assets/zabradli/motiv-los.js?v=20261014b"></script>
+<script src="zabradli-core.js?v=20261014b"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261014a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261014b') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -481,7 +481,7 @@
     sc.onerror = () => { loading[f] = false; };
     document.head.appendChild(sc);
   };
-  const WHY = { slope: 'Sklon tohoto pole je mimo rozsah motivů Příroda (rovina nebo schodiště ' + Zb.PANEL.slopes[0] + '–' + Zb.PANEL.slopes[Zb.PANEL.slopes.length - 1] + '°).', loading: 'Načítám motiv pro schodiště…', steep: 'Na schodišti s tímto sklonem se hlavní zvíře do pole celé nevejde (stojí rovně, horní hrana je šikmá) – vyberte jiný motiv.', small: 'Pole je na plech moc malé.', wide: 'Pole je širší než scéna – zmenšete rozteč sloupků.',
+  const WHY = { slope: 'Sklon tohoto pole je mimo rozsah motivů Příroda (rovina nebo schodiště ' + Zb.PANEL.slopes[0] + '–' + Zb.PANEL.slopes[Zb.PANEL.slopes.length - 1] + '°).', loading: 'Načítám motiv pro schodiště…', nostairs: 'Tento motiv je jen na rovinu – na schodiště vyberte Los nebo Smrkový les.', steep: 'Na schodišti s tímto sklonem se hlavní zvíře do pole celé nevejde (stojí rovně, horní hrana je šikmá) – vyberte jiný motiv.', small: 'Pole je na plech moc malé.', wide: 'Pole je širší než scéna – zmenšete rozteč sloupků.',
     animal: 'Hlavní zvíře se do tohoto pole nevejde celé – vyberte jiný motiv nebo zvětšete rozteč sloupků.' };
   function renderPriroda() {
     const pn = (A.lay && A.lay.panels) || [], ids = Zb.prirodaIds();
@@ -494,7 +494,7 @@
     const el = $('poleList');
     el.innerHTML = pn.map((f, i) => '<div class="box" style="display:block;margin:0 0 10px;padding:10px">' +
       '<div class="row" style="margin-bottom:6px"><strong>Pole ' + f.field + '</strong><span class="note">' + (f.slope ? 'schodiště ' + nf(f.slope, 1) + '° · ' : '') + 'plech ' + nf(f.w) + ' × ' + nf(f.h) + ' mm</span></div>' +
-      '<div class="grid g4" data-pm="' + i + '">' + ids.map((id) => { const m = Zb.motifOf(id); return optBtn(id, pole[i].m === id, m.lab, ''); }).join('') + '</div>' +
+      '<div class="grid g4" data-pm="' + i + '">' + ids.map((id) => { const m = Zb.motifOf(id), no = !!f.slope && m.schody === false; return optBtn(id, pole[i].m === id, m.lab, no ? 'jen na rovinu' : '', '', no && pole[i].m !== id, no ? 'Na schodišti vypadá zkosená scéna špatně – vyberte Los nebo Smrkový les.' : ''); }).join('') + '</div>' +
       '<canvas data-cv="' + i + '" style="width:100%;height:auto;margin-top:8px;border-radius:6px;display:block" aria-label="Náhled výřezu scény v poli ' + f.field + '"></canvas>' +
       (f.ok && f.crop && f.crop.n > 1 ? '<input type="range" data-pp="' + i + '" min="0" max="1000" step="1" value="' + Math.round(pole[i].p * 1000) + '" aria-label="Posun výřezu v poli ' + f.field + '" style="width:100%;margin-top:6px">'
         : f.ok ? '<p class="note" style="margin:6px 0 0">Poloha je daná – hlavní zvíře se do pole vejde jen takhle.</p>' : '') +
@@ -534,7 +534,7 @@
     $('typeNote').textContent = cfg.vypln === 'geometricky'
       ? 'Dvojité rámy tvoří jekl 20×20×2 mm s pokosovými spoji 45°, které se v rozích skládají do pravého úhlu. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
       : cfg.vypln === 'laser'
-      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + cfg.plech + ' mm ' + (prir ? 's motivem, který vyberete u pole. Scéna se nedeformuje – do pole se vybere její část a posun si nastavíte. Rovina i schodiště ' + Zb.PANEL.slopes[0] + '–' + Zb.PANEL.slopes[Zb.PANEL.slopes.length - 1] + '° (zvířata zůstanou vzpřímená, na schodech dolů se scéna zrcadlí), výška kolem 1 m.' : 's vybraným motivem; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.')
+      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + cfg.plech + ' mm ' + (prir ? 's motivem, který vyberete u pole. Scéna se nedeformuje – do pole se vybere její část a posun si nastavíte. Rovina i schodiště ' + Zb.PANEL.slopes[0] + '–' + Zb.PANEL.slopes[Zb.PANEL.slopes.length - 1] + '° (na schodiště Los a Smrkový les – zvířata zůstanou vzpřímená, na schodech dolů se scéna zrcadlí), výška kolem 1 m.' : 's vybraným motivem; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.')
       : cfg.sloupky
       ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
       : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');

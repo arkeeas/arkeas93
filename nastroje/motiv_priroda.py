@@ -232,6 +232,9 @@ def trace(M, pad, HOLE_MIN=HOLE_MIN):
     return out, kids
 
 # ---------------------------------------------------------------- schodiště
+# na schodiště jen scény, které zkosení snesou: Los (kreslený pro schody) a Smrkový les (jen svislé stromy).
+# Jelen a Medvěd mají vodorovné větve a břehy a zvířata srostlá se stromy – zkosené vypadají špatně, zůstávají jen na rovinu.
+STAIRS = ('smrky', 'los')
 ANGLES = [25.0, 27.5, 30.0, 32.5, 35.0, 37.5, 40.0]       # sklony šikmin; konfigurátor vezme nejbližší (±1,25°), na druhou stranu zrcadlí
 # zvířata, která na šikmině zůstanou vzpřímená: x od, x do, y od, y do (mm ve scéně od spodu), hlavní
 SPRITES = {'jelen': [(975, 1430, 55, 540, 1), (265, 415, 55, 500, 0)],
@@ -384,14 +387,14 @@ def main(svg_path):
               '   Výřez = uzavřená křivka [x, y, bulge, …] (bulge 0 = úsečka). Zdroj: AI vektor, vyčištěno nastroje/motiv_priroda.py:\n'
               '   můstky ≥ %s mm, otvor ≥ %s mm, největší otvor koule Ø%s mm, podíl otvorů %s %%. Generuje se – ručně neupravovat. */\n'
               "(function (root) {\n  'use strict';\n  const M = root.ZabradliMotivy = root.ZabradliMotivy || {};\n"
-              "  M[%s] = { id: %s, lab: %s, sub: %s, rada: 'priroda', mode: 'crop', W: %s, H: %s, web: %s, holeMin: %s, ball: %s, open: %s,\n    anim: %s,\n    holes: [\n%s\n    ] };\n"
+              "  M[%s] = { id: %s, lab: %s, sub: %s, rada: 'priroda', mode: 'crop', schody: %s, W: %s, H: %s, web: %s, holeMin: %s, ball: %s, open: %s,\n    anim: %s,\n    holes: [\n%s\n    ] };\n"
               "})(typeof globalThis !== 'undefined' ? globalThis : this);\n") % (
             lab, info['W'], H_MM, info['web'], hm, info['ball'], round(opr * 100),
             json.dumps(sid), json.dumps(sid), json.dumps(lab, ensure_ascii=False), json.dumps(sub, ensure_ascii=False),
-            info['W'], H_MM, info['web'], hm, info['ball'], info['open'], json.dumps(anim),
+            'true' if sid in STAIRS else 'false', info['W'], H_MM, info['web'], hm, info['ball'], info['open'], json.dumps(anim),
             ',\n'.join('      ' + json.dumps(h, separators=(',', ':')) for h in holes))
         open(os.path.join(ROOT, 'assets', 'zabradli', 'motiv-' + sid + '.js'), 'w').write(js)
-        if not ONLY_FLAT: info['schody'] = stair_variants(sid, lab, raw, anim, wb, hm)
+        if not ONLY_FLAT and sid in STAIRS: info['schody'] = stair_variants(sid, lab, raw, anim, wb, hm)
     json.dump(index, open(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', 'index.json'), 'w'), ensure_ascii=False, indent=1)
 
 ONLY_FLAT = '--bez-schodu' in sys.argv

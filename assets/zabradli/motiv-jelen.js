@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
   const M = root.ZabradliMotivy = root.ZabradliMotivy || {};
-  M["jelen"] = { id: "jelen", lab: "Jelen v lese", sub: "jelen, srnec, smrky", rada: 'priroda', mode: 'crop', W: 1430.5, H: 820.0, web: 6.0, holeMin: 6.0, ball: 90, open: 0.348,
+  M["jelen"] = { id: "jelen", lab: "Jelen v lese", sub: "jelen, srnec, smrky", rada: 'priroda', mode: 'crop', schody: false, W: 1430.5, H: 820.0, web: 6.0, holeMin: 6.0, ball: 90, open: 0.348,
     anim: [[975, 1430, 1], [270, 410, 0]],
     holes: [
       [369.75,62.25,0,369.25,61.75,0,368.25,61.75,0,366.75,60.25,0,366.75,58.25,0,367.25,57.75,0,367.25,56.75,0,368.75,55.25,0,369.75,55.25,0,370.25,54.75,0,370.75,55.25,0,371.75,55.25,0,373.25,56.75,0,373.25,58.75,0,372.75,59.25,0,372.75,60.25,0,371.25,61.75,0,370.25,61.75,0],

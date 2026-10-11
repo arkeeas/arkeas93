@@ -70,9 +70,10 @@ const CASES = [
   ["smrky posun 0 a 1, patky, plech 3", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, anchor: "patka", plech: 3, pole: [{ m: "smrky", p: 0 }, { m: "smrky", p: 1 }] }],
   ["rozteč 700, čelo, plech 6", { segs: [{ L: 2100, rise: 0 }], postPitch: 700, anchor: "celo", plech: 6, pole: [{ m: "medved" }, { m: "jelen" }, { m: "smrky" }] }],
   ["los, posun 0 a 1, plech 5", { segs: [{ L: 2600, rise: 0 }], postPitch: 1300, plech: 5, pole: [{ m: "los", p: 0 }, { m: "los", p: 1 }] }],
-  ["schody 30° nahoru, čtyři motivy", { segs: [{ L: 2600, rise: 1500, steps: 9 }], anchor: "patka", postPitch: 1100, pole: [{ m: "los", p: 0.3 }, { m: "jelen" }, { m: "medved" }] }],
-  ["schody 35° dolů (zrcadlo)", { segs: [{ L: 2400, rise: -1700, steps: 9 }], pole: [{ m: "los", p: 1 }, { m: "smrky", p: 0 }, { m: "medved" }] }],
-  ["schody + podesta + roh", { segs: [{ L: 2380, rise: 1500, steps: 9 }, { L: 2000, rise: 0, turn: 90 }, { L: 1500, rise: 0 }], anchor: "patka", pole: [{ m: "smrky" }, { m: "los" }, { m: "jelen" }, { m: "medved", p: 0.4 }, { m: "los", p: 0.9 }] }],
+  ["schody 30° nahoru", { segs: [{ L: 2600, rise: 1500, steps: 9 }], anchor: "patka", postPitch: 1100, pole: [{ m: "los", p: 0.3 }, { m: "smrky" }, { m: "los", p: 1 }] }],
+  ["schody 35° dolů (zrcadlo)", { segs: [{ L: 2400, rise: -1700, steps: 9 }], pole: [{ m: "los", p: 1 }, { m: "smrky", p: 0 }, { m: "los", p: 0 }] }],
+  ["schody 40° nahoru", { segs: [{ L: 2400, rise: 2014, steps: 11 }], pole: [{ m: "los", p: 0.5 }, { m: "smrky", p: 1 }, { m: "los" }] }],
+  ["schody + podesta + roh", { segs: [{ L: 2380, rise: 1500, steps: 9 }, { L: 2000, rise: 0, turn: 90 }, { L: 1500, rise: 0 }], anchor: "patka", pole: [{ m: "smrky" }, { m: "los" }, { m: "los", p: 0.9 }, { m: "jelen" }, { m: "medved", p: 0.4 }, { m: "jelen", p: 1 }, { m: "smrky" }] }],
   ["roh L, bez madla", { segs: [{ L: 2500, rise: 0, turn: 90 }, { L: 2000, rise: 0 }], madlo: false, pole: [{ m: "jelen", p: 0.2 }, { m: "smrky", p: 0.8 }, { m: "medved" }, { m: "jelen", p: 1 }, { m: "smrky" }] }]
 ];
 CASES.forEach(([lab, c], ci) => {
@@ -123,9 +124,10 @@ CASES.forEach(([lab, c], ci) => {
 });
 // zákazy
 const nope = (lab, c, re) => { const A = Z.analyze(Object.assign({}, base, c)); if (!A.warns.some((w) => w.lvl === "bad" && re.test(w.t))) fail(lab, "chybí blokující varování"); else console.log("OK   zákaz: " + lab); };
-nope("sklon 20°", { segs: [{ L: 3000, rise: 1092, steps: 8 }] }, /jiný sklon/);
-nope("sklon 45°", { segs: [{ L: 2000, rise: 2000, steps: 11 }] }, /jiný sklon/);
-nope("jelen na 40°", { segs: [{ L: 2400, rise: 2014, steps: 11 }], pole: [{ m: "jelen" }, { m: "jelen" }, { m: "jelen" }] }, /celé nevejde/);
+nope("sklon 20°", { segs: [{ L: 3000, rise: 1092, steps: 8 }], motiv: "los" }, /jiný sklon/);
+nope("sklon 45°", { segs: [{ L: 2000, rise: 2000, steps: 11 }], motiv: "smrky" }, /jiný sklon/);
+nope("jelen na schodech", { segs: [{ L: 2600, rise: 1500, steps: 9 }], pole: [{ m: "jelen" }, { m: "los" }, { m: "los" }] }, /jen motivy/);
+nope("medvěd na schodech", { segs: [{ L: 2600, rise: 1500, steps: 9 }], pole: [{ m: "los" }, { m: "medved" }, { m: "los" }] }, /jen motivy/);
 nope("výška 1200 z boku", { segs: [{ L: 3000, rise: 0 }], vyska: 1200 }, /moc vysoké/);
 // tloušťka: rozmezí z motivů, nabídka a doporučení
 const rg = Z.plechRange(["jelen", "medved", "smrky"]);

@@ -740,6 +740,7 @@
     if (tan) {
       const deg = Math.atan(Math.abs(tan)) * DEG, a = PANEL.slopes.reduce((b, x) => Math.abs(x - deg) < Math.abs(b - deg) ? x : b, PANEL.slopes[0]);
       slope = r1(deg);
+      if (M.schody === false) return Object.assign(base, { why: 'nostairs', slope });
       if (Math.abs(a - deg) > PANEL.slopeTol + 1e-9) return Object.assign(base, { why: 'slope', slope });
       const key = M.id + '@' + Math.round(a * 10);
       V = root.ZabradliMotivy && root.ZabradliMotivy[key];
@@ -1740,6 +1741,7 @@
       const fl = (w) => pn.filter((x) => !x.ok && x.why === w).map((x) => x.field);
       const fs = (w) => pn.filter((x) => !x.ok && x.why === w);
       if (fs('slope').length) warns.push({ lvl: 'bad', t: 'Motivy Příroda jsou pro rovinu a schodiště se sklonem ' + PANEL.slopes[0] + '–' + PANEL.slopes[PANEL.slopes.length - 1] + '°. Pole ' + fs('slope').map((x) => x.field + ' (' + nf(x.slope, 1) + '°)').join(', ') + ' má jiný sklon.' });
+      if (fs('nostairs').length) warns.push({ lvl: 'bad', t: 'Na schodiště jsou jen motivy ' + MOTIFS.filter((m) => m.rada === 'priroda' && motifOf(m.id).schody !== false).map((m) => m.lab).join(' a ') + ' – pole ' + fs('nostairs').map((x) => x.field + ' (' + motifOf(x.motif).lab + ')').join(', ') + ' je na schodišti.' });
       if (fs('loading').length) warns.push({ lvl: 'bad', t: 'Načítám motivy pro schodiště (pole ' + fs('loading').map((x) => x.field).join(', ') + ')…' });
       if (fl('small').length) warns.push({ lvl: 'bad', t: 'Pole ' + fl('small').join(', ') + ' je na laserový plech moc malé – zvětšete rozteč sloupků nebo délku úseku.' });
       if (fl('wide').length) warns.push({ lvl: 'bad', t: 'Pole ' + fl('wide').join(', ') + ' je širší než scéna motivu – zmenšete rozteč sloupků.' });
@@ -1866,6 +1868,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261014a', MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, clipPlanes, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261014b', MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, clipPlanes, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
