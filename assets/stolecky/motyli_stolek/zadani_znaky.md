@@ -13,7 +13,9 @@
 
 - Deska zůstává kruhová; „rozšíření desky“ znamená změnu jejího průměru.
 - Výška se měří od podlahy k horní ploše desky.
-- Tloušťka všech tří laserovaných dílů zůstává 4 mm.
+- Ocelová varianta má tři laserované díly z plechu 4 mm. Varianta vlastní dřevěné desky má dva díly A/B a čtyři ocelové úchyty, vše z plechu 4 mm.
 - Ocel a nosnost nejsou nově staticky přepočítány; konfigurátor mění rozměry a výrobní obrysy, nikoli deklaraci únosnosti.
 - Změna průměru roztáhne obrys podnoží radiálně od středového zámku; oblast zámku zachová zdrojovou šířku 4,3 mm (polovina 2,15 mm), aby se nezměnila původní vůle.
 - Výrobní export dostupný v prohlížeči je DXF. Původní STEP slouží jako výchozí geometrický zdroj; pro jiné rozměry jej nelze vydávat za aktualizovaný bez parametrického STEP exportu.
+- Varianta vlastní desky: zákazník dodává kruhovou dřevěnou desku Ø 500–800 mm, tloušťku zadá 10–60 mm; výška stolku je vždy po horní plochu. Deska se připevní čtyřmi radiálně orientovanými drážkami 18 × 5,5 mm ve čtyřech ocelových úchytech 44 × 44 × 4 mm. Čtyři úchyty se přivaří na horní konce podnoží v osových polohách odpovídajících původním montážním výřezům. Ocelová deska se v této variantě nevyrábí a není zahrnuta v hmotnosti/ceně.
+- U vlastní desky pod 18 mm musí dílna potvrdit vhodnou délku vrutů a jejich únosnost; bez statického výpočtu se nosnost celé sestavy neuvádí.

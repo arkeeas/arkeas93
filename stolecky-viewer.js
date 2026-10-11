@@ -10,7 +10,7 @@
   /* postava z figure.js (stejná jako u podnoží) – potřebuje jen obrys desky a výšku */
   function personBodies(c, person) {
     if (!person || !root.Postava || !root.Podnoze) return [];
-    const H = c.H, D = c.topD, T = c.model === 'motylek' ? 4 : c.topT;
+    const H = c.H, D = c.topD, T = c.model === 'motylek' ? (c.motylekTop === 'vlastni' ? c.motylekTopT : 4) : c.topT;
     const A = { cfg: { shape: 'circle', H, size: 0 }, DL: D, DW: D, build: { dims: { Hf: H - T } } };
     try { return root.Postava.build(A, person).bodies; } catch (e) { return []; }
   }
@@ -61,9 +61,11 @@
       const wood = new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0, transparent: see, opacity: see ? 0.32 : 1, depthWrite: !see });
       const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
       if (B.model === 'motylek') {
+        const ownTop = c.motylekTop === 'vlastni';
         const show = (meshes) => {
           if (st.B !== B) return;
           meshes.forEach((sourcePart) => {
+            if (ownTop && /deska/i.test(sourcePart.name)) return;
             const part = root.Stolecky ? root.Stolecky.transformMotylekMesh(sourcePart, sourcePart.name, c) : sourcePart;
             const isDesk = /deska/i.test(part.name);
             if (st.o.showDesk === false && isDesk) return;
@@ -75,6 +77,23 @@
             const mat = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2], transparent, opacity: transparent ? 0.4 : 1, depthWrite: !transparent, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(g, mat); mesh.castShadow = true; mesh.receiveShadow = true; grp.add(mesh);
           });
+          if (ownTop) {
+            const topT = c.motylekTopT;
+            if (st.o.showDesk !== false) {
+              const top = new THREE.Mesh(new THREE.CylinderGeometry(c.topD / 2, c.topD / 2, topT, 96), wood);
+              top.rotation.x = Math.PI / 2; top.position.set(0, 0, c.H - topT / 2); top.castShadow = !see; grp.add(top);
+            }
+            const tabShape = new THREE.Shape();
+            tabShape.moveTo(-22, -22); tabShape.lineTo(22, -22); tabShape.lineTo(22, 22); tabShape.lineTo(-22, 22); tabShape.closePath();
+            const hole = new THREE.Path();
+            hole.moveTo(-6.25, -2.75); hole.lineTo(6.25, -2.75); hole.absarc(6.25, 0, 2.75, -Math.PI / 2, Math.PI / 2, false);
+            hole.lineTo(-6.25, 2.75); hole.absarc(-6.25, 0, 2.75, Math.PI / 2, 3 * Math.PI / 2, false); tabShape.holes.push(hole);
+            const tabGeometry = new THREE.ExtrudeGeometry(tabShape, { depth: 4, bevelEnabled: false });
+            const tabMaterial = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2], side: THREE.DoubleSide });
+            B.mountTabs.forEach((p) => {
+              const tab = new THREE.Mesh(tabGeometry, tabMaterial); tab.position.set(p.x, p.y, p.z); tab.rotation.z = p.rotation; tab.castShadow = true; tab.receiveShadow = true; grp.add(tab);
+            });
+          }
           personBodies(c, st.o.person).forEach((b) => grp.add(bodyMesh(b)));
           if (!st.fitted) { st.fitted = true; view('iso'); }
         };
