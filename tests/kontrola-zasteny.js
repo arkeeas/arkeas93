@@ -23,6 +23,11 @@ assert.equal(L.outer.height, 2100);
 assert.ok(L.motif.width <= L.panel.width && L.motif.height <= L.panel.height);
 assert.ok(L.panel.x >= 0 && L.panel.x + L.panel.width <= L.outer.width);
 assert.match(Z.describe({ width: 800, height: 2000, finish: 'black', qty: 1 }), /800.*2000/);
+const priced = Z.price({ width: 800, height: 2000, finish: 'black', qty: 2 }, { kg: 0, rez: 10, svar: 0, barva: 0, priprava: 0, marze: 0 });
+assert.deepEqual({ cuts: priced.cuts, welds: priced.welds, price: priced.price, vat: priced.vat, total: priced.total }, { cuts: 188, welds: 6, price: 1880, vat: 2270, total: 4540 });
+assert.equal(priced.estimate, true);
+assert.equal(Z.price({ width: 900, height: 2000, finish: 'black', qty: 1 }), null);
+assert.ok(Z.price({ width: 800, height: 2000, finish: 'raw', qty: 1 }, { kg: 0, rez: 0, svar: 0, barva: 100, priprava: 0, marze: 0 }).price < Z.price({ width: 800, height: 2000, finish: 'black', qty: 1 }, { kg: 0, rez: 0, svar: 0, barva: 100, priprava: 0, marze: 0 }).price);
 console.log('kontrola-zasteny: core OK');
 
 const D = require('../zasteny-dilna.js');
@@ -31,5 +36,6 @@ assert.equal(D.accepts({ product: 'stolecek' }), false);
 assert.match(D.describe({ width: 900, height: 2100, finish: 'black', qty: 1 }), /900.*2100/);
 assert.match(D.escape('<script>'), /&lt;script&gt;/);
 assert.match(D.manualReviewNotice({ width: 900, height: 2100 }), /800 × 2000/);
+assert.match(D.manualReviewNotice({ width: 800, height: 2000 }), /Orientační cena/);
 assert.ok(D.referenceFiles().every((file) => file.label.includes('800 × 2000')));
 console.log('kontrola-zasteny: core + workshop OK');

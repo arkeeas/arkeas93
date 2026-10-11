@@ -3,6 +3,8 @@
   'use strict';
   const FINISHES = ['black', 'anth', 'white', 'raw'];
   const DEFAULTS = { width: 800, height: 2000, finish: 'black', qty: 1 };
+  const DEFAULT_RATES = { kg: 42, rez: 35, svar: 90, barva: 280, priprava: 600, marze: 35 };
+  const PRICE_BASIS = { kg: 29.05, cuts: 188, welds: 6, panelSurfaceM2: 2.0435302, frameSurfaceM2: 0.8704, platesSurfaceM2: 0.01936 };
   function normalize(config) {
     const c = config || {};
     const whole = (value, fallback) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
@@ -48,7 +50,17 @@
     const c = normalize(config), labels = { black: 'Černá mat', anth: 'Antracit', white: 'Bílá', raw: 'Ocel + lak' };
     return 'Zástěna Motýli · ' + c.width + ' × ' + c.height + ' mm · ' + labels[c.finish] + ' · ' + c.qty + ' ks';
   }
-  const api = { DEFAULTS, FINISHES, normalize, validate, layout, describe, validEmail };
+  function price(config, rates) {
+    const c = normalize(config), source = config || {};
+    if (Number(source.width) !== 800 || Number(source.height) !== 2000) return null;
+    const R = Object.assign({}, DEFAULT_RATES, rates || {}), finishFactor = c.finish === 'raw' ? 0.7 : 1;
+    const surfaceM2 = PRICE_BASIS.panelSurfaceM2 + PRICE_BASIS.frameSurfaceM2 + PRICE_BASIS.platesSurfaceM2;
+    const cost = PRICE_BASIS.kg * R.kg + PRICE_BASIS.cuts * R.rez + PRICE_BASIS.welds * R.svar + surfaceM2 * R.barva * finishFactor + R.priprava;
+    const unitPrice = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
+    const unitVat = Math.round(unitPrice * 1.21 / 10) * 10;
+    return { estimate: true, price: unitPrice, vat: unitVat, total: unitVat * c.qty, kg: PRICE_BASIS.kg, cuts: PRICE_BASIS.cuts, welds: PRICE_BASIS.welds, surfaceM2, finishFactor };
+  }
+  const api = { DEFAULTS, DEFAULT_RATES, PRICE_BASIS, FINISHES, normalize, validate, layout, describe, price, validEmail };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Zasteny = api;
 })(typeof window !== 'undefined' ? window : globalThis);
