@@ -170,5 +170,8 @@ const std = Z.analyze({ segs: [{ L: 3000, rise: 0 }], sloupky: true });
 if (std.lay.members.some((m) => m.kind === "panel")) fail("standard", "výplň se změnila");
 const ab = Z.analyze({ vypln: "laser", segs: [{ L: 3000, rise: 0 }] });
 if (ab.cfg.rada !== "abstrakt" || ab.lay.members.filter((m) => m.kind === "panel").some((m) => m.pn.crop || m.pn.motif.id !== "strom")) fail("laser", "abstraktní motiv se změnil");
+const appHtml = require("fs").readFileSync(__dirname + "/../zabradli.html", "utf8");
+if (!/id="prAllMotyl"/.test(appHtml) || !/data-motyl-variant/.test(appHtml)) fail("ovládání motýla", "chybí jeden náhled s kompaktní volbou A/B/C");
+if (/data-motif-thumb/.test(appHtml)) fail("ovládání motýla", "v kartách se stále opakují velké náhledy A/B/C");
 console.log(fails ? "\n" + fails + " chyb" : "\nPříroda: vše v pořádku");
 process.exit(fails ? 1 : 0);
