@@ -123,3 +123,9 @@ U spoje na tupo / se zámečky je přesah **samostatný kus** (se zámečky má 
 - **Sloupky přes čelo** – spodní rám na čáře podlahy, pod každým sloupkem nožka a na jejím boku plotna 120×100×10 do čela desky (horní hrana 25 mm pod podlahou, na schodišti pod nejnižším stupněm v délce plotny). Jen bez zateplení. Rohy a zlomy se z boku kotvit nedají, proto je u každého kotevní sloupek 450 mm od rohu (`CELO_CORNER`).
 - **Konec ke zdi** – na koncovém sloupku 2 plotny 120×100×10 (u horního a spodního rámu), mezera ke zdi 20 mm = plotna + 10 mm podložka / vyrovnání. Kotvy do zdi mají vlastní podklad (zdivo / beton) a cenu; konec u zdi se v kontrole kotev počítá jako ukotvený. Ve stavbě jde jen u konce „u zdi“.
 - **Tepelně oddělující podložka** 10 mm pod plotny na čele a na zdi (ramena z boku, přes čelo, ke zdi). Rameno se o ni zkrátí. Cena `podlozka` v Dílna → Ceník (orientačně).
+
+## Zástěny
+
+Zákaznický konfigurátor je na stránce `zasteny.html`. Zákazník zadá šířku a výšku v milimetrech, povrch a počet kusů; náhled je pouze ilustrační. Poptávka se ukládá jako `product: "zastena"` do stejného seznamu `poptavky/{uid}.items` jako ostatní výrobky a zpracovává se v Dílna → **Zástěny – poptávky**. Pokud databázové připojení není dostupné, stránka nabídne zakódovaný požadavek k ručnímu předání. Mimo připojenou aplikaci se poptávky ukládají podle stávajícího testovacího režimu do lokálního úložiště prohlížeče.
+
+Dílna zobrazuje konfiguraci, kontakt, poznámku a odkazy na FreeCAD, STEP, DXF a kusovník. Všechny dodané soubory v `assets/zasteny/motyli_800x2000/` jsou výrobní reference **pouze pro 800 × 2000 mm**. Vlastní rozměr vyžaduje ruční potvrzení proveditelnosti a ceny; konfigurátor pro něj nevypočítává cenu ani negeneruje výrobní STEP nebo DXF. Náhled nepotvrzuje stabilitu, kotvení ani zatížení.
