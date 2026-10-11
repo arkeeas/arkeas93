@@ -326,7 +326,12 @@
     const ov = overAllowed(o);
     o.overTop = ov.top ? Math.round(c.overTop == null ? 0 : num(c.overTop, 0, OVER_MAX, 0)) : 0;
     o.overBot = ov.bot ? Math.round(c.overBot == null ? (o.typ === 'B' ? 150 : 0) : num(c.overBot, 0, OVER_MAX, 0)) : 0;
-    o.motiv = MOTIFS.some((m) => m.id === c.motiv) ? c.motiv : PANEL.motif;
+    o.rada = o.vypln === 'laser' && c.rada === 'priroda' ? 'priroda' : 'abstrakt';
+    const inRada = (id) => MOTIFS.some((m) => m.id === id && m.rada === o.rada);
+    o.motiv = inRada(c.motiv) ? c.motiv : o.rada === 'priroda' ? PANEL.priroda : PANEL.motif;
+    // Příroda: motiv a posun výřezu po polích (index = pořadí pole), tloušťka plechu podle výběru zákazníka
+    o.pole = o.rada === 'priroda' && Array.isArray(c.pole) ? c.pole.slice(0, 80).map((f) => ({ m: f && inRada(f.m) ? f.m : o.motiv, p: f && isFinite(Number(f.p)) ? Math.min(1, Math.max(0, Number(f.p))) : 0.5 })) : [];
+    o.plech = o.rada === 'priroda' ? (PANEL.tList.indexOf(Number(c.plech)) >= 0 ? Number(c.plech) : PANEL.tDef) : PANEL.t;
     if (o.vypln === 'laser') { o.overTop = 0; o.overBot = 0; }          // plech je jen v poli mezi madly
     o.base = pick(BASE, c.base, 'beton');
     o.facade = Math.round(num(c.facade, 0, 400, 200));
@@ -531,10 +536,79 @@
      Na šikmině je pole kosodélník: motiv se afinně roztáhne (svislé zůstane svislé) – můstky a otvory se
      přepočítají podle singulárních hodnot zobrazení (nejužší můstek × σmin, největší otvor × σmax).
      ====================================================================== */
-  const MOTIFS = [{ id: 'strom', lab: 'Stromy', sub: 'větve a listy' }, { id: 'bunky', lab: 'Buňky', sub: 'organická síť' }];
-  const PANEL = { gap: 5, t: 5, border: 25, motif: 'strom', minWidth: 300, tol3d: 0.4, tolDxf: 0.05, minWeb: 5, webTarget: 6, postMin: 700, postMax: 1300 };
+  const MOTIFS = [{ id: 'strom', lab: 'Stromy', sub: 'větve a listy', rada: 'abstrakt' }, { id: 'bunky', lab: 'Buňky', sub: 'organická síť', rada: 'abstrakt' },
+    { id: 'jelen', lab: 'Jelen v lese', sub: 'jelen, srnec, smrky', rada: 'priroda' }, { id: 'medved', lab: 'Medvěd', sub: 'medvěd, srnec, smrky', rada: 'priroda' },
+    { id: 'smrky', lab: 'Smrkový les', sub: 'smrky a hejno ptáků', rada: 'priroda' }];
+  const PANEL = { gap: 5, t: 5, border: 25, motif: 'strom', minWidth: 300, tol3d: 0.4, tolDxf: 0.05, minWeb: 5, webTarget: 6, postMin: 700, postMax: 1300,
+    // řada Příroda: scéna se nedeformuje, jen ořízne (posun volí zákazník) a rovnoměrně zvětší/zmenší na výšku pole v mezích sMin–sMax;
+    // co zbude nad scénou, je plný pás plechu (do topMax mm v pořádku, víc nejde poptat)
+    priroda: 'jelen', sMin: 0.95, sMax: 1.08, topMax: 100, step: 5,
+    // tloušťka plechu volí zákazník: nejvýš nejužší můstek / otvor motivu, nejméně tMin (tMinOpen při podílu otvorů nad openLim – kroucení)
+    tList: [3, 4, 5, 6], tDef: 5, tMin: 3, tMinOpen: 4, openLim: 0.4 };
+  const prirodaIds = () => MOTIFS.filter((m) => m.rada === 'priroda').map((m) => m.id);
+  /* povolené posuny výřezu scény o šířce win (mm ve scéně): hlavní zvíře celé uvnitř, ostatní buď celé, nebo vůbec.
+     Vrací seznam levých okrajů výřezu (krok PANEL.step); když nic nevyhoví, zkusí jen hlavní zvíře; když ani to, prázdný seznam. */
+  function cropOffsets(M, win) {
+    const max = M.W - win;
+    if (max < -1e-6) return [];
+    const all = [], main = [], an = M.anim || [];
+    for (let k = 0; ; k++) {
+      const o = Math.min(max, k * PANEL.step);
+      const inside = (a) => a[0] >= o - 1e-6 && a[1] <= o + win + 1e-6, out = (a) => a[1] <= o + 1e-6 || a[0] >= o + win - 1e-6;
+      const mainOk = an.filter((a) => a[2]).every(inside);
+      if (mainOk) { main.push(o); if (an.every((a) => a[2] ? inside(a) : inside(a) || out(a))) all.push(o); }
+      if (o >= max) break;
+    }
+    return all.length ? all : main;
+  }
+  /* rozmezí tloušťky plechu pro dané motivy */
+  function plechRange(ids) {
+    const ms = ids.map((id) => root.ZabradliMotivy && root.ZabradliMotivy[id]).filter(Boolean);
+    const max = ms.length ? Math.min.apply(null, ms.map((m) => Math.min(m.web || PANEL.webTarget, m.holeMin || m.web || PANEL.webTarget))) : PANEL.tList[PANEL.tList.length - 1];
+    const min = ms.some((m) => (m.open || 0) > PANEL.openLim) ? PANEL.tMinOpen : PANEL.tMin;
+    const ok = PANEL.tList.filter((t) => t >= min && t <= max + 1e-6);
+    return { min, max, ok, rec: ok.indexOf(PANEL.tDef) >= 0 ? PANEL.tDef : ok[ok.length - 1] };
+  }
+  /* ořez polygonu polorovinou s(p) ≥ 0 (s lineární); jednoduchý polygon se může rozpadnout na víc kusů – spojují se
+     podél dělicí přímky podle pořadí průsečíků (žádné nulové „mosty“ po přímce, které by odřízly ocel od okraje) */
+  function clipHalf(pl, sf, dir) {
+    const n = pl.length, sv = pl.map((p) => { const v = sf(p); return Math.abs(v) < 1e-9 ? 1e-9 : v; });
+    if (sv.every((v) => v > 0)) return [pl];
+    if (sv.every((v) => v < 0)) return [];
+    const nodes = [];                 // obchůzka s průsečíky: {p, x: 'in'|'out'|null, t}
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, a = pl[i], b = pl[j];
+      if (sv[i] > 0) nodes.push({ p: a });
+      if ((sv[i] > 0) !== (sv[j] > 0)) {
+        const u = sv[i] / (sv[i] - sv[j]), q = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+        nodes.push({ p: q, x: sv[i] > 0 ? 'out' : 'in', t: q[0] * dir[0] + q[1] * dir[1] });
+      }
+    }
+    const xs = nodes.filter((d) => d.x).sort((a, b) => a.t - b.t);
+    xs.forEach((d, i) => { d.mate = xs[i % 2 ? i - 1 : i + 1]; });
+    const idx = new Map(nodes.map((d, i) => [d, i])), used = new Set(), out = [];
+    nodes.forEach((st) => {
+      if (st.x !== 'in' || used.has(st)) return;
+      const poly = []; let cur = st, guard = 0;
+      while (guard++ < 4 * nodes.length) {
+        used.add(cur); poly.push(cur.p);
+        let i = idx.get(cur);
+        do { i = (i + 1) % nodes.length; const d = nodes[i]; if (d.x === 'out') { used.add(d); poly.push(d.p); cur = d.mate; break; } poly.push(d.p); } while (true);
+        if (cur === st) break;
+      }
+      out.push(poly);
+    });
+    return out;
+  }
+  function clipRect(pl, x0, y0, x1, y1) {
+    let ps = [pl];
+    [[(p) => p[0] - x0, [0, 1]], [(p) => x1 - p[0], [0, 1]], [(p) => p[1] - y0, [1, 0]], [(p) => y1 - p[1], [1, 0]]].forEach(([f, d]) => {
+      ps = [].concat.apply([], ps.map((q) => clipHalf(q, f, d)));
+    });
+    return ps;
+  }
   /* výřezy plechu v jeho rovině (mm); tol = max. odchylka tětivy oblouku */
-  const panelHoles = (m, tol) => [].concat.apply([], m.pn.motif.holes.map((h) => m.pn.shrink > 1e-9 ? untangle(shrinkLoop(bulgePoints(h, m.pn.map, m.pn.smax, tol), m.pn.shrink), PANEL.webTarget / 2 + 0.5) : [bulgePoints(h, m.pn.map, m.pn.smax, tol)]));
+  const panelHoles = (m, tol) => m.pn.holesXY ? m.pn.holesXY : [].concat.apply([], m.pn.motif.holes.map((h) => m.pn.shrink > 1e-9 ? untangle(shrinkLoop(bulgePoints(h, m.pn.map, m.pn.smax, tol), m.pn.shrink), PANEL.webTarget / 2 + 0.5) : [bulgePoints(h, m.pn.map, m.pn.smax, tol)]));
   /* zmenšení výřezu o d kolmo na obrys (posun bodů po ose úhlu sousedních hran dovnitř výřezu).
      Výřezy motivu nemají ostré vnitřní rohy (ocel je zaoblená R ≥ 3,5 mm), takže při d < 3 mm se obrys nepřekříží. */
   function shrinkLoop(pl, d) {
@@ -629,6 +703,7 @@
   /* plech jednoho pole v rovině úseku: x vodorovně podél trasy od bodu A, y svisle od líce spodního madla v x = 0 */
   function panelField(o) {
     const M = motifOf(o.motif), g = o.gap, bm = M.border;
+    if (M.mode === 'crop') return panelCrop(o, M);
     const tan = o.tan, cos = o.cos;
     const x0 = o.extA + g, x1 = o.Lh - o.extB - g, h = o.H - 2 * (o.a + g) / cos;     // mezera g kolmo na líc madla i na šikmině
     const bx = o.border, by = o.border / cos;
@@ -643,6 +718,52 @@
     const outline = [[x0, x0 * tan], [x1, x1 * tan], [x1, x1 * tan + h], [x0, x0 * tan + h]];
     return { ok: true, outline, x0, x1, h, sx, sy, smin, smax, map, tan, shrink, motif: M, web: M.web * smin + 2 * shrink, ball: M.ball * smax - 2 * shrink };
   }
+
+  /* řada Příroda: scéna W × H (mm) se do vnitřku pole (bez okraje) vloží dole ukotvená, rovnoměrně zvětšená na výšku pole
+     v mezích sMin–sMax, a vodorovně ořízne podle posunu o.posun (0–1 přes povolené polohy z cropOffsets). Jen rovné úseky. */
+  function panelCrop(o, M) {
+    const g = o.gap, x0 = o.extA + g, x1 = o.Lh - o.extB - g, h = o.H - 2 * (o.a + g) / o.cos, bx = o.border;
+    const wi = x1 - x0 - 2 * bx, hi = h - 2 * bx;
+    const base = { ok: false, w: x1 - x0, h, motif: M, crop: true };
+    if (Math.abs(o.tan) > 1e-6) return Object.assign(base, { why: 'sloped' });
+    if (wi < o.minWidth - 2 * bx || hi < 200) return Object.assign(base, { why: 'small' });
+    const s = Math.min(PANEL.sMax, 110 / M.ball, Math.max(PANEL.sMin, hi / M.H)), win = wi / s, top = hi - M.H * s;
+    const offs = cropOffsets(M, Math.min(win, M.W));
+    if (win > M.W + 1e-6) return Object.assign(base, { why: 'wide', s, win });
+    if (!offs.length) return Object.assign(base, { why: 'animal', s, win });
+    const p = o.posun == null ? 0.5 : Math.min(1, Math.max(0, o.posun));
+    // výchozí poloha: hlavní zvíře uprostřed; posuvník jde přes povolené polohy
+    const off = offs[Math.round(p * (offs.length - 1))];
+    const X0 = x0 + bx, Y0 = bx, X1 = x1 - bx, Y1 = bx + hi;
+    const map = (u, v) => [X0 + (u - off) * s, Y0 + v * s];
+    const holesXY = [];
+    M.holes.forEach((f) => {
+      const pl = []; let ux0 = Infinity, ux1 = -Infinity, vy1 = -Infinity;
+      for (let i = 0; i < f.length; i += 3) { pl.push(map(f[i], f[i + 1])); ux0 = Math.min(ux0, f[i]); ux1 = Math.max(ux1, f[i]); vy1 = Math.max(vy1, f[i + 1]); }
+      if (ux1 < off || ux0 > off + win) return;
+      // kusy jednoho výřezu rozdělené okrajem: když mezi nimi zůstane ocel užší než můstek (špička větve uříznutá okrajem), menší kus odpadne
+      let ps = clipRect(pl, X0, Y0, X1, Y1).filter((q) => q.length > 2 && Math.abs(polyArea(q)) > 10);
+      const wmin = M.web * s - 0.5;
+      for (let guard = 0; ps.length > 1 && guard < 20; guard++) {
+        let hit = null;
+        for (let i = 0; i < ps.length && !hit; i++) for (let j = i + 1; j < ps.length && !hit; j++) if (polyGap(ps[i], ps[j]) < wmin) hit = [i, j];
+        if (!hit) break;
+        ps.splice(Math.abs(polyArea(ps[hit[0]])) < Math.abs(polyArea(ps[hit[1]])) ? hit[0] : hit[1], 1);
+      }
+      ps.forEach((q) => holesXY.push(q));
+    });
+    const outline = [[x0, 0], [x1, 0], [x1, h], [x0, h]];
+    return { ok: true, crop: true, outline, x0, x1, h, sx: s, sy: s, smin: s, smax: s, map, tan: 0, shrink: 0, motif: M, holesXY, s, off, win, offs, posun: p,
+      top: Math.max(0, top), web: M.web * s, ball: M.ball * s };
+  }
+  /* nejmenší vzdálenost dvou obrysů (vrcholy proti hranám obou) */
+  function polyGap(a, b) {
+    const sd = (p, u, v) => { const ex = v[0] - u[0], ey = v[1] - u[1], L2 = ex * ex + ey * ey; let t = L2 ? ((p[0] - u[0]) * ex + (p[1] - u[1]) * ey) / L2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - u[0] - t * ex, p[1] - u[1] - t * ey); };
+    let d = Infinity;
+    [[a, b], [b, a]].forEach(([P, Q]) => P.forEach((p) => { for (let i = 0; i < Q.length; i++) d = Math.min(d, sd(p, Q[i], Q[(i + 1) % Q.length])); }));
+    return d;
+  }
+  const polyArea = (q) => { let a = 0; q.forEach((p, i) => { const r = q[(i + 1) % q.length]; a += p[0] * r[1] - r[0] * p[1]; }); return a / 2; };
 
   function layoutA(path, kw) {
     const P = Object.assign({}, STD_A, kw || {});
@@ -789,14 +910,16 @@
         // přesah sloupku do roviny pole: rohový sloupek je natočený podle dalšího úseku
         let extB = a;
         if (t1 === 1 && k < segs.length - 1) { const c = Math.abs(dot(hz, hproj(segs[k + 1].d))); extB = a * (c + Math.sqrt(Math.max(0, 1 - c * c))); }
-        const pn = panelField({ motif: P.panel.motif, gap: P.panel.gap, border: P.panel.border, minWidth: P.panel.minWidth, tan: d[2] / cosS, cos: cosS,
+        const fk = P.panel.fields && P.panel.fields[panels.length];
+        const pn = panelField({ motif: fk ? fk.m : P.panel.motif, posun: fk ? fk.p : null, gap: P.panel.gap, border: P.panel.border, minWidth: P.panel.minWidth, tan: d[2] / cosS, cos: cosS,
           Lh: fieldLen * cosS, extA: a, extB, H, a, webMin: P.panel.webMin });
-        const info = { seg: k, field: panels.length + 1, ok: pn.ok, w: r1(pn.w || (pn.x1 - pn.x0)), h: r1(pn.h) };
+        const info = { seg: k, field: panels.length + 1, ok: pn.ok, w: r1(pn.w || (pn.x1 - pn.x0)), h: r1(pn.h), motif: pn.motif.id, why: pn.why, sloped: s.sloped,
+          crop: pn.crop ? { s: pn.s, off: pn.off, win: pn.win, n: pn.offs ? pn.offs.length : 0, o0: pn.offs && pn.offs[0], o1: pn.offs && pn.offs[pn.offs.length - 1], top: pn.top, posun: pn.posun } : null };
         if (pn.ok) {
           const zref = A[2] - H + (a + P.panel.gap) / cosS, t = P.panel.t;
           const o = sub([A[0], A[1], zref], mul(wb, t / 2));
           Object.assign(info, { sx: pn.sx, sy: pn.sy, web: r1(pn.web), ball: r1(pn.ball) });
-          members.push({ kind: 'panel', role: 'panel', name: 'laserový plech – motiv ' + pn.motif.lab + (s.sloped ? ' šikmý' : ''), prof: 'plech ' + t + ' mm',
+          members.push({ kind: 'panel', role: 'panel', name: 'laserový plech – motiv ' + pn.motif.lab + (pn.crop ? ' (výřez ' + Math.round(pn.off) + ' mm)' : '') + (s.sloped ? ' šikmý' : ''), prof: 'plech ' + t + ' mm',
             o, ex: hz, ey: Z, ez: wb, t, outline: pn.outline, pn, holes: [], w: r1(pn.x1 - pn.x0), l: r1(pn.h), L: pn.x1 - pn.x0, seg: k, a1: 0, a2: 0 });
         }
         panels.push(info);
@@ -1476,7 +1599,7 @@
       lay = layoutA(pts.map((p) => add(p, [0, 0, zt])), Object.assign({ tube: pr.w, wall: pr.t, rail_spacing: zt - zbAxis, joint: jt.mode, over_bot: cfg.overBot,
         floor_off: zt, seg_steps: cfg.segs.map(stepsOf),
         pitch_flat: 106 + br.t, pitch_slope: 113 + br.t, post_max_flat: cfg.postPitch, post_max_slope: cfg.postPitch * (laser ? 1.15 : 1.35), handrail: cfg.madlo,
-        panel: laser ? { motif: cfg.motiv, gap: PANEL.gap, border: PANEL.border, t: PANEL.t, minWidth: PANEL.minWidth, webMin: PANEL.webTarget } : null }, common, laser ? { over_top: 0 } : {}));
+        panel: laser ? { motif: cfg.motiv, fields: cfg.rada === 'priroda' ? fieldsOf(cfg) : null, gap: PANEL.gap, border: PANEL.border, t: cfg.plech, minWidth: PANEL.minWidth, webMin: PANEL.webTarget } : null }, common, laser ? { over_top: 0 } : {}));
     } else {
       lay = layoutB(pts, Object.assign({ rail_w: pr.w, rail_h: pr.h, rail_t: pr.t, insert_w: pr.ins[0], insert_h: pr.ins[1], insert_t: pr.ins[2],
         handrail: cfg.madlo, handrail_top: cfg.vyska, bar_joint: jt.mode, overhang: cfg.overBot, pitch_max: 106 + br.t }, common));
@@ -1485,10 +1608,12 @@
     const locks = cfg.vypln === 'geometricky' ? { ok: true, mode: 'vlozeni', choice: false,
       why: 'Svislé tyče se zasouvají do otvorů v horním jeklu a přivaří.' }
       : cfg.vypln === 'laser' ? { ok: true, mode: 'panel', choice: false, rail: jt.rail, bar: jt.bar,
-        why: 'V každém poli je laserovaný plech ' + PANEL.t + ' mm s motivem ' + motifOf(cfg.motiv).lab + ' – kolem dokola ' + PANEL.gap + ' mm od líce sloupků a madel, přivaří se stehy.' } : jt;
+        why: 'V každém poli je laserovaný plech ' + cfg.plech + ' mm s motivem ' + (cfg.rada === 'priroda' ? 'podle výběru u pole' : motifOf(cfg.motiv).lab) + ' – kolem dokola ' + PANEL.gap + ' mm od líce sloupků a madel, přivaří se stehy.' } : jt;
     return { cfg, pts, lay, locks, context: context(cfg, pts, lay) };
   }
 
+  /* motiv a posun pro každé pole (chybějící pole dostanou výchozí motiv uprostřed) */
+  const fieldsOf = (cfg) => { const out = cfg.pole.slice(); for (let i = out.length; i < 80; i++) out.push({ m: cfg.motiv, p: 0.5 }); return out; };
   const ROLE_ORDER = ['rail', 'end_post', 'post', 'stub', 'insert', 'arm', 'motif', 'panel', 'bar', 'over', 'overtop', 'patka', 'plotna', 'celo', 'zed', 'handrail'];
   const hwName = (base) => (base === 'ocel' ? 'šroub M12 + matice, podložka' : 'závitová tyč M12 + ' + (base === 'zdivo' ? 'chemická kotva se sítkem' : 'chemická kotva') + ', matice, podložka');
   function analyze(cfgIn, ratesIn) {
@@ -1498,13 +1623,13 @@
     const groups = new Map();
     parts.forEach((m) => {
       const k = m.kind === 'plate' ? m.role + '|' + m.w + 'x' + m.l + 'x' + m.t + '|' + m.holes.length
-        : m.kind === 'panel' ? 'panel|' + m.pn.motif.id + '|' + m.t + '|' + m.outline.map((q) => Math.round(q[0] - m.outline[0][0]) + ',' + Math.round(q[1] - m.outline[0][1])).join(';') : shapeKey(m);
+        : m.kind === 'panel' ? 'panel|' + m.pn.motif.id + '|' + (m.pn.crop ? Math.round(m.pn.off) + '|' : '') + m.t + '|' + m.outline.map((q) => Math.round(q[0] - m.outline[0][0]) + ',' + Math.round(q[1] - m.outline[0][1])).join(';') : shapeKey(m);
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(m);
     });
     const gl = Array.from(groups.values()).sort((x, y) => (ROLE_ORDER.indexOf(x[0].role) - ROLE_ORDER.indexOf(y[0].role)) || (y[0].L || 0) - (x[0].L || 0));
     const rows = [], problems = [];
-    let kg = 0, area = 0, tubeM = 0, barM = 0, woodM = 0, slots = 0, tabs = 0, n = 0, laserM = 0, pierces = 0;
+    let kg = 0, area = 0, tubeM = 0, barM = 0, woodM = 0, slots = 0, tabs = 0, n = 0, laserM = 0, laserK = 0, pierces = 0;
     gl.forEach((g) => {
       const m = g[0], poz = 'Z' + String(++n).padStart(2, '0'), q = g.length;
       const names = Array.from(new Set(g.map((x) => x.name)));
@@ -1513,7 +1638,7 @@
       if (m.kind === 'panel') {
         const vol = volume(m.solid), hs = panelHoles(m, 0.2), per = (pl) => pl.reduce((a, p, i) => a + Math.hypot(pl[(i + 1) % pl.length][0] - p[0], pl[(i + 1) % pl.length][1] - p[1]), 0);
         const cutL = per(m.outline) + hs.reduce((a, h) => a + per(h), 0);
-        kg += vol * 7.85e-6 * q; area += 2 * vol / m.t * 1e-6 * q; laserM += cutL / 1000 * q; pierces += (hs.length + 1) * q;
+        kg += vol * 7.85e-6 * q; area += 2 * vol / m.t * 1e-6 * q; laserM += cutL / 1000 * q; laserK += cutL / 1000 * q * (m.t / PANEL.t); pierces += (hs.length + 1) * q;
         rows.push({ poz, kind: 'panel', role: 'panel', name: m.name, prof: m.prof, len: nf(m.w) + ' × ' + nf(m.l), L: m.l, cut: 'laser', feat: hs.length + ' výřezů, řez ' + nf(cutL / 1000, 1) + ' m', q, stroj: 'C2',
           file: poz + '_plech' + m.t + '_motiv-' + m.pn.motif.id + '_' + Math.round(m.w) + 'x' + Math.round(m.l) + '_' + q + 'ks.dxf', part: m, cutM: cutL / 1000 });
         return;
@@ -1557,7 +1682,7 @@
     const cutsN = rows.filter((r) => r.kind === 'tube' || r.kind === 'bar' || r.kind === 'plate' || r.kind === 'panel').reduce((a, r) => a + r.q, 0);
     const fin = cfg.fin;
     const finCost = (fin === 'zn' ? kg * R.zinek : fin === 'znpu' ? kg * R.zinek + area * R.lak : fin === 'prasek' ? area * R.prasek : kg * R.zinek + area * R.prasek);
-    const cost = kg * R.kg + cutsN * R.rez + welds * R.svar + slots * R.drazka + tabs * R.zamekSpruse + finCost + woodM * R.madlo + rodsMain * (R.kotva[cfg.base] || 0) + rodsWall * (R.kotva[cfg.zedBase] || 0) + pads.length * R.podlozka + laserM * R.laserM + R.priprava;
+    const cost = kg * R.kg + cutsN * R.rez + welds * R.svar + slots * R.drazka + tabs * R.zamekSpruse + finCost + woodM * R.madlo + rodsMain * (R.kotva[cfg.base] || 0) + rodsWall * (R.kotva[cfg.zedBase] || 0) + pads.length * R.podlozka + laserK * R.laserM + R.priprava;
     const price = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
     const lenM = cfg.segs.reduce((a, s) => a + Math.hypot(s.L, s.rise), 0) / 1000;
     const svc = [];
@@ -1572,6 +1697,20 @@
     const warns = [];
     if (cfg.vypln === 'geometricky') {
       if (lay.gapMax > 110) warns.push({ lvl: 'warn', t: 'Světlá mezera mezi motivy ' + nf(lay.gapMax) + ' mm – víc než 110 mm.' });
+    } else if (cfg.vypln === 'laser' && cfg.rada === 'priroda') {
+      const pn = lay.panels || [], okp = pn.filter((x) => x.ok);
+      const fl = (w) => pn.filter((x) => !x.ok && x.why === w).map((x) => x.field);
+      if (fl('sloped').length) warns.push({ lvl: 'bad', t: 'Motivy Příroda jsou zatím jen na rovné úseky – pole ' + fl('sloped').join(', ') + ' je na schodišti. Schodišťové motivy připravujeme.' });
+      if (fl('small').length) warns.push({ lvl: 'bad', t: 'Pole ' + fl('small').join(', ') + ' je na laserový plech moc malé – zvětšete rozteč sloupků nebo délku úseku.' });
+      if (fl('wide').length) warns.push({ lvl: 'bad', t: 'Pole ' + fl('wide').join(', ') + ' je širší než scéna motivu – zmenšete rozteč sloupků.' });
+      if (fl('animal').length) warns.push({ lvl: 'bad', t: 'V poli ' + fl('animal').join(', ') + ' se hlavní zvíře motivu nevejde celé – vyberte jiný motiv nebo zvětšete rozteč sloupků.' });
+      const tops = okp.filter((x) => x.crop && x.crop.top > PANEL.topMax), topi = okp.filter((x) => x.crop && x.crop.top > 5 && x.crop.top <= PANEL.topMax);
+      if (tops.length) warns.push({ lvl: 'bad', t: 'Pole je pro motiv moc vysoké – nad scénou by zůstal plný pás ' + nf(Math.max.apply(null, tops.map((x) => x.crop.top))) + ' mm. Motivy Příroda jsou zatím pro výšku zábradlí kolem 1 m (mezeru pod madlem u vyššího zábradlí doplníme).' });
+      else if (topi.length) warns.push({ lvl: 'info', t: 'Nad scénou zůstane plný pás plechu až ' + nf(Math.max.apply(null, topi.map((x) => x.crop.top))) + ' mm (k okraji 25 mm).' });
+      const bmax = okp.length ? Math.max.apply(null, okp.map((x) => x.ball)) : 0;
+      if (bmax > 110) warns.push({ lvl: 'bad', t: 'Největší otvor v motivu vychází ' + nf(bmax) + ' mm – víc než 110 mm (ČSN 74 3305).' });
+      const rg = plechRange(Array.from(new Set(okp.map((x) => x.motif))));
+      if (rg.ok.indexOf(cfg.plech) < 0) warns.push({ lvl: 'bad', t: 'Plech ' + cfg.plech + ' mm nejde pro vybrané motivy použít – povoleno ' + rg.min + '–' + rg.max + ' mm (doporučeno ' + rg.rec + ' mm).' });
     } else if (cfg.vypln === 'laser') {
       const pn = lay.panels || [], okp = pn.filter((x) => x.ok);
       const bad = pn.filter((x) => !x.ok).map((x) => x.field);
@@ -1680,11 +1819,11 @@
     const zd = cfg.zed.start || cfg.zed.end ? ', ' + (cfg.zed.start && cfg.zed.end ? 'oba konce' : cfg.zed.start ? 'začátek' : 'konec') + ' ke zdi (' + WALL_BASE.find((b) => b.id === cfg.zedBase).lab.replace('Zeď – ', '') + ')' : '';
     const an = cfg.anchor === 'bez' ? 'bez kotev' : ({ patka: 'kotvení shora', celo: 'sloupky přes čelo', bocni: 'kotvení z boku' }[cfg.anchor]) + ' – ' + BASE.find((b) => b.id === cfg.base).lab.toLowerCase() + zd + (cfg.podlozka && padAllowed(cfg) ? ', tepelně oddělující podložky' : '');
     const ms = cfg.stavba && cfg.stavba.on ? stavbaCheck(cfg) : null;
-    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.vypln === 'laser' ? 's laserovým motivem ' + motifOf(cfg.motiv).lab + ', sloupky po max. ' + cfg.postPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : cfg.vypln === 'laser' ? ', v polích laserovaný plech ' + PANEL.t + ' mm' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
+    return 'Zábradlí ' + (cfg.vypln === 'geometricky' ? 's geometrickým motivem po ' + cfg.motifPitch + ' mm' : cfg.vypln === 'laser' ? (cfg.rada === 'priroda' ? 's motivy Příroda (' + Array.from(new Set((cfg.pole.length ? cfg.pole : [{ m: cfg.motiv }]).map((f) => motifOf(f.m).lab))).join(', ') + ')' : 's laserovým motivem ' + motifOf(cfg.motiv).lab) + ', sloupky po max. ' + cfg.postPitch + ' mm' : cfg.sloupky ? 'se sloupky po max. ' + cfg.postPitch + ' mm' : 'bez sloupků') + ', ' + nf(lenM, 1) + ' m, ' + shape + ', výška ' + cfg.vyska + ' mm' + ', rám jekl ' + cfg.rail.replace(/x/g, '×') + (cfg.vypln === 'geometricky' ? ', dvojitý rám z jeklu 20×20×2 s pokosy 45°' : cfg.vypln === 'laser' ? ', v polích laserovaný plech ' + cfg.plech + ' mm' : ', špruše ' + BARS.find((b) => b.id === cfg.bar).lab + ' (' + { drazka: 'v drážkách', tupo: 'na tupo', zamek: 'se zámečky' }[jointInfo(cfg).mode] + ')') +
       (cfg.overTop || cfg.overBot ? ', přesah ' + [cfg.overTop ? 'nahoře ' + cfg.overTop : '', cfg.overBot ? 'dole ' + cfg.overBot : ''].filter(Boolean).join(' / ') + ' mm' : '') + (cfg.madlo ? ', dřevěné madlo' : ', bez dřevěného madla') + ', ' + an + ', ' + FIN.find((f) => f.id === cfg.fin).lab.toLowerCase() +
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261012f', MOTIFS, PANEL, motifOf, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261013a', MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, POST_MIN, POST_MAX, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);

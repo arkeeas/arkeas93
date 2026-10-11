@@ -63,7 +63,7 @@
   .step h2 { margin: 0 0 14px; font-weight: 500; font-size: 20px; line-height: 1.25; }
   .step h2 small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-bottom: 2px; }
   .grid { display: grid; gap: 10px; }
-  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 520px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .opt { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
   .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
@@ -236,6 +236,14 @@
         <p class="sub-h" style="margin-top:0">Provedení</p>
         <div class="grid g2" id="types"></div>
         <div id="motivBox" hidden><p class="sub-h">Motiv v plechu</p><div class="grid g2" id="motivs"></div></div>
+        <div id="prirodaBox" hidden>
+          <p class="sub-h">Tloušťka plechu</p><div class="grid g4" id="plechs"></div>
+          <p class="note" id="plechNote" style="margin:6px 0 0"></p>
+          <p class="sub-h">Stejný motiv do všech polí</p><div class="grid g3" id="prAll"></div>
+          <p class="sub-h">Motiv v jednotlivých polích</p>
+          <p class="note" style="margin:0 0 8px">Posuvníkem posunete, která část scény bude v poli vidět. Hlavní zvíře zůstane vždy celé, ostatní buď celé, nebo vůbec – posuvník jinam nepustí.</p>
+          <div id="poleList"></div>
+        </div>
         <div class="field" id="postBox" style="margin-top:14px"><div class="row"><label for="pp">Rozteč sloupků (nejvýš)</label><span class="num"><input id="ppn" type="number" inputmode="numeric" aria-label="Rozteč sloupků v mm"> mm</span></div><input id="pp" type="range" min="600" max="1500" step="50"></div>
         <p class="sub-h">Madlo</p>
         <div class="grid g2" id="madla"></div>
@@ -370,13 +378,16 @@
 <script src="core.js?v=20261007l"></script>
 <script src="assets/zabradli/motiv-strom.js?v=20261011a"></script>
 <script src="assets/zabradli/motiv-bunky.js?v=20261011a"></script>
-<script src="zabradli-core.js?v=20261012f"></script>
+<script src="assets/zabradli/motiv-jelen.js?v=20261013a"></script>
+<script src="assets/zabradli/motiv-medved.js?v=20261013a"></script>
+<script src="assets/zabradli/motiv-smrky.js?v=20261013a"></script>
+<script src="zabradli-core.js?v=20261013a"></script>
 <script src="zabradli-viewer.js?v=20261007o"></script>
 <script>
 (function () {
   const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261012f') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261013a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -425,19 +436,71 @@
     if (focusId && $(focusId)) $(focusId).focus();
   }
 
+  /* ---------- Příroda: tloušťka, motiv a posun výřezu po polích ---------- */
+  const thumbs = {};
+  function thumb(id) {             // náhled celé scény (ocel tmavě, výřezy světle), šířka 320 px
+    if (thumbs[id]) return thumbs[id];
+    const M = Zb.motifOf(id), W = 320, k = W / M.W, H = Math.round(M.H * k), c = document.createElement('canvas');
+    c.width = W; c.height = H; const g = c.getContext('2d');
+    g.fillStyle = '#3a3d40'; g.fillRect(0, 0, W, H); g.fillStyle = '#eef0f2';
+    M.holes.forEach((f) => { g.beginPath(); for (let i = 0; i < f.length; i += 3) { const x = f[i] * k, y = H - f[i + 1] * k; i ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); g.fill(); });
+    return (thumbs[id] = c);
+  }
+  function drawField(cv, id, info, p) {
+    const M = Zb.motifOf(id), src = thumb(id), k = src.width / M.W, g = cv.getContext('2d');
+    cv.width = src.width; cv.height = src.height; g.drawImage(src, 0, 0);
+    if (!info || !info.crop || !info.crop.win) return;
+    const offs = Zb.cropOffsets(M, Math.min(info.crop.win, M.W));
+    if (!offs.length) return;
+    const off = offs[Math.round(p * (offs.length - 1))], hh = Math.min(M.H, (info.h - 2 * Zb.PANEL.border) / info.crop.s);
+    const x0 = off * k, x1 = (off + info.crop.win) * k, y0 = src.height - hh * k;
+    g.fillStyle = 'rgba(255,255,255,.72)'; g.fillRect(0, 0, x0, src.height); g.fillRect(x1, 0, src.width - x1, src.height); g.fillRect(x0, 0, x1 - x0, y0);
+    g.strokeStyle = '#c0392b'; g.lineWidth = 2; g.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, src.height - y0 - 2);
+  }
+  const WHY = { sloped: 'Pole je na schodišti – motivy Příroda zatím jen na rovné úseky.', small: 'Pole je na plech moc malé.', wide: 'Pole je širší než scéna – zmenšete rozteč sloupků.',
+    animal: 'Hlavní zvíře se do tohoto pole nevejde celé – vyberte jiný motiv nebo zvětšete rozteč sloupků.' };
+  function renderPriroda() {
+    const pn = (A.lay && A.lay.panels) || [], ids = Zb.prirodaIds();
+    const pole = Zb.fieldsOf(cfg).slice(0, pn.length);
+    const used = Array.from(new Set(pole.map((f) => f.m))), rg = Zb.plechRange(used);
+    group($('plechs'), Zb.PANEL.tList.map((t) => ({ id: String(t), t })), (o) => optBtn(o.id, o.t === cfg.plech, o.t + ' mm', o.t === rg.rec ? 'doporučeno' : rg.ok.indexOf(o.t) < 0 ? (o.t > rg.max ? 'motiv je na to jemný' : 'zkroutí se') : '', '', rg.ok.indexOf(o.t) < 0,
+      rg.ok.indexOf(o.t) < 0 ? (o.t > rg.max ? 'Nejužší můstek / otvor motivu je ' + rg.max + ' mm – silnější plech by se při pálení přehřál.' : 'Tenký plech s tolika výřezy se zkroutí.') : ''), (id) => set({ plech: Number(id) }));
+    $('plechNote').textContent = 'Pro vybrané motivy jde plech ' + rg.min + '–' + rg.max + ' mm. Silnější je tužší a těžší, cena řezu roste s tloušťkou.';
+    group($('prAll'), ids.map((id) => Zb.motifOf(id)), (m) => optBtn(m.id, used.length === 1 && used[0] === m.id, m.lab, m.sub), (id) => set({ motiv: id, pole: pn.map(() => ({ m: id, p: 0.5 })) }));
+    const el = $('poleList');
+    el.innerHTML = pn.map((f, i) => '<div class="box" style="display:block;margin:0 0 10px;padding:10px">' +
+      '<div class="row" style="margin-bottom:6px"><strong>Pole ' + f.field + '</strong><span class="note">plech ' + nf(f.w) + ' × ' + nf(f.h) + ' mm</span></div>' +
+      '<div class="grid g3" data-pm="' + i + '">' + ids.map((id) => { const m = Zb.motifOf(id); return optBtn(id, pole[i].m === id, m.lab, ''); }).join('') + '</div>' +
+      '<canvas data-cv="' + i + '" style="width:100%;height:auto;margin-top:8px;border-radius:6px;display:block" aria-label="Náhled výřezu scény v poli ' + f.field + '"></canvas>' +
+      (f.ok && f.crop && f.crop.n > 1 ? '<input type="range" data-pp="' + i + '" min="0" max="1000" step="1" value="' + Math.round(pole[i].p * 1000) + '" aria-label="Posun výřezu v poli ' + f.field + '" style="width:100%;margin-top:6px">'
+        : f.ok ? '<p class="note" style="margin:6px 0 0">Poloha je daná – hlavní zvíře se do pole vejde jen takhle.</p>' : '') +
+      (!f.ok ? '<p class="note" style="margin:6px 0 0;color:var(--bad-ink)">' + esc(WHY[f.why] || 'Pole nejde osadit.') + '</p>' : '') + '</div>').join('');
+    pn.forEach((f, i) => drawField(el.querySelector('[data-cv="' + i + '"]'), pole[i].m, f, pole[i].p));
+    const setPole = (i, ch) => { const np = Zb.fieldsOf(cfg).slice(0, pn.length).map((x) => Object.assign({}, x)); Object.assign(np[i], ch); set({ pole: np }); };
+    el.querySelectorAll('[data-pm]').forEach((gEl) => gEl.querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => setPole(Number(gEl.dataset.pm), { m: b.dataset.id, p: 0.5 }))));
+    el.querySelectorAll('[data-pp]').forEach((r) => {
+      const i = Number(r.dataset.pp);
+      r.addEventListener('input', () => drawField(el.querySelector('[data-cv="' + i + '"]'), pole[i].m, pn[i], Number(r.value) / 1000));
+      r.addEventListener('change', () => setPole(i, { p: Number(r.value) / 1000 }));
+    });
+  }
+
   function render() {
     A = Zb.analyze(cfg, rates);
     const T = Zb.TYPES.find((t) => t.id === cfg.typ);
-    $('mName').textContent = cfg.vypln === 'geometricky' ? 'Zábradlí s geometrickým motivem' : cfg.vypln === 'laser' ? 'Zábradlí s laserovým motivem' : 'Zábradlí ' + T.lab.toLowerCase();
+    $('mName').textContent = cfg.vypln === 'geometricky' ? 'Zábradlí s geometrickým motivem' : cfg.vypln === 'laser' ? (cfg.rada === 'priroda' ? 'Zábradlí Příroda' : 'Zábradlí s laserovým motivem') : 'Zábradlí ' + T.lab.toLowerCase();
     $('mSub').textContent = nf(A.lenM, 1) + ' m · výška ' + cfg.vyska + ' mm · ' + Zb.FIN.find((f) => f.id === cfg.fin).lab;
     $('factChip').textContent = A.anchorsN + ' kotev · ' + nf(A.kg) + ' kg oceli';
 
     group($('types'), [{ id: 'B', l: 'Bez sloupků', s: 'pole do 1,5 m, styky na vložkách', ic: Zb.TYPES[1].icon }, { id: 'A', l: 'Se sloupky', s: 'rozteč si nastavíte', ic: Zb.TYPES[0].icon }, { id: 'G', l: 'Geometrický motiv', s: 'dvojité rámy s vlastními patkami', ic: 'M5 7 H59 M18 7 V14 M46 7 V14 M14 14 H50 V43 H14 Z M22 20 H42 V37 H22 Z M14 47 H50 M18 43 V47 M46 43 V47' },
-      { id: 'L', l: 'Laserový motiv', s: 'plech s motivem v každém poli', ic: 'M4 8 H60 M4 40 H60 M4 8 V40 M60 8 V40 M32 8 V40 M10 34 C12 24 16 18 20 12 M16 22 L24 16 M20 34 C21 26 24 20 28 14 M38 34 C40 24 44 18 50 12 M44 22 L54 18 M48 34 C49 26 52 20 56 14' }],
-      (t) => optBtn(t.id, t.id === (cfg.vypln === 'geometricky' ? 'G' : cfg.vypln === 'laser' ? 'L' : cfg.typ), t.l, t.s, t.ic),
-      (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : id === 'L' ? set({ vypln: 'laser', sloupky: true }) : set({ sloupky: id === 'A', vypln: 'standard' }));
-    $('motivBox').hidden = cfg.vypln !== 'laser';
-    if (cfg.vypln === 'laser') group($('motivs'), Zb.MOTIFS, (m) => optBtn(m.id, m.id === cfg.motiv, m.lab, m.sub), (id) => set({ motiv: id }));
+      { id: 'L', l: 'Laserový motiv', s: 'plech s motivem v každém poli', ic: 'M4 8 H60 M4 40 H60 M4 8 V40 M60 8 V40 M32 8 V40 M10 34 C12 24 16 18 20 12 M16 22 L24 16 M20 34 C21 26 24 20 28 14 M38 34 C40 24 44 18 50 12 M44 22 L54 18 M48 34 C49 26 52 20 56 14' },
+      { id: 'P', l: 'Příroda', s: 'scény se zvířaty, motiv po polích', ic: 'M4 8 H60 M4 40 H60 M4 8 V40 M60 8 V40 M12 36 L16 14 L20 36 M26 36 L30 18 L34 36 M40 30 C42 26 48 26 50 28 L52 22 M42 30 V36 M49 30 V36'}],
+      (t) => optBtn(t.id, t.id === (cfg.vypln === 'geometricky' ? 'G' : cfg.vypln === 'laser' ? (cfg.rada === 'priroda' ? 'P' : 'L') : cfg.typ), t.l, t.s, t.ic),
+      (id) => id === 'G' ? set({ vypln: 'geometricky', sloupky: true, anchor: 'patka', madlo: false }) : id === 'L' ? set({ vypln: 'laser', rada: 'abstrakt', sloupky: true }) : id === 'P' ? set({ vypln: 'laser', rada: 'priroda', sloupky: true }) : set({ sloupky: id === 'A', vypln: 'standard' }));
+    const prir = cfg.vypln === 'laser' && cfg.rada === 'priroda';
+    $('motivBox').hidden = cfg.vypln !== 'laser' || prir; $('prirodaBox').hidden = !prir;
+    if (prir) renderPriroda();
+    else if (cfg.vypln === 'laser') group($('motivs'), Zb.MOTIFS.filter((m) => m.rada !== 'priroda'), (m) => optBtn(m.id, m.id === cfg.motiv, m.lab, m.sub), (id) => set({ motiv: id }));
     $('postBox').hidden = !cfg.sloupky || cfg.vypln === 'geometricky';
     $('pp').min = cfg.vypln === 'laser' ? Zb.PANEL.postMin : Zb.POST_MIN; $('pp').max = cfg.vypln === 'laser' ? Zb.PANEL.postMax : Zb.POST_MAX;
     if (document.activeElement !== $('pp')) $('pp').value = cfg.postPitch;
@@ -447,7 +510,7 @@
     $('typeNote').textContent = cfg.vypln === 'geometricky'
       ? 'Dvojité rámy tvoří jekl 20×20×2 mm s pokosovými spoji 45°, které se v rozích skládají do pravého úhlu. Ocelové madlo má výřezy pro zasunutí a svaření tyčí; každý motiv má patku 60×80×6 mm se dvěma otvory Ø11 mm.'
       : cfg.vypln === 'laser'
-      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + Zb.PANEL.t + ' mm s vybraným motivem; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.'
+      ? 'Rám ze čtvercového jeklu se sloupky po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). V každém poli je laserem vypálený plech ' + cfg.plech + ' mm ' + (prir ? 's motivem, který vyberete u pole. Scéna se nedeformuje – do pole se vybere její část a posun si nastavíte. Zatím jen rovné úseky a výška kolem 1 m.' : 's vybraným motivem; motiv se roztáhne na rozměr pole, na schodišti se zkosí podle sklonu.')
       : cfg.sloupky
       ? 'Rám ze čtvercového jeklu, sloupky rovnoměrně po nejvýš ' + nf(cfg.postPitch) + ' mm (teď ' + nPost + ' mezilehlých). Horní a spodní rám probíhají v celé délce, rohy a konce na pokos.'
       : 'Bez sloupků: rám se dělí na pole do 1,5 m, sesadí se na tupo přes vložky.' + (cfg.madlo ? ' Styky zakryje dřevěné madlo.' : ' Bez dřevěného madla jsou styky v horním rámu vidět.');
@@ -469,7 +532,7 @@
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
     $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
-      '<p class="note" style="margin:8px 0 0">Výplň: plech ' + Zb.PANEL.t + ' mm s motivem ' + Zb.motifOf(cfg.motiv).lab + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
+      '<p class="note" style="margin:8px 0 0">Výplň: plech ' + cfg.plech + ' mm s motivem ' + (cfg.rada === 'priroda' ? 'podle výběru u polí' : Zb.motifOf(cfg.motiv).lab) + ', od sloupků a madel ' + Zb.PANEL.gap + ' mm, okraj bez výřezů ' + Zb.PANEL.border + ' mm. Nejužší můstek a největší otvor hlídá konfigurátor (otvor do 110 mm).</p>' : cfg.vypln === 'geometricky' ?
       '<p class="note" style="margin:8px 0 0">Vnější i vnitřní rám motivu tvoří dutý jekl 20×20×2 mm. Čtyři konce se seříznou na 45° a v rozích svaří do pravého úhlu; výška a trasa odpovídají nastavení v kroku 2.</p>' :
       '<p class="sub-h">Špruše – svislá pásovina</p><div class="grid g4" id="barsU"></div>' +
       (jt.choice ? '<p class="sub-h">Spoj špruše s rámem</p><div class="grid g2" id="joins"></div>' : '') +

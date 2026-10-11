@@ -19,15 +19,16 @@ from skimage.morphology import medial_axis
 PX = 0.5                     # mm na px rastru
 H_MM = 820.0                 # výška scény = výška plechu bez okraje u zábradlí 1 m (při menší výšce se ořízne horní okraj)
 WEB = 6.0                    # nejužší můstek oceli (mm) → plech max 6 mm
+WEB_R = 6.9                  # v rastru se drží širší (rezerva na zjednodušení obrysu ±0,3 mm a mřížku 0,5 mm)
 HOLE_MIN = 6.0               # nejužší otvor (mm)
 ISL_KEEP = 300.0             # ostrůvek větší než tolik mm² se připojí, menší zmizí
 EPS = 0.3                    # tolerance zjednodušení obrysu (mm)
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 
-SCENES = [  # id, popis, rámeček scény v SVG (x0, y0, x1, y1)
-    ('jelen',  'Jelen v lese',   'jelen, smrky, břízy', (31, 294, 352, 478)),
-    ('medved', 'Medvěd',         'medvěd, srnec, smrky', (364, 294, 660, 478)),
-    ('smrky',  'Smrkový les',    'smrky a dravci',       (672, 294, 992, 478)),
+SCENES = [  # id, popis, rámeček scény v SVG (x0, y0, x1, y1), zvířata [x od, x do (mm ve scéně), hlavní]
+    ('jelen',  'Jelen v lese',   'jelen, srnec, smrky', (31, 294, 352, 478), [[975, 1430, 1], [270, 410, 0]]),
+    ('medved', 'Medvěd',         'medvěd, srnec, smrky', (364, 294, 660, 478), [[970, 1319, 1], [280, 410, 0]]),
+    ('smrky',  'Smrkový les',    'smrky a hejno ptáků',  (672, 294, 992, 478), []),
 ]
 
 def disk(r_mm):
@@ -89,33 +90,33 @@ def prep_smrky(raw):
     return M.astype(bool)
 
 def clean(mat, pad):
+    """otvory ≥ HOLE_MIN, ocel ≥ WEB_R, žádné volné ostrůvky; opakuje se, protože smazaný ostrůvek nebo můstek
+    k ptákovi může vedle sebe udělat nové úzké místo"""
     M = mat.astype(np.uint8)
-    for _ in range(2):
-        H = cv2.morphologyEx(1 - M, cv2.MORPH_OPEN, disk(HOLE_MIN / 2))          # štěrbiny pryč
-        M = 1 - H
-        thin = M & (1 - cv2.morphologyEx(M, cv2.MORPH_OPEN, disk(WEB / 2)))     # tenká ocel
-        M = M | cv2.dilate(thin, disk(WEB / 2))
+    def frame(M):
         M[:pad] = M[-pad:] = 1; M[:, :pad] = M[:, -pad:] = 1
-    # ostrůvky
-    for _ in range(3):
+    for rnd in range(4):
+        for _ in range(2):
+            H = cv2.morphologyEx(1 - M, cv2.MORPH_OPEN, disk(HOLE_MIN / 2))          # štěrbiny pryč
+            M = 1 - H
+            thin = M & (1 - cv2.morphologyEx(M, cv2.MORPH_OPEN, disk(WEB_R / 2)))   # tenká ocel
+            M = M | cv2.dilate(thin, disk(WEB_R / 2))
+            frame(M)
         n, lab, st, _c = cv2.connectedComponentsWithStats(M, connectivity=8)
         main = lab[0, 0]
         isl = [i for i in range(1, n) if i != main]
         if not isl: break
         mainmask = (lab == main).astype(np.uint8)
         dist, lbl = cv2.distanceTransformWithLabels(1 - mainmask, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
-        zy, zx = np.where(mainmask == 0)[0:0], None
         ys, xs = np.where(mainmask > 0)
-        # mapování label -> souřadnice nejbližšího pixelu oceli
         lut = np.zeros(lbl.max() + 1, np.int64); lut[lbl[ys, xs]] = ys * M.shape[1] + xs
         for i in isl:
-            area = st[i, cv2.CC_STAT_AREA] * PX * PX
-            if area < ISL_KEEP:
+            if st[i, cv2.CC_STAT_AREA] * PX * PX < ISL_KEEP:
                 M[lab == i] = 0; continue
             iy, ix = np.where(lab == i)
             k = np.argmin(dist[iy, ix]); p = (int(ix[k]), int(iy[k]))
             q = int(lut[lbl[iy[k], ix[k]]]); q = (q % M.shape[1], q // M.shape[1])
-            cv2.line(M, p, q, 1, max(2, int(round(WEB / PX))))
+            cv2.line(M, p, q, 1, max(2, int(round(WEB_R / PX))))
     return M
 
 def measure(M, pad):
@@ -142,6 +143,7 @@ def trace(M, pad):
         if hrow[3] != -1: kids += 1; continue
         a = cv2.approxPolyDP(c, EPS / PX, True)[:, 0, :]
         if len(a) < 3 or cv2.contourArea(a) * PX * PX < 10: continue
+        if min(cv2.minAreaRect(c)[1]) * PX < HOLE_MIN - PX: continue      # drobný otvor (zbytek po ostrůvku) – zůstane ocel
         pts = [((x - pad + 0.5) * PX, (hh - pad - y - 0.5) * PX) for x, y in a]
         flat = []
         for x, y in pts: flat += [round(x, 2), round(y, 2), 0]
@@ -151,7 +153,7 @@ def trace(M, pad):
 def main(svg_path):
     svg = open(svg_path).read()
     index = []
-    for sid, lab, sub, box in SCENES:
+    for sid, lab, sub, box, anim in SCENES:
         sc = (H_MM / PX) / (box[3] - box[1])
         mat = rasterize(svg, box, sc)
         if sid == 'smrky': mat = prep_smrky(mat)
@@ -175,11 +177,11 @@ def main(svg_path):
               '   Výřez = uzavřená křivka [x, y, bulge, …] (bulge 0 = úsečka). Zdroj: AI vektor, vyčištěno nastroje/motiv_priroda.py:\n'
               '   můstky ≥ %s mm, otvor ≥ %s mm, největší otvor koule Ø%s mm, podíl otvorů %s %%. Generuje se – ručně neupravovat. */\n'
               "(function (root) {\n  'use strict';\n  const M = root.ZabradliMotivy = root.ZabradliMotivy || {};\n"
-              "  M[%s] = { id: %s, lab: %s, sub: %s, rada: 'priroda', mode: 'crop', W: %s, H: %s, web: %s, holeMin: %s, ball: %s, open: %s,\n    holes: [\n%s\n    ] };\n"
+              "  M[%s] = { id: %s, lab: %s, sub: %s, rada: 'priroda', mode: 'crop', W: %s, H: %s, web: %s, holeMin: %s, ball: %s, open: %s,\n    anim: %s,\n    holes: [\n%s\n    ] };\n"
               "})(typeof globalThis !== 'undefined' ? globalThis : this);\n") % (
             lab, info['W'], H_MM, info['web'], HOLE_MIN, info['ball'], round(opr * 100),
             json.dumps(sid), json.dumps(sid), json.dumps(lab, ensure_ascii=False), json.dumps(sub, ensure_ascii=False),
-            info['W'], H_MM, info['web'], HOLE_MIN, info['ball'], info['open'],
+            info['W'], H_MM, info['web'], HOLE_MIN, info['ball'], info['open'], json.dumps(anim),
             ',\n'.join('      ' + json.dumps(h, separators=(',', ':')) for h in holes))
         open(os.path.join(ROOT, 'assets', 'zabradli', 'motiv-' + sid + '.js'), 'w').write(js)
     json.dump(index, open(os.path.join(ROOT, 'assets', 'zabradli', 'priroda', 'index.json'), 'w'), ensure_ascii=False, indent=1)
