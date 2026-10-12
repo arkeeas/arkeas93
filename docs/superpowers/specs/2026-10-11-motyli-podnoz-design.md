@@ -2,7 +2,13 @@
 
 ## Aktualizace zadání (2026-10-12)
 
-Aktuální webová varianta má jednu pevnou velikost podle STEP (1 532,523 × 842,026 × 728 mm); ovladače rozměrů podnože jsou odstraněné. Krok 2 místo nich nabízí tvar, rozměry a tloušťku desky a přepínač jejího zobrazení v náhledu. Deska je zatím vizualizace bez ceny, výpočtu uchycení nebo nosnosti. Tento dodatek nahrazuje níže uvedený záměr ovládat rozměry podnože ve webové kartě; samostatný FreeCAD generátor zůstává parametrický.
+Aktuální webová varianta má jednu pevnou velikost podle STEP (1 532,523 × 842,026 × 728 mm); ovladače rozměrů podnože jsou odstraněné. Krok 2 místo nich nabízí tvar, rozměry a tloušťku desky a přepínač jejího zobrazení v náhledu. Deska zůstává pouze vizualizací, její cena, uchycení a nosnost se nepočítají. Tento dodatek nahrazuje níže uvedený záměr ovládat rozměry podnože ve webové kartě; samostatný FreeCAD generátor zůstává parametrický.
+
+### Doplnění: STEP výstup a orientační cena
+
+Uživatel následně požádal o STEP soubory a cenu. Web zůstává u pevné varianty. Z nativního FreeCAD B-rep se exportuje celý STEP a ZIP s 33 samostatnými STEP díly; volby desky zůstávají jen náhled a do exportu nevstupují. Po každém spuštění FreeCAD makro tyto dva soubory obnoví. Výstup sestavy se po exportu znovu načte a ověří na 33 validních těles.
+
+Web počítá orientační cenu podnože podle ceníkových sazeb konfigurátoru. Kusovník používá B-rep objem pro hmotnost, 33 řezaných dílů, 68 svarových kontaktů a odhad lakované plochy 2,19 m². Počet svarů a plocha laku jsou předpoklady k potvrzení dílnou. Deska zákazníka se nezapočítává. Nosnost a uchycení desky zůstávají mimo rozsah; uživatelské rozhraní nesmí jejich ověření tvrdit.
 
 ## Cíl a potvrzené zadání
 

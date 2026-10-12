@@ -89,13 +89,39 @@
   "konfigurator_umělecké": {
     "podnoz": {
       "ovladani": "pevná velikost podle původního STEP",
-      "rozmery_mm": [1532.523, 842.026, 728.0],
+      "rozmery_mm": [
+        1532.523,
+        842.026,
+        728.0
+      ],
       "telesa": 33
     },
     "deska": {
-      "ovladani": ["tvar", "podle podnože nebo vlastní rozměry", "tloušťka", "zobrazit nebo skrýt v náhledu"],
-      "vychozi_mm": [1532.523, 842.026, 18],
-      "cena_a_uchyceni_vypoctene": false
+      "ovladani": [
+        "tvar",
+        "podle podnože nebo vlastní rozměry",
+        "tloušťka",
+        "zobrazit nebo skrýt v náhledu"
+      ],
+      "vychozi_mm": [
+        1532.523,
+        842.026,
+        18
+      ],
+      "cena_desky_vypoctena": false,
+      "uchyceni_desky_vypoctene": false,
+      "nosnost_overena": false
+    },
+    "cena_podnoze_vypoctena_orientacne": true,
+    "cena_desky_vypoctena": false,
+    "uchyceni_desky_vypoctene": false,
+    "cena_vychazi_z": {
+      "material_kg": 48.6587,
+      "rezane_dily_ks": 33,
+      "predpoklad_svarovych_kontaktu_ks": 68,
+      "odhad_plochy_laku_m2": 2.19,
+      "deska_zakaznika_zahrnuta": false,
+      "nosnost_overena": false
     }
   },
   "omezeni": [
@@ -103,7 +129,14 @@
     "Nativní FreeCAD generátor přijímá délku 1400–1650 mm a výšku 680–800 mm; webový konfigurátor Umělecké ponechává podnož v jedné velikosti podle původního STEP.",
     "Kontura výplně se transformuje v její rovině; její dosednutí v jiných rozměrech nebylo ověřeno a výrobní výkres není k dispozici.",
     "Parametrický výsledek tvoří generované B-rep tělesa; změna rozměru vyžaduje opětovné spuštění makra, nejde o historii plně editovatelných prvků.",
-    "Tvar a rozměry desky v konfigurátoru Umělecké jsou pouze vizualizace; uchycení, cena, nosnost a stabilita nejsou ověřené.",
+    "Tvar a rozměry desky v konfigurátoru Umělecké jsou pouze vizualizace; podnož má orientační cenu, ale cena desky, uchycení, nosnost a stabilita nejsou ověřené.",
     "Neověřena pevnost, únosnost, svarové spoje, materiál ani výrobní tolerance."
-  ]
+  ],
+  "step_export": {
+    "sestava": "../assets/motyli-podnoz/motyli_podnoz.step",
+    "jednotlive_dily_zip": "../assets/motyli-podnoz/step_dily.zip",
+    "kontrola": "../assets/motyli-podnoz/kontrola_step.json",
+    "validni_telesa_po_opetovnem_nacteni": 33,
+    "nevalidni_telesa": 0
+  }
 }

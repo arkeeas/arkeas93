@@ -10,11 +10,17 @@ Složka obsahuje parametrický nativní FreeCAD model, jeho generátor a přesno
 - FreeCAD 1.1.3 / OCC 7.8.1 potvrzuje B-rep obálku 1 532,526×842,028×732,014 mm; Z sahá od −4,014 do 728 mm. Čtyři hlavní profily přesahují pod nulovou rovinu.
 - FreeCAD 1.1.3 / OCC 7.8.1 znovu otevřel výsledek parametrického generátoru: 33/33 těles je validních. Výchozí obálka je 1 532,522×842,026×732,014 mm; proti STEP se liší nejvýše o 0,004 mm. Celkový objem se liší o 42 mm³ z 6,198 mil. mm³ (0,0007 %).
 - V nominální variantě má 24 sousedních spojů jeklů nulovou vypočtenou vzdálenost; největší numerický objemový průnik je 0,0021 mm³. Spoje jeklů, výplní, desek a uzlu byly samostatně porovnány v nominální variantě.
+- Nový STEP export byl ve FreeCADu 1.1.1 znovu načten: 33/33 těles je platných, všech 33 jednotlivých STEP dílů je také validních. Rozměrová obálka po opětovném načtení je 1 532,522 × 842,026 × 732,014 mm a objem 6 198 427 mm³.
+- CAD audit nemá geometrické chyby a potvrzuje jeden propojený celek. Varuje, že materiál není uveden ve zdroji a chybí limit maximální tloušťky oceli pro laser C2; automatická klasifikace dále označuje některé zakřivené B-rep díly jako ohýbaný plech/tyč. Tyto výrobní údaje je třeba potvrdit v dílně.
 - V krajních rozměrových variantách i při zkoušce 1 600 × 780 mm se vygenerovalo 33/33 validních těles. Kontakty výplní a rámu v těchto změněných variantách nejsou potvrzené.
 
 ## Konfigurátor Umělecké
 
-V konfigurátoru otevři záložku **Umělecké** a vyber **Motýlí podnož**. Webová varianta má jednu pevnou velikost podle STEP: 1 532,523 × 842,026 × 728 mm. V kroku **Deska** lze vybrat tvar, použít rozměry podnože nebo zadat vlastní rozměry a tloušťku. Desku lze zobrazit či skrýt v náhledu. Tato volba je pouze vizualizační; cena, uchycení desky a nosnost se nepočítají.
+V konfigurátoru otevři záložku **Umělecké** a vyber **Motýlí podnož**. Webová varianta má jednu pevnou velikost podle náhledu STEP: 1 532,523 × 842,026 × 728 mm. V kroku **Deska** lze vybrat tvar, použít rozměry podnože nebo zadat vlastní rozměry a tloušťku. Desku lze zobrazit či skrýt v náhledu; do ceny ani STEP se nezahrnuje.
+
+Cena je orientační kalkulace podnože podle firemních sazeb v nastavení konfigurátoru. Při výchozích sazbách vychází na **14 220 Kč bez DPH / 17 210 Kč s DPH**. Kusovník používá 48,66 kg oceli a 33 dílů. Počet 68 svarových kontaktů a plocha práškového lakování 2,19 m² jsou výrobní odhady k potvrzení dílnou. Cena desky zákazníka je 0 Kč a není zahrnutá. Nosnost a uchycení desky se nepočítají.
+
+V konfigurátoru lze stáhnout STEP celé sestavy a ZIP se samostatnými STEP soubory všech 33 dílů. Sestava byla exportována z nativního FreeCAD B-rep modelu a znovu načtena: všech 33 těles je platných. Výsledek a počty ověření jsou v `assets/motyli-podnoz/kontrola_step.json`. Při přepočtu nativního modelu makro obnoví i oba STEP výstupy.
 
 Rozměry nativního FreeCAD modelu lze stále upravit v tabulce **Parametry**, buňky `B2` (délka) a `B4` (výška). Ulož a zavři dokument, potom spusť `vytvor_parametricky_model.FCMacro`. Generátor načte hodnoty z tabulky, přepočítá geometrii a přepíše FCStd. Výsledná hloubka je odvozena od konstrukce; je uvedena v `B11`.
 
@@ -27,4 +33,4 @@ Povolený rozsah generátoru je délka 1 400–1 650 mm a výška 680–800 mm. 
 - laserovaná výplň se mění v její vlastní rovině a zachovává tloušťku 5 mm,
 - horní deska 110×86×8 mm se čtyřmi otvory Ø9 se posouvá s křídlem, její rozměry se nemění.
 
-`motyli_podnoz_parametricky.FCStd` je nativní soubor FreeCAD s výslednými B-rep tělesy a tabulkou parametrů. Neobsahuje historii plně editovatelných náčrtů a prvků: po změně tabulky se geometrie vytvoří znovu spuštěním makra. Laserovaná výplň je transformovaná původní STEP kontura, ne nový návrh výrobního profilu. `motyli_podnoz_reference.FCStd` zůstává neměnnou geometrií přímo z STEP pro porovnání. Model není pevnostní výpočet ani výrobní schválení; svary, únosnost a specifikaci materiálu je nutné ověřit samostatně.
+`motyli_podnoz_parametricky.FCStd` je nativní soubor FreeCAD s výslednými B-rep tělesy a tabulkou parametrů. Neobsahuje historii plně editovatelných náčrtů a prvků: po změně tabulky se geometrie vytvoří znovu spuštěním makra. Laserovaná výplň je transformovaná původní STEP kontura, ne nový návrh výrobního profilu. `motyli_podnoz_reference.FCStd` zůstává neměnnou geometrií přímo z STEP pro porovnání. STEP a cena jsou použitelné jako technický podklad a orientační nabídka; před výrobou je nutné potvrdit svary, materiál a dokončení. Model není pevnostní výpočet ani schválení nosnosti.

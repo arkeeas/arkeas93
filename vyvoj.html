@@ -190,6 +190,11 @@
         <div class="grid g4" id="models"></div>
         <p class="note" id="modelNote" style="margin:10px 0 0"></p>
         <div class="box" id="motWarning" hidden>Podnož má pevné rozměry podle původního STEP. Tvar a rozměry desky slouží jen pro 3D náhled.</div>
+        <div class="box" id="motCostDetails" hidden style="margin-top:10px"></div>
+        <div class="grid g2" id="motDownloads" hidden style="margin-top:10px">
+          <a class="btn" href="assets/motyli-podnoz/motyli_podnoz.step" download>Stáhnout STEP sestavu</a>
+          <a class="btn" href="assets/motyli-podnoz/step_dily.zip" download>Stáhnout 33 STEP dílů (ZIP)</a>
+        </div>
         <h3 class="subh" id="laysHead">Rozmístění noh</h3>
         <div class="grid g2" id="lays"></div>
         <h3 class="subh" id="jointsHead">Spojení noh</h3>
@@ -343,6 +348,8 @@
 
   function render() {
     if (cfg.model === 'MOT') { renderMotyli(); return; }
+    $('motCostDetails').hidden = true;
+    $('motDownloads').hidden = true;
     $('deskStep').appendChild($('motBoard'));
     $('motBoardSlot').hidden = true;
     $('standDims').hidden = false;
@@ -525,7 +532,12 @@
     $('person').parentElement.hidden = true;
     $('modelNote').textContent = M.desc + ' · ' + M.note;
     $('motWarning').hidden = false;
-    $('motWarning').textContent = 'Podnož má pevné rozměry podle původního STEP. Volby desky mění pouze její 3D náhled; cena, uchycení a nosnost nejsou pro tento model vypočítané.';
+    $('motWarning').textContent = 'Cena je orientační a týká se pevné podnože podle STEP. Deska zákazníka není zahrnuta; její volby mění pouze 3D náhled. Nosnost ani uchycení nejsou ověřené.';
+    $('motCostDetails').hidden = false;
+    $('motCostDetails').innerHTML = '<strong>Orientační cena: ' + K.nf(A.vat) + ' Kč s DPH</strong><ul style="margin:8px 0;padding-left:20px">' + A.rows.map((r) => '<li>' + esc(r.label) + ': ' + K.nf(r.qty, r.unit === 'kg' || r.unit === 'm²' ? 2 : 0) + ' ' + r.unit + ' × ' + K.nf(r.rate) + ' Kč = ' + K.nf(r.amount) + ' Kč</li>').join('') +
+      '<li>Mezisoučet bez marže: ' + K.nf(A.cost) + ' Kč</li><li>Cena bez DPH po marži: ' + K.nf(A.price) + ' Kč</li><li>Cena s DPH: ' + K.nf(A.vat) + ' Kč</li></ul>' +
+      '<span class="note">Počet svarů (68) a plocha laku (2,19 m²) jsou předběžné výrobní odhady. Dílna je před nabídkou potvrdí.</span>';
+    $('motDownloads').hidden = false;
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => {
       let back = cfg;
       try { back = JSON.parse(localStorage.getItem('podnoz-before-mot-wip') || 'null') || K.motyliBase.normalize({ model: id }); ui = JSON.parse(localStorage.getItem('ui-before-mot-wip') || 'null') || ui; localStorage.removeItem('podnoz-before-mot-wip'); localStorage.removeItem('ui-before-mot-wip'); } catch (e) {}
@@ -552,7 +564,7 @@
     $('fit').hidden = true;
     $('td').min = 18; $('td').max = 80; $('td').step = 2;
     syncInput('td', cfg.td); $('tdv').textContent = cfg.td + ' mm';
-    $('deskNote').textContent = 'Tvar, rozměr a tloušťka desky jsou jen pro 3D náhled. Výrobní uchycení ani cena nejsou pro tuto podnož ověřené.';
+    $('deskNote').textContent = 'Tvar, rozměry a tloušťka desky jsou jen pro 3D náhled. Cena se počítá pouze za podnož; uchycení desky není ověřené.';
     document.querySelector('.buy').hidden = true;
     document.querySelector('.foot').hidden = true;
     ui.person = null; ui.see = false;
