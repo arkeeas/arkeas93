@@ -171,7 +171,7 @@ def check(spoj, parts):
     rep['otisk'] = {'y': [round(y0, 2), round(y1, 2)], 'z': [round(z0, 2), round(z1, 2)], 'okraj_mm': round(margin, 2),
                     'mezera_mezi_kridly_mm': round(-2 * y1, 2)}
     comp = Part.makeCompound([s for n, s, g in parts])
-    b = comp.BoundBox
+    b = comp.optimalBoundingBox()   # BoundBox je na rádiusech jeklů nafouknutý (dřív hlásil Z −4 mm)
     rep['obalka_mm'] = [round(b.XLength, 2), round(b.YLength, 2), round(b.ZLength, 2)]
     rep['z_min'] = round(b.ZMin, 3)
     rep['objem_mm3'] = round(comp.Volume, 1)

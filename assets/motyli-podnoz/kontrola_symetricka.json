@@ -22,9 +22,9 @@
       "obalka_mm": [
         1532.52,
         821.9,
-        732.01
+        728.0
       ],
-      "z_min": -4.014,
+      "z_min": 0.0,
       "objem_mm3": 6288967.8,
       "hmotnost_kg": 49.37,
       "soumerna_obalka": true,
@@ -35,7 +35,8 @@
         "motyli-podnoz/motyli_podnoz_svar.FCStd",
         "assets/motyli-podnoz/motyli_podnoz_svar.step",
         "assets/motyli-podnoz/step_dily_svar.zip"
-      ]
+      ],
+      "poznamka_z": "Ověřeno optimalBoundingBox() ve FreeCADu 1.1.1: spodní jekly ZMin 0,0 / ZMax 300,0; hodnota −4,014 byla nafouknutý BoundBox OCC."
     },
     "srouby": {
       "spoj": "srouby",
@@ -57,9 +58,9 @@
       "obalka_mm": [
         1556.52,
         821.9,
-        732.01
+        728.0
       ],
-      "z_min": -4.014,
+      "z_min": 0.0,
       "objem_mm3": 6531630.2,
       "hmotnost_kg": 51.27,
       "soumerna_obalka": true,
@@ -70,7 +71,8 @@
         "motyli-podnoz/motyli_podnoz_srouby.FCStd",
         "assets/motyli-podnoz/motyli_podnoz_srouby.step",
         "assets/motyli-podnoz/step_dily_srouby.zip"
-      ]
+      ],
+      "poznamka_z": "Ověřeno optimalBoundingBox() ve FreeCADu 1.1.1: spodní jekly ZMin 0,0 / ZMax 300,0; hodnota −4,014 byla nafouknutý BoundBox OCC."
     }
   }
 }
