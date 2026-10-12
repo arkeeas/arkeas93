@@ -111,7 +111,7 @@
     const dW = shape === 'circle' ? dL : clamp(Number.isFinite(rawDW) && rawDW > 0 ? rawDW : FIXED.W, 250, 1500);
     return Object.assign({}, base, {
       model: 'MOT', L: FIXED.L, W: FIXED.W, H: FIXED.H, shape, dmode, dL, dW,
-      td: clamp(Number.isFinite(rawTd) ? rawTd : 18, 18, 80), fin: base.fin || 'black', qty: 1
+      td: clamp(Number.isFinite(rawTd) ? rawTd : 18, 18, 80), fin: base.fin || 'black', qty: base.qty
     });
   }
 
@@ -184,9 +184,9 @@
     const cost = rows.reduce((sum, r) => sum + r.amount, 0);
     const price = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
     const vat = Math.round(price * 1.21 / 10) * 10;
-    return { cfg, build: B, B, audit: null, cost, capacity: null, price, vat, load: null,
+    return { cfg, build: B, B, audit: null, cost, capacity: null, price, vat, total: vat * cfg.qty, load: null,
       warnings: [MODEL.note, 'Orientační cena; 68 svarových kontaktů a plocha laku 2,19 m² jsou pracovní odhady k potvrzení dílnou.', 'Deska zákazníka není zahrnuta. Nosnost nebyla ověřena.'], DL, DW,
-      ohEnd, ohSide, ohWarn, rows, total: vat, R, kg: BOM.kg, welds: BOM.welds, tubeM: null, mount: null };
+      ohEnd, ohSide, ohWarn, rows, R, kg: BOM.kg, welds: BOM.welds, tubeM: null, mount: null };
   }
   function audit(c, rates) { return c && c.model === 'MOT' ? { overall: 'unknown', checks: [], warnings: ['Nosnost nebyla ověřena.'] } : baseAudit(c, rates); }
   function describe(c) {
