@@ -1,0 +1,222 @@
+{
+  "status": "valid",
+  "freecadVersion": "1.1.1",
+  "assembly": "assets/motyli-podnoz/motyli_podnoz.step",
+  "partArchive": "assets/motyli-podnoz/step_dily.zip",
+  "assemblyPartCount": 33,
+  "roundTripObjectCount": 33,
+  "roundTripSolidCount": 33,
+  "invalidSolidCount": 0,
+  "volumeMm3": 6198427.109708767,
+  "surfaceAreaMm2": 3877920.8204154503,
+  "bboxMm": [
+    1532.5222248356588,
+    842.0264328571197,
+    732.0140520304669
+  ],
+  "zMinMm": -4.013930673806924,
+  "zMaxMm": 728.00012135666,
+  "individualStepCount": 33,
+  "invalidIndividualSteps": 0,
+  "maxIndividualVolumeDifferenceMm3": 0.8052759016864002,
+  "items": [
+    {
+      "file": "01_St_edov_uzel_trubka_120_120_6.step",
+      "volumeMm3": 273600.0,
+      "volumeDifferenceMm3": 0.0,
+      "valid": true
+    },
+    {
+      "file": "02_Obvodovy_jekl_1_-_40_x_40_x_3_-_pokosy.step",
+      "volumeMm3": 316645.65367119235,
+      "volumeDifferenceMm3": 1.1826108675450087e-05,
+      "valid": true
+    },
+    {
+      "file": "03_Obvodovy_jekl_2_-_40_x_40_x_3_-_pokosy.step",
+      "volumeMm3": 26538.680264871236,
+      "volumeDifferenceMm3": 3.7321660784073174e-07,
+      "valid": true
+    },
+    {
+      "file": "04_Obvodovy_jekl_3_-_40_x_40_x_3_-_pokosy.step",
+      "volumeMm3": 201126.2957586231,
+      "volumeDifferenceMm3": 1.309090293943882e-07,
+      "valid": true
+    },
+    {
+      "file": "05_Obvodovy_jekl_4_-_40_x_40_x_3_-_pokosy.step",
+      "volumeMm3": 157375.49613813014,
+      "volumeDifferenceMm3": 5.445908755064011e-07,
+      "valid": true
+    },
+    {
+      "file": "06_Obvodovy_jekl_5_-_40_x_40_x_3_-_pokosy.step",
+      "volumeMm3": 179736.0187288891,
+      "volumeDifferenceMm3": 6.424379535019398e-07,
+      "valid": true
+    },
+    {
+      "file": "07_Obvodovy_jekl_6_-_40_x_40_x_3_-_pokosy.step",
+      "volumeMm3": 163271.13105148685,
+      "volumeDifferenceMm3": 1.7473677871748805e-05,
+      "valid": true
+    },
+    {
+      "file": "08_Zapustena_laserovana_vypln_5_mm_-_ustup_17_5_mm_zachovan_tlou_ka_5_mm.step",
+      "volumeMm3": 357972.6761955571,
+      "volumeDifferenceMm3": 0.8052759016864002,
+      "valid": true
+    },
+    {
+      "file": "09_Horni_montazni_deska_110_x_86_x_8_-_4x_pr_9.step",
+      "volumeMm3": 73397.02664470767,
+      "volumeDifferenceMm3": 2.9103830456733704e-10,
+      "valid": true
+    },
+    {
+      "file": "10_Obvodovy_jekl_1_-_40_x_40_x_3_-_pokosy001.step",
+      "volumeMm3": 321325.8252269981,
+      "volumeDifferenceMm3": 2.3002270609140396e-05,
+      "valid": true
+    },
+    {
+      "file": "11_Obvodovy_jekl_2_-_40_x_40_x_3_-_pokosy001.step",
+      "volumeMm3": 26538.68026456621,
+      "volumeDifferenceMm3": 6.835762178525329e-08,
+      "valid": true
+    },
+    {
+      "file": "12_Obvodovy_jekl_3_-_40_x_40_x_3_-_pokosy001.step",
+      "volumeMm3": 201126.29575814947,
+      "volumeDifferenceMm3": 3.5366974771022797e-07,
+      "valid": true
+    },
+    {
+      "file": "13_Obvodovy_jekl_4_-_40_x_40_x_3_-_pokosy001.step",
+      "volumeMm3": 157375.4961371926,
+      "volumeDifferenceMm3": 3.9243604987859726e-07,
+      "valid": true
+    },
+    {
+      "file": "14_Obvodovy_jekl_5_-_40_x_40_x_3_-_pokosy001.step",
+      "volumeMm3": 179736.01872812002,
+      "volumeDifferenceMm3": 1.1699739843606949e-07,
+      "valid": true
+    },
+    {
+      "file": "15_Obvodovy_jekl_6_-_40_x_40_x_3_-_pokosy001.step",
+      "volumeMm3": 168878.5574473103,
+      "volumeDifferenceMm3": 1.6980775399133563e-05,
+      "valid": true
+    },
+    {
+      "file": "16_Zapustena_laserovana_vypln_5_mm_-_ustup_17_5_mm_zachovan_tlou_ka_5_mm001.step",
+      "volumeMm3": 357972.67619557516,
+      "volumeDifferenceMm3": 0.8052758863195777,
+      "valid": true
+    },
+    {
+      "file": "17_Horni_montazni_deska_110_x_86_x_8_-_4x_pr_001.step",
+      "volumeMm3": 73397.02664470767,
+      "volumeDifferenceMm3": 2.9103830456733704e-10,
+      "valid": true
+    },
+    {
+      "file": "18_Obvodovy_jekl_1_-_40_x_40_x_3_-_pokosy002.step",
+      "volumeMm3": 321325.82521785295,
+      "volumeDifferenceMm3": 1.421093475073576e-05,
+      "valid": true
+    },
+    {
+      "file": "19_Obvodovy_jekl_2_-_40_x_40_x_3_-_pokosy002.step",
+      "volumeMm3": 26538.68026460071,
+      "volumeDifferenceMm3": 1.0634175851009786e-07,
+      "valid": true
+    },
+    {
+      "file": "20_Obvodovy_jekl_3_-_40_x_40_x_3_-_pokosy002.step",
+      "volumeMm3": 201126.29575726553,
+      "volumeDifferenceMm3": 1.319480361416936e-06,
+      "valid": true
+    },
+    {
+      "file": "21_Obvodovy_jekl_4_-_40_x_40_x_3_-_pokosy002.step",
+      "volumeMm3": 157375.49613740816,
+      "volumeDifferenceMm3": 2.2773747332394123e-07,
+      "valid": true
+    },
+    {
+      "file": "22_Obvodovy_jekl_5_-_40_x_40_x_3_-_pokosy002.step",
+      "volumeMm3": 179736.01872934186,
+      "volumeDifferenceMm3": 1.1126394383609295e-06,
+      "valid": true
+    },
+    {
+      "file": "23_Obvodovy_jekl_6_-_40_x_40_x_3_-_pokosy002.step",
+      "volumeMm3": 168878.55745679856,
+      "volumeDifferenceMm3": 2.651824615895748e-05,
+      "valid": true
+    },
+    {
+      "file": "24_Zapustena_laserovana_vypln_5_mm_-_ustup_17_5_mm_zachovan_tlou_ka_5_mm002.step",
+      "volumeMm3": 357972.676195564,
+      "volumeDifferenceMm3": 0.8052758928388357,
+      "valid": true
+    },
+    {
+      "file": "25_Horni_montazni_deska_110_x_86_x_8_-_4x_pr_002.step",
+      "volumeMm3": 73397.02664470767,
+      "volumeDifferenceMm3": 2.9103830456733704e-10,
+      "valid": true
+    },
+    {
+      "file": "26_Obvodovy_jekl_1_-_40_x_40_x_3_-_pokosy003.step",
+      "volumeMm3": 316645.65367085935,
+      "volumeDifferenceMm3": 1.1663767509162426e-05,
+      "valid": true
+    },
+    {
+      "file": "27_Obvodovy_jekl_2_-_40_x_40_x_3_-_pokosy003.step",
+      "volumeMm3": 26538.680264068964,
+      "volumeDifferenceMm3": 4.2281681089662015e-07,
+      "valid": true
+    },
+    {
+      "file": "28_Obvodovy_jekl_3_-_40_x_40_x_3_-_pokosy003.step",
+      "volumeMm3": 201126.29575799356,
+      "volumeDifferenceMm3": 5.144102033227682e-07,
+      "valid": true
+    },
+    {
+      "file": "29_Obvodovy_jekl_4_-_40_x_40_x_3_-_pokosy003.step",
+      "volumeMm3": 157375.4961372815,
+      "volumeDifferenceMm3": 2.401648089289665e-07,
+      "valid": true
+    },
+    {
+      "file": "30_Obvodovy_jekl_5_-_40_x_40_x_3_-_pokosy003.step",
+      "volumeMm3": 179736.01872791606,
+      "volumeDifferenceMm3": 3.4045660868287086e-07,
+      "valid": true
+    },
+    {
+      "file": "31_Obvodovy_jekl_6_-_40_x_40_x_3_-_pokosy003.step",
+      "volumeMm3": 163271.13105075626,
+      "volumeDifferenceMm3": 1.6766483895480633e-05,
+      "valid": true
+    },
+    {
+      "file": "32_Zapustena_laserovana_vypln_5_mm_-_ustup_17_5_mm_zachovan_tlou_ka_5_mm003.step",
+      "volumeMm3": 357972.67619556526,
+      "volumeDifferenceMm3": 0.8052758964477107,
+      "valid": true
+    },
+    {
+      "file": "33_Horni_montazni_deska_110_x_86_x_8_-_4x_pr_003.step",
+      "volumeMm3": 73397.02664470767,
+      "volumeDifferenceMm3": 3.055902197957039e-10,
+      "valid": true
+    }
+  ]
+}

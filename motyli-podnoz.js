@@ -6,11 +6,18 @@
   const MODEL = {
     id: 'MOT', lab: 'Motýlí podnož', desc: 'Pevná velikost podle původního STEP',
     icon: 'M4 24 L20 8 L32 20 L44 8 L60 24 L44 40 L32 28 L20 40 Z',
-    note: 'Jde o vizualizační náhled; cena, nosnost a výrobní spoje nejsou ověřené.', wip: true
+    note: 'Deska je jen náhled; podnož má orientační cenu, nosnost není ověřená.', wip: true
   };
   if (!V.MODELS.some((m) => m.id === MODEL.id)) V.MODELS.push(MODEL);
   const baseNormalize = V.normalize, baseBuild = V.build, baseAnalyze = V.analyze, baseAudit = V.audit, baseDescribe = V.describe;
   const FIXED = { L: DATA.bbox[0], W: DATA.bbox[1], H: DATA.bbox[2] };
+  // Fixed-size BOM from the validated native FreeCAD B-rep (all dimensions in mm).
+  // Weld operations and powder-coat area remain explicit pricing assumptions.
+  const BOM = {
+    volumeMm3: 6198430.331, kg: 48.6587, cuts: 33, welds: 68,
+    tubeVolumeMm3: 4199348.331, panelVolumeMm3: 1431893.924,
+    plateVolumeMm3: 293588.108, hubVolumeMm3: 273600, paintM2: 2.19
+  };
   const SPREAD = { fixedL: 193.72, spanL: 1338.81, fixedW: 172.53, spanW: 669.50 };
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const add = (a, b) => a.map((x, i) => x + b[i]);
@@ -157,17 +164,29 @@
     };
   }
 
-  function analyze(c) {
-    if (!c || c.model !== 'MOT') return baseAnalyze(c);
+  function analyze(c, ratesIn) {
+    if (!c || c.model !== 'MOT') return baseAnalyze(c, ratesIn);
     const cfg = normalize(c), B = build(cfg);
     const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L;
     const DW = cfg.shape === 'circle' ? DL : cfg.dmode === 'own' ? cfg.dW : cfg.W;
     const ohEnd = Math.round((DL - FIXED.L) / 2), ohSide = Math.round((DW - FIXED.W) / 2);
     const ohWarn = ohEnd < 0 || ohSide < 0 ? { lvl: 'bad', t: 'Deska je menší než podnož.' }
       : ohEnd > 450 || ohSide > 300 ? { lvl: 'warn', t: 'Deska má velký přesah; stabilita této varianty nebyla ověřena.' } : null;
-    return { cfg, build: B, B, audit: null, cost: null, capacity: null, price: null, load: null,
-      warnings: [MODEL.note, 'Cena, nosnost a uchycení desky nejsou pro tento model vypočtené.'], DL, DW,
-      ohEnd, ohSide, ohWarn, rows: [], total: null, R: null, mount: null };
+    const R = V.rates0(ratesIn), F = V.FIN.find((f) => f.id === cfg.fin) || V.FIN[0];
+    const rows = [
+      { id: 'material', label: 'Ocel podle B-rep objemu', qty: BOM.kg, unit: 'kg', rate: R.kg },
+      { id: 'cut', label: 'Řez / pálení dílů', qty: BOM.cuts, unit: 'ks', rate: R.rez },
+      { id: 'weld', label: 'Předpoklad svarových kontaktů', qty: BOM.welds, unit: 'ks', rate: R.svar },
+      { id: 'paint', label: 'Prášková barva – odhad plochy', qty: BOM.paintM2, unit: 'm²', rate: R.barva * F.k },
+      { id: 'prep', label: 'Příprava zakázky', qty: 1, unit: 'zakázka', rate: R.priprava },
+      { id: 'board', label: 'Deska zákazníka (mimo cenu)', qty: 1, unit: 'ks', rate: 0 }
+    ].map((r) => Object.assign(r, { amount: r.id === 'board' ? 0 : r.qty * r.rate }));
+    const cost = rows.reduce((sum, r) => sum + r.amount, 0);
+    const price = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
+    const vat = Math.round(price * 1.21 / 10) * 10;
+    return { cfg, build: B, B, audit: null, cost, capacity: null, price, vat, load: null,
+      warnings: [MODEL.note, 'Orientační cena; 68 svarových kontaktů a plocha laku 2,19 m² jsou pracovní odhady k potvrzení dílnou.', 'Deska zákazníka není zahrnuta. Nosnost nebyla ověřena.'], DL, DW,
+      ohEnd, ohSide, ohWarn, rows, total: vat, R, kg: BOM.kg, welds: BOM.welds, tubeM: null, mount: null };
   }
   function audit(c, rates) { return c && c.model === 'MOT' ? { overall: 'unknown', checks: [], warnings: ['Nosnost nebyla ověřena.'] } : baseAudit(c, rates); }
   function describe(c) {
@@ -180,6 +199,7 @@
 
   Object.assign(V, {
     normalize, build, analyze, audit, describe,
+    MOTYLI_BOM: Object.assign({}, BOM),
     MOTYLI_FIXED_DIMS: Object.assign({}, FIXED),
     motyliBase: { normalize: baseNormalize, build: baseBuild, analyze: baseAnalyze, audit: baseAudit }
   });

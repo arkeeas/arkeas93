@@ -7,10 +7,17 @@ import Import
 import math
 import os
 import numpy as np
+import re
+import shutil
+import tempfile
+import zipfile
 from FreeCAD import Vector as V
 
 SOURCE_STEP = '/home/arkeas/Desktop/cad_worker/motyli_podnoz_jekl_40x40.step'
 OUTPUT_FCSTD = '/home/arkeas/src/arkeas93/motyli-podnoz/motyli_podnoz_parametricky.FCStd'
+OUTPUT_STEP_DIR = '/home/arkeas/src/arkeas93/assets/motyli-podnoz'
+OUTPUT_STEP = os.path.join(OUTPUT_STEP_DIR, 'motyli_podnoz.step')
+OUTPUT_PARTS_ZIP = os.path.join(OUTPUT_STEP_DIR, 'step_dily.zip')
 TARGET_LENGTH_MM = 1532.526
 TARGET_HEIGHT_MM = 732.014
 SOURCE_LENGTH_MM = 1532.5262247
@@ -348,3 +355,29 @@ out.recompute()
 out.save()
 print('ASSEMBLY_BBOX',b.XLength,b.YLength,b.ZLength,b.ZMin,b.ZMax)
 print('ASSEMBLY_VOLUME',root_group.Shape.Volume)
+
+# Deliver the current rebuilt B-rep as one assembly STEP and as 33 separate
+# one-solid STEP files. Keep the multi-body assembly export independent from
+# the customer-selected tabletop, which is a web-only preview choice.
+if not os.path.isdir(OUTPUT_STEP_DIR):
+    os.makedirs(OUTPUT_STEP_DIR)
+part_objects = [o for o in out.Objects if o.TypeId == 'Part::Feature' and hasattr(o, 'Shape') and not o.Shape.isNull()]
+if len(part_objects) != 33:
+    raise ValueError('STEP export vyžaduje 33 dílů; nalezeno %d' % len(part_objects))
+Import.export(part_objects, OUTPUT_STEP)
+parts_tmp = tempfile.mkdtemp(prefix='motyli_step_parts_')
+try:
+    part_files = []
+    for index, obj in enumerate(part_objects, 1):
+        safe = re.sub(r'[^A-Za-z0-9_-]+', '_', obj.Label).strip('_')
+        path = os.path.join(parts_tmp, '%02d_%s.step' % (index, safe))
+        Import.export([obj], path)
+        part_files.append(path)
+    with zipfile.ZipFile(OUTPUT_PARTS_ZIP, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for path in part_files:
+            zf.write(path, os.path.basename(path))
+finally:
+    shutil.rmtree(parts_tmp, ignore_errors=True)
+print('EXPORTED_ASSEMBLY_STEP', OUTPUT_STEP)
+print('EXPORTED_PART_STEPS', len(part_files))
+print('EXPORTED_PARTS_ZIP', OUTPUT_PARTS_ZIP)
