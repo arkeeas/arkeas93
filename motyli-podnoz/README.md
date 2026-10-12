@@ -1,4 +1,20 @@
-# Motýlí podnož — parametrická rekonstrukce
+# Motýlí podnož
+
+## Oprava 10/2026 – souměrná sestava, svar nebo šrouby
+
+Kontrola původního STEP ukázala, že **sestava není souměrná**: křídla byla jen otočená o 180°, ne zrcadlená. Roviny křídel se míjely o ±16,7 mm od osy uzlu. Konce jeklů křídel 1 a 4 přečnívaly 9,1 mm přes bok uzlu a 5,5 mm pod jeho spodek. Křídla 2 a 3 zasahovala přes osu čela. Předchozí kontrola hlídala jen dotyk těles, ne kde se dotýkají.
+
+Nová sestava (`motyli-podnoz.js`, makro `vytvor_symetrickou_podnoz.FCMacro`):
+- Vzorem je křídlo +X −Y. Posune se jen v ose Y o −16,77 mm, aby střed otisku konců ležel na y = ±30 mm, a zrcadlí se. Délky a pokosy jeklů se nemění. Na čele zůstává okraj 7,6 mm a mezera mezi křídly 15,3 mm.
+- **Uzel** je svařená krabička z plechů 6 mm: bočnice 120 × 94 a 108 × 94 a víko 120 × 120. Dole je otevřená, aby šlo ke šroubům.
+- **Svar:** konce jeklů jdou přímo na bočnici uzlu. Rozměr 1 533 × 822 × 728 mm.
+- **Šrouby:** na konce jeklů se přivaří čelní deska 12 × 56 × 94 se 2 závity M10 (předvrt Ø8,5) úhlopříčně. V bočnici uzlu jsou 2× Ø11. Šrouby M10 × 16 (8.8) jdou zevnitř uzlu, zespodu, bez podložky: 10 mm v závitu, za desku nevyčnívají. Rozměr 1 557 × 822 × 728 mm.
+- Spuštění: `freecadcmd motyli-podnoz/vytvor_symetrickou_podnoz.FCMacro`. Vytvoří `motyli_podnoz_{svar,srouby}.FCStd`, `assets/motyli-podnoz/motyli_podnoz_{svar,srouby}.step`, `step_dily_{svar,srouby}.zip` a `kontrola_symetricka.json` (validita, průniky, okraj otisku, souměrnost). Dílna odkazuje na STEP podle zvoleného spoje.
+- Starý `motyli_podnoz.step` a `step_dily.zip` jsou **nesouměrné**. Slouží jen jako vstup makra, nevyrábět z nich.
+
+---
+
+## Původní parametrická rekonstrukce (nesouměrná, archiv)
 
 Složka obsahuje parametrický nativní FreeCAD model, jeho generátor a přesnou STEP referenci. STEP je jediný dostupný zdroj; původní parametrický CAD ani výrobní výkres nejsou k dispozici.
 

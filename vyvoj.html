@@ -300,7 +300,7 @@
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
 <script src="motyli-podnoz-mesh.js?v=20261011b"></script>
-<script src="motyli-podnoz.js?v=20261012b"></script>
+<script src="motyli-podnoz.js?v=20261012c"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261012b"></script>
 <script>
@@ -390,6 +390,7 @@
     $('models').hidden = K.MODELS.length < 2;
     $('modelNote').textContent = M.desc + (M.note ? ' · ' + M.note : '');
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
+    $('jointsHead').textContent = 'Spojení noh';
     $('jointsHead').hidden = $('joints').hidden = !!M.pav;
     $('laysHead').hidden = $('lays').hidden = !M.pav;
     if (M.ks || M.tr) $('jointsHead').hidden = $('joints').hidden = true;
@@ -528,7 +529,7 @@
     $('person').parentElement.hidden = true;
     $('modelNote').textContent = M.desc + ' · ' + M.note;
     $('motWarning').hidden = false;
-    $('motWarning').textContent = 'Cena je orientační a týká se pevné podnože podle STEP. Deska zákazníka není zahrnuta; její volby mění pouze 3D náhled. Nosnost ani uchycení nejsou ověřené.';
+    $('motWarning').textContent = 'Cena je orientační a týká se pevné podnože (křídla ' + (cfg.spoj === 'srouby' ? 'šroubovaná 8× M10' : 'přivařená') + '). Deska zákazníka není zahrnuta; její volby mění pouze 3D náhled. Nosnost ani uchycení desky nejsou ověřené.';
     $('price').textContent = K.nf(A.total) + ' Kč';
     $('priceSub').textContent = 's DPH';
     $('qty').textContent = cfg.qty + ' ks';
@@ -538,7 +539,10 @@
       set(Object.assign({}, back, { model: id }));
     });
     $('models').hidden = false;
-    ['laysHead', 'lays', 'jointsHead', 'joints', 'topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
+    ['laysHead', 'lays', 'topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
+    $('jointsHead').hidden = $('joints').hidden = false;
+    $('jointsHead').textContent = 'Spojení křídel s uzlem';
+    group($('joints'), K.MOTYLI_SPOJE, (o) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.spoj) + '"><span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span></button>', (id) => set({ spoj: id }));
     document.querySelectorAll('.panel .steps > .step').forEach((x, i) => { if (i > 1) x.hidden = true; });
     $('step2Title').textContent = 'Deska';
     $('standDims').hidden = true;

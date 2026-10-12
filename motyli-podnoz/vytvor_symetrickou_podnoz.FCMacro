@@ -1,0 +1,223 @@
+# -*- coding: utf-8 -*-
+# Motýlí podnož – souměrná sestava (oprava geometrie z 10/2026).
+#
+# Proč: původní STEP měl křídla jen otočená o 180°, ne zrcadlená. Křídla 1 a 4
+# přečnívala konci jeklů 9 mm přes bok uzlu a 5,5 mm pod jeho spodek, křídla 2 a 3
+# zasahovala přes osu čela. Tady se vezme křídlo +X −Y (konce sedí výškově nejlépe),
+# posune se jen v ose Y tak, aby střed otisku jeho konců ležel na y = −30 mm,
+# a zrcadlí se do všech čtyř poloh. Délky a pokosy jeklů se nemění.
+#
+# Uzel: svařená krabička z plechů 6 mm (2 bočnice 120 × 94, 2 bočnice 108 × 94,
+# víko 120 × 120), dole otevřená – zespodu je přístup ke šroubům.
+#
+# Varianty (vytvoří se obě):
+#   svar   – konce jeklů přímo na bočnici uzlu (x = ±60), celá podnož jeden svařenec
+#   srouby – na konce jeklů čelní deska 12 × 56 × 94 se 2 závity M10 (předvrt Ø8,5),
+#            v bočnici uzlu 2× Ø11; šrouby M10 × 16 (8.8) zevnitř uzlu, bez podložky
+#            (16 − 6 bočnice = 10 mm v závitu, šroub nevyčnívá za čelní desku)
+#
+# Spuštění:  freecadcmd vytvor_symetrickou_podnoz.FCMacro
+#            (nebo v GUI Makro → Spustit). Cesta k repu: proměnná ARKEAS93,
+#            jinak složka nad tímto makrem, jinak ~/src/arkeas93.
+import os, json, re, shutil, tempfile, zipfile, math
+import FreeCAD as App
+import Part
+from FreeCAD import Vector as V
+
+
+def repo_dir():
+    env = os.environ.get('ARKEAS93')
+    if env and os.path.isdir(env):
+        return env
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        if os.path.isfile(os.path.join(here, '..', 'motyli-podnoz.js')):
+            return os.path.abspath(os.path.join(here, '..'))
+    except NameError:
+        pass
+    return os.path.expanduser('~/src/arkeas93')
+
+
+REPO = repo_dir()
+SRC_STEP = os.path.join(REPO, 'assets', 'motyli-podnoz', 'motyli_podnoz.step')   # původní (nesouměrný) STEP, 33 těles
+OUT_DIR = os.path.join(REPO, 'assets', 'motyli-podnoz')
+FCSTD_DIR = os.path.join(REPO, 'motyli-podnoz')
+
+HUB_HALF, HUB_T, HUB_Z0, HUB_Z1 = 60.0, 6.0, 260.0, 360.0
+PATCH_CENTER = 30.0
+PLATE_T, PLATE_Y0, PLATE_Y1, PLATE_Z0, PLATE_Z1 = 12.0, 2.0, 58.0, 262.0, 356.0
+BOLTS = [(42.0, 282.0), (18.0, 336.0)]          # (|y|, z) úhlopříčně
+TAP_D, CLEAR_D = 8.5, 11.0                      # předvrt M10, průchozí otvor v uzlu
+TOL_VOL = 1.0                                   # mm³ – povolený numerický průnik
+MIN_MARGIN = 3.0                                # mm – otisk konce od kraje dosedací plochy
+
+if not os.path.isfile(SRC_STEP):
+    raise IOError('Nenalezen zdrojový STEP: ' + SRC_STEP)
+
+src = Part.read(SRC_STEP)
+solids = list(src.Solids)
+if len(solids) != 33:
+    raise ValueError('Zdrojový STEP má %d těles, čekám 33' % len(solids))
+
+
+def centre(s):
+    b = s.BoundBox
+    return V((b.XMin + b.XMax) / 2, (b.YMin + b.YMax) / 2, (b.ZMin + b.ZMax) / 2)
+
+
+master = [s for s in solids if centre(s).x > 70 and centre(s).y < -20]
+if len(master) != 8:
+    raise ValueError('Vzorové křídlo +X −Y má %d těles, čekám 8' % len(master))
+panel = max(master, key=lambda s: len(s.Faces))
+top_plate = next(s for s in master if s.BoundBox.ZMin > 715)
+tubes = [s for s in master if s is not panel and s is not top_plate]
+if len(tubes) != 6:
+    raise ValueError('Vzorové křídlo nemá 6 jeklů')
+
+
+def faces_on_x(shape, x, tol=0.05):
+    out = []
+    for f in shape.Faces:
+        b = f.BoundBox
+        if abs(b.XMin - x) < tol and abs(b.XMax - x) < tol:
+            out.append(f)
+    return out
+
+
+root_faces = [f for t in tubes for f in faces_on_x(t, HUB_HALF)]
+if not root_faces:
+    raise ValueError('Žádný jekl vzorového křídla nedosedá na čelo uzlu x = 60')
+ry0 = min(f.BoundBox.YMin for f in root_faces); ry1 = max(f.BoundBox.YMax for f in root_faces)
+SHIFT_Y = -PATCH_CENTER - (ry0 + ry1) / 2.0
+print('SHIFT_Y', SHIFT_Y)
+
+WING_PARTS = [('vypln_5mm', panel)] + [('jekl_40x40x3_%d' % (i + 1), t) for i, t in enumerate(sorted(tubes, key=lambda s: (round(centre(s).z), round(centre(s).x))))] + [('horni_deska_110x86x8', top_plate)]
+QUADS = [('kridlo_pX_mY', 1, 1), ('kridlo_pX_pY', 1, -1), ('kridlo_mX_pY', -1, -1), ('kridlo_mX_mY', -1, 1)]
+
+
+def place(shape, sx, sy):
+    s = shape.copy()
+    if sy < 0:
+        s = s.mirror(V(0, 0, 0), V(0, 1, 0))
+    if sx < 0:
+        s = s.mirror(V(0, 0, 0), V(1, 0, 0))
+    return s
+
+
+def hole_x(x0, length, y, z, d):
+    return Part.makeCylinder(d / 2.0, length, V(x0, y, z), V(1, 0, 0))
+
+
+def hub_parts(spoj):
+    h, t, zt = HUB_HALF, HUB_T, HUB_Z1 - HUB_T
+    hgt = zt - HUB_Z0
+    px = Part.makeBox(t, 2 * h, hgt, V(h - t, -h, HUB_Z0))
+    if spoj == 'srouby':
+        for sy in (1, -1):
+            for (by, bz) in BOLTS:
+                px = px.cut(hole_x(h - t - 1, t + 2, sy * -by, bz, CLEAR_D))
+    mx = px.mirror(V(0, 0, 0), V(1, 0, 0))
+    py = Part.makeBox(2 * (h - t), t, hgt, V(-h + t, h - t, HUB_Z0))
+    my = py.mirror(V(0, 0, 0), V(0, 1, 0))
+    lid = Part.makeBox(2 * h, 2 * h, t, V(-h, -h, zt))
+    return [('uzel_bocnice_pX_pl6', px), ('uzel_bocnice_mX_pl6', mx), ('uzel_bocnice_pY_pl6', py),
+            ('uzel_bocnice_mY_pl6', my), ('uzel_viko_pl6', lid)]
+
+
+def end_plate():
+    p = Part.makeBox(PLATE_T, PLATE_Y1 - PLATE_Y0, PLATE_Z1 - PLATE_Z0, V(HUB_HALF, -PLATE_Y1, PLATE_Z0))
+    for (by, bz) in BOLTS:
+        p = p.cut(hole_x(HUB_HALF - 1, PLATE_T + 2, -by, bz, TAP_D))
+    return p
+
+
+def build(spoj):
+    dx = PLATE_T if spoj == 'srouby' else 0.0
+    parts = [(n, s, 'uzel') for n, s in hub_parts(spoj)]
+    for qname, sx, sy in QUADS:
+        for n, s in WING_PARTS:
+            m = s.copy(); m.translate(V(dx, SHIFT_Y, 0))
+            parts.append((qname + '_' + n, place(m, sx, sy), qname))
+        if spoj == 'srouby':
+            parts.append((qname + '_celni_deska_12x56x94_2xM10', place(end_plate(), sx, sy), qname))
+    return parts
+
+
+def check(spoj, parts):
+    rep = {'spoj': spoj, 'teles': len(parts), 'nevalidni': [], 'pruniky': [], 'otisk': {}}
+    for n, s, g in parts:
+        if s.isNull() or not s.isValid() or len(s.Solids) != 1 or s.Volume <= 0:
+            rep['nevalidni'].append(n)
+    # průniky mezi skupinami (křídla navzájem, křídlo × uzel); dotyk = 0 mm³
+    for i in range(len(parts)):
+        for j in range(i + 1, len(parts)):
+            ni, si, gi = parts[i]; nj, sj, gj = parts[j]
+            if gi == gj:
+                continue
+            bi, bj = si.BoundBox, sj.BoundBox
+            if not bi.intersect(bj):
+                continue
+            v = si.common(sj).Volume
+            if v > TOL_VOL:
+                rep['pruniky'].append([ni, nj, round(v, 3)])
+    # otisk konců jeklů vzorového křídla na dosedací ploše
+    xf = HUB_HALF + (PLATE_T if spoj == 'srouby' else 0.0)
+    master_tubes = [s for n, s, g in parts if g == 'kridlo_pX_mY' and 'jekl' in n]
+    fs = [f for t in master_tubes for f in faces_on_x(t, xf)]
+    y0 = min(f.BoundBox.YMin for f in fs); y1 = max(f.BoundBox.YMax for f in fs)
+    z0 = min(f.BoundBox.ZMin for f in fs); z1 = max(f.BoundBox.ZMax for f in fs)
+    face = (-PLATE_Y1, -PLATE_Y0, PLATE_Z0, PLATE_Z1) if spoj == 'srouby' else (-HUB_HALF, HUB_HALF, HUB_Z0, HUB_Z1 - 0.0)
+    margin = min(y0 - face[0], face[1] - y1, z0 - face[2], face[3] - z1)
+    rep['otisk'] = {'y': [round(y0, 2), round(y1, 2)], 'z': [round(z0, 2), round(z1, 2)], 'okraj_mm': round(margin, 2),
+                    'mezera_mezi_kridly_mm': round(-2 * y1, 2)}
+    comp = Part.makeCompound([s for n, s, g in parts])
+    b = comp.BoundBox
+    rep['obalka_mm'] = [round(b.XLength, 2), round(b.YLength, 2), round(b.ZLength, 2)]
+    rep['z_min'] = round(b.ZMin, 3)
+    rep['objem_mm3'] = round(comp.Volume, 1)
+    rep['hmotnost_kg'] = round(comp.Volume * 7.85e-6, 2)
+    # souměrnost: obálka sestavy musí být souměrná podle XZ i YZ (díly jsou zrcadlené)
+    rep['soumerna_obalka'] = abs(b.XMin + b.XMax) < 0.05 and abs(b.YMin + b.YMax) < 0.05
+    rep['ok'] = not rep['nevalidni'] and not rep['pruniky'] and margin >= MIN_MARGIN and rep['soumerna_obalka']
+    return rep
+
+
+def export(spoj, parts, rep):
+    doc = App.newDocument('MotyliPodnoz_' + spoj)
+    objs = []
+    for n, s, g in parts:
+        o = doc.addObject('Part::Feature', re.sub(r'[^A-Za-z0-9_]', '_', n))
+        o.Label = n; o.Shape = s; objs.append(o)
+    doc.recompute()
+    fc = os.path.join(FCSTD_DIR, 'motyli_podnoz_%s.FCStd' % spoj)
+    doc.saveAs(fc)
+    import Import
+    step = os.path.join(OUT_DIR, 'motyli_podnoz_%s.step' % spoj)
+    Import.export(objs, step)
+    back = Part.read(step)
+    rep['step_teles_po_nacteni'] = len(back.Solids)
+    rep['step_validni'] = all(s.isValid() for s in back.Solids)
+    tmp = tempfile.mkdtemp(prefix='motyli_%s_' % spoj)
+    try:
+        zp = os.path.join(OUT_DIR, 'step_dily_%s.zip' % spoj)
+        with zipfile.ZipFile(zp, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for k, o in enumerate(objs, 1):
+                p = os.path.join(tmp, '%02d_%s.step' % (k, o.Label))
+                Import.export([o], p); zf.write(p, os.path.basename(p))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    App.closeDocument(doc.Name)
+    rep['soubory'] = [os.path.relpath(fc, REPO), os.path.relpath(step, REPO), 'assets/motyli-podnoz/step_dily_%s.zip' % spoj]
+
+
+report = {'shift_y_mm': round(SHIFT_Y, 3), 'zdroj': os.path.relpath(SRC_STEP, REPO), 'varianty': {}}
+for spoj in ('svar', 'srouby'):
+    parts = build(spoj)
+    rep = check(spoj, parts)
+    print(spoj, json.dumps(rep, ensure_ascii=False))
+    if rep['ok']:
+        export(spoj, parts, rep)
+    report['varianty'][spoj] = rep
+with open(os.path.join(OUT_DIR, 'kontrola_symetricka.json'), 'w', encoding='utf-8') as fh:
+    json.dump(report, fh, ensure_ascii=False, indent=2)
+print('HOTOVO', 'OK' if all(r['ok'] for r in report['varianty'].values()) else 'CHYBY – viz kontrola_symetricka.json')
