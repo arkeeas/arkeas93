@@ -17,6 +17,46 @@
     return { verts, faces };
   }
 
+  function ashTexture(THREE, renderer) {
+    const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512;
+    const ctx = canvas.getContext('2d'), base = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    base.addColorStop(0, '#BFA77D'); base.addColorStop(0.24, '#E1D0AA'); base.addColorStop(0.58, '#CFB98D'); base.addColorStop(1, '#B59B6E');
+    ctx.fillStyle = base; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let seed = 1618;
+    const rand = () => { seed = (1664525 * seed + 1013904223) >>> 0; return seed / 4294967296; };
+    for (let i = 0; i < 260; i++) {
+      const y = rand() * 512, amp = 1 + rand() * 7, phase = rand() * 6.28, freq = 0.003 + rand() * 0.014;
+      ctx.beginPath();
+      for (let x = 0; x <= 1024; x += 8) {
+        const yy = y + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 0.29 + phase * 1.4) * amp * 0.75;
+        if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      const dark = rand() > 0.47;
+      ctx.strokeStyle = dark ? `rgba(75,57,34,${0.07 + rand() * 0.18})` : `rgba(255,246,221,${0.09 + rand() * 0.2})`;
+      ctx.lineWidth = 0.6 + rand() * 3.2; ctx.stroke();
+    }
+    for (let i = 0; i < 18; i++) {
+      const x = rand() * 1024, y = rand() * 512, rx = 12 + rand() * 34, ry = 3 + rand() * 8;
+      ctx.save(); ctx.translate(x, y); ctx.scale(1, ry / rx); ctx.beginPath(); ctx.ellipse(0, 0, rx, rx, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(80,61,38,0.2)'; ctx.lineWidth = 1.3; ctx.stroke(); ctx.restore();
+    }
+    const texture = new THREE.CanvasTexture(canvas); texture.encoding = THREE.sRGBEncoding;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    return texture;
+  }
+
+  function mapDeskUv(THREE, geometry) {
+    const positions = geometry.attributes.position;
+    geometry.computeBoundingBox();
+    const bounds = geometry.boundingBox, width = Math.max(1, bounds.max.x - bounds.min.x), depth = Math.max(1, bounds.max.y - bounds.min.y);
+    const uv = new Float32Array(positions.count * 2);
+    for (let i = 0; i < positions.count; i++) {
+      uv[i * 2] = (positions.getX(i) - bounds.min.x) / width;
+      uv[i * 2 + 1] = (positions.getY(i) - bounds.min.y) / depth;
+    }
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  }
+
   /* obecné plochy (nekonvexní, s otvory) -> trojúhelníky přes ShapeUtils v rovině plochy */
   function triangles(solid) {
     const pos = [], P = solid.verts;
@@ -63,7 +103,7 @@
         cv.width = Math.max(10, r.width * dpr); cv.height = Math.max(10, r.height * dpr);
         const x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height);
         const A = state.A, bodies = K.previewBodies(A);
-        if (state.showDesk) bodies.push(Object.assign(deskSolid(K.deskOutline(A.cfg.shape, A.DL, A.DW), A.build.dims.Hf, A.cfg.H), { color: A.build.glassTop ? '#CFE8EE' : '#C79B6B', alpha: A.build.glassTop ? 0.3 : state.see ? 0.3 : 1 }));
+        if (state.showDesk) bodies.push(Object.assign(deskSolid(K.deskOutline(A.cfg.shape, A.DL, A.DW), A.build.dims.Hf, A.cfg.H), { color: A.build.glassTop ? '#CFE8EE' : '#D5BD91', alpha: A.build.glassTop ? 0.3 : state.see ? 0.3 : 1 }));
         const F = fig(); if (F) F.bodies.forEach((b) => bodies.push(b));
         const a = angles[state.view] || angles.iso;
         K.paint(x, cv.width, cv.height, bodies, { az: a[0], el: a[1], pad: 0.1 });
@@ -82,6 +122,7 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
+    const deskTexture = ashTexture(THREE, renderer);
     host.appendChild(renderer.domElement);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.touchAction = 'none';
@@ -157,13 +198,14 @@
         const outline = K.deskOutline(A.cfg.shape, A.DL, A.DW);
         const shape = new THREE.Shape(outline.map((p) => new THREE.Vector2(p[0], p[1])));
         const geo = new THREE.ExtrudeGeometry(shape, { depth: A.cfg.td, bevelEnabled: false, curveSegments: 4 });
+        if (!A.build.glassTop) mapDeskUv(THREE, geo);
         const glass = !!A.build.glassTop;   // čiré sklo (Infinity Cube)
         const wood = glass ? new THREE.MeshStandardMaterial({ color: '#CFE8EE', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, depthWrite: false })
-          : new THREE.MeshStandardMaterial({ color: '#C39566', roughness: 0.78, metalness: 0, transparent: state.see, opacity: state.see ? 0.32 : 1, depthWrite: !state.see });
+          : new THREE.MeshStandardMaterial({ map: deskTexture, color: '#FFFFFF', roughness: 0.66, metalness: 0, transparent: state.see, opacity: state.see ? 0.32 : 1, depthWrite: !state.see });
         const desk = new THREE.Mesh(geo, wood);
         desk.position.z = A.build.dims.Hf; desk.castShadow = !state.see; desk.receiveShadow = true;
         group.add(desk);
-        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: glass ? '#7FA9B3' : '#7A5634', transparent: true, opacity: glass ? 0.9 : state.see ? 0.9 : 0.35 }));
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: glass ? '#7FA9B3' : '#816B48', transparent: true, opacity: glass ? 0.9 : state.see ? 0.9 : 0.35 }));
         edges.position.z = A.build.dims.Hf; group.add(edges);
       }
       scene.add(group);

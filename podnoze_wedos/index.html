@@ -152,7 +152,7 @@
           <select id="boardMaterial">
             <option value="oak">Dub</option>
             <option value="ash">Jasan</option>
-            <option value="epoxy">Dub + grafitový epoxid</option>
+            <option value="epoxy">Dub + modrozelený říční epoxid</option>
           </select>
         </label>
         <label class="check" for="see"><input id="see" type="checkbox"> <span id="seeLab">Průhledná deska</span></label>
@@ -299,14 +299,14 @@
 <script src="core.js"></script>
 <script src="vyvoj.js"></script>
 <script src="figure.js"></script>
-<script src="viewer.js"></script>
+<script src="viewer.js?v=20261012a"></script>
 <script>
 (function () {
   const K = Vyvoj, $ = (id) => document.getElementById(id);
-  let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null, boardMaterial: 'epoxy' };
+  let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null, boardMaterial: 'ash' };
   try {
-    const savedBoard = localStorage.getItem('podnoz-board-material-wip');
-    ui.boardMaterial = ['oak', 'ash', 'epoxy'].includes(savedBoard) ? savedBoard : 'epoxy';
+    const savedBoard = localStorage.getItem('podnoz-board-material-v2');
+    ui.boardMaterial = ['oak', 'ash', 'epoxy'].includes(savedBoard) ? savedBoard : 'ash';
   } catch (e) {}
   try { cfg = K.normalize(JSON.parse(localStorage.getItem('podnoz-cfg-wip') || '{}')); } catch (e) { cfg = K.normalize({}); }
     const viewer = Viewer3D.create($('viz'));
@@ -586,7 +586,7 @@
   $('see').addEventListener('change', (e) => { ui.see = e.target.checked; render(); });
   $('boardMaterial').addEventListener('change', (e) => {
     ui.boardMaterial = e.target.value;
-    try { localStorage.setItem('podnoz-board-material-wip', ui.boardMaterial); } catch (e) {}
+    try { localStorage.setItem('podnoz-board-material-v2', ui.boardMaterial); } catch (e) {}
     render();
   });
   $('showDesk').addEventListener('change', (e) => { ui.showDesk = e.target.checked; render(); });
