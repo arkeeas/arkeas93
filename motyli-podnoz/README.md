@@ -14,7 +14,9 @@ Složka obsahuje parametrický nativní FreeCAD model, jeho generátor a přesno
 
 ## Jak změnit rozměry
 
-Otevři `motyli_podnoz_parametricky.FCStd` a uprav v tabulce **Parametry** buňky `B2` (délka) a `B4` (výška). Ulož a zavři dokument, potom spusť `vytvor_parametricky_model.FCMacro`. Generátor načte hodnoty z tabulky, přepočítá geometrii a přepíše FCStd. Výsledná hloubka je odvozena od konstrukce; je uvedena v `B11`.
+V konfigurátoru otevři záložku **Umělecké**, vyber **Motýlí podnož** a v kroku 2 uprav délku nebo výšku. Hloubka se dopočítává z délky, aby půdorysné úhly křídel zůstaly stejné. Webový 3D náhled upraví polohy a délky dílů, zachovává příčný profil jeklů a tloušťku výplně. Dosednutí spojů po změně rozměrů ale není výrobně ověřené.
+
+V nativním FreeCAD souboru lze také upravit tabulku **Parametry**, buňky `B2` (délka) a `B4` (výška). Ulož a zavři dokument, potom spusť `vytvor_parametricky_model.FCMacro`. Generátor načte hodnoty z tabulky, přepočítá geometrii a přepíše FCStd. Výsledná hloubka je odvozena od konstrukce; je uvedena v `B11`.
 
 ![Náhled parametrické rekonstrukce](/home/arkeas/src/arkeas93/motyli-podnoz/nahled_parametricky.png)
 
