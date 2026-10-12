@@ -152,6 +152,9 @@
       <div class="stage-side">
         <div class="chip" id="ohChip"></div>
         <label class="check" for="see"><input id="see" type="checkbox"> Průhledná deska</label>
+        <label class="check" for="boardMaterial">Vzhled desky
+          <select id="boardMaterial"><option value="oak">Dub</option><option value="ash">Jasan</option><option value="epoxy">Dub s modrozeleným říčním epoxidem</option></select>
+        </label>
         <label class="check" for="showDesk"><input id="showDesk" type="checkbox" checked> Zobrazit desku</label>
         <label class="check" for="person">Postava
           <select id="person">
@@ -273,11 +276,11 @@
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="viewer.js?v=20261012a"></script>
+<script src="viewer.js?v=20261012b"></script>
 <script>
 (function () {
   const K = Podnoze, $ = (id) => document.getElementById(id);
-  let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null };
+  let rates = K.DEFAULT_RATES, cfg, A, ui = { view: 'iso', showDesk: true, see: false, person: null, boardMaterial: localStorage.getItem('skovo-board-material-v1') || 'ash' };
   try { cfg = K.normalize(JSON.parse(localStorage.getItem('podnoz-cfg') || '{}')); } catch (e) { cfg = K.normalize({}); }
   const viewer = Viewer3D.create($('viz'));
   if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
@@ -388,7 +391,7 @@
     $('qty').textContent = cfg.qty + ' ks';
 
     document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
-    $('see').checked = ui.see; $('showDesk').checked = ui.showDesk;
+    $('see').checked = ui.see; $('showDesk').checked = ui.showDesk; $('boardMaterial').value = ui.boardMaterial;
     $('person').value = ui.person ? ui.person.kind + '-' + ui.person.pose : '';
     $('pHwrap').hidden = !ui.person;
     const pc = $('personChip');
@@ -407,7 +410,7 @@
           + ' Pro tuto postavu je vhodná výška stolu k sezení asi ' + K.nf(Math.round(I.ideal / 10) * 10) + ' mm.';
       }
     }
-    viewer.update(A, { showDesk: ui.showDesk, see: ui.see, person: ui.person });
+    viewer.update(A, { showDesk: ui.showDesk, see: ui.see, person: ui.person, boardMaterial: ui.boardMaterial });
   }
 
   ['L', 'W', 'H'].forEach((k) => {
@@ -422,6 +425,7 @@
   $('dec').addEventListener('click', () => set({ qty: cfg.qty - 1 }));
   $('see').addEventListener('change', (e) => { ui.see = e.target.checked; render(); });
   $('showDesk').addEventListener('change', (e) => { ui.showDesk = e.target.checked; render(); });
+  $('boardMaterial').addEventListener('change', (e) => { ui.boardMaterial = e.target.value; try { localStorage.setItem('skovo-board-material-v1', ui.boardMaterial); } catch (err) {} render(); });
   $('person').addEventListener('change', (e) => {
     const v = e.target.value;
     if (!v) ui.person = null;
