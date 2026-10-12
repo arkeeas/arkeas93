@@ -10,7 +10,7 @@
   };
   if (!V.MODELS.some((m) => m.id === MODEL.id)) V.MODELS.push(MODEL);
   const baseNormalize = V.normalize, baseBuild = V.build, baseAnalyze = V.analyze, baseAudit = V.audit, baseDescribe = V.describe;
-  const RANGE = { L: [1400, 1650], H: [680, 800] };
+  const RANGE = { L: [1400, 1600], H: [680, 800] };
   const SPREAD = { fixedL: 193.72, spanL: 1338.81, fixedW: 172.53, spanW: 669.50 };
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const add = (a, b) => a.map((x, i) => x + b[i]);
@@ -168,7 +168,7 @@
 
   Object.assign(V, {
     normalize, build, analyze, audit, describe,
-    MOTYLI_LIMITS: { L: { min: RANGE.L[0], max: RANGE.L[1], step: 1 }, W: { min: 776, max: 901, step: 1 }, H: { min: RANGE.H[0], max: RANGE.H[1], step: 1 } },
+    MOTYLI_LIMITS: { L: { min: RANGE.L[0], max: RANGE.L[1], step: 1 }, W: { min: 776, max: 876, step: 1 }, H: { min: RANGE.H[0], max: RANGE.H[1], step: 1 } },
     motyliBase: { normalize: baseNormalize, build: baseBuild, analyze: baseAnalyze, audit: baseAudit }
   });
 })(typeof window !== 'undefined' ? window : globalThis);
