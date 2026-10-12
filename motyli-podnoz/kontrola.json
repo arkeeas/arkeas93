@@ -89,8 +89,8 @@
   "konfigurator_umělecké": {
     "ovladani": "aktivní vstupy délky a výšky; hloubka se dopočítává z délky",
     "rozsah_mm": {
-      "delka": [1400, 1650],
-      "hloubka_odvozena": [776, 901],
+      "delka": [1400, 1600],
+      "hloubka_odvozena": [776, 876],
       "vyska": [680, 800]
     },
     "zkouska_nahledu_1600x780": {
