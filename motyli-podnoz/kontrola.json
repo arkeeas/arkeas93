@@ -86,11 +86,27 @@
     "horni_deska": "110x86x8 mm; 4x pr.9 mm",
     "stredovy_uzel": "120x120x6 mm"
   },
+  "konfigurator_umělecké": {
+    "ovladani": "aktivní vstupy délky a výšky; hloubka se dopočítává z délky",
+    "rozsah_mm": {
+      "delka": [1400, 1650],
+      "hloubka_odvozena": [776, 901],
+      "vyska": [680, 800]
+    },
+    "zkouska_nahledu_1600x780": {
+      "vstupy": [1600, 780],
+      "obalka_mm": [1600.05, 875.69, 779.51],
+      "telesa": 33,
+      "pricny_profil_jeklu_zachovan": true,
+      "kontakty_spoju_overeny": false
+    }
+  },
   "omezeni": [
     "Hloubka se odvozuje od společné rozteče, aby zůstaly půdorysné úhly křídel.",
     "Rozsah vstupů: délka 1400–1650 mm a výška 680–800 mm.",
     "Kontura výplně se transformuje v její rovině; její dosednutí v jiných rozměrech nebylo ověřeno a výrobní výkres není k dispozici.",
     "Parametrický výsledek tvoří generované B-rep tělesa; změna rozměru vyžaduje opětovné spuštění makra, nejde o historii plně editovatelných prvků.",
+    "Konfigurátor aktualizuje vizualizační síť při změně délky/výšky; dosednutí dílů mimo nominální variantu se nepovažuje za výrobně ověřené.",
     "Neověřena pevnost, únosnost, svarové spoje, materiál ani výrobní tolerance."
   ]
 }

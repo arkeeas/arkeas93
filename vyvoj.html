@@ -189,7 +189,7 @@
         <h2><small>Krok 1</small>Tvar podnože</h2>
         <div class="grid g4" id="models"></div>
         <p class="note" id="modelNote" style="margin:10px 0 0"></p>
-        <div class="box" id="motWarning" hidden>Jde o vizualizační síť z dodaného STEP. Rozměry, cena a nosnost nejsou upravitelné ani ověřené; model není výrobní podklad.</div>
+        <div class="box" id="motWarning" hidden>Rozměry lze upravit v kroku 2. Jde o vizualizační náhled; cena, nosnost a výrobní spoje nejsou ověřené.</div>
         <h3 class="subh" id="laysHead">Rozmístění noh</h3>
         <div class="grid g2" id="lays"></div>
         <h3 class="subh" id="jointsHead">Spojení noh</h3>
@@ -294,7 +294,7 @@
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
 <script src="motyli-podnoz-mesh.js?v=20261011b"></script>
-<script src="motyli-podnoz.js?v=20261011b"></script>
+<script src="motyli-podnoz.js?v=20261012a"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -509,13 +509,14 @@
     A = K.analyze(cfg, rates);
     const M = K.MODELS.find((m) => m.id === 'MOT');
     $('mName').textContent = M.lab;
-    $('mSub').textContent = 'STEP · ' + K.nf(1532.526, 1) + ' × ' + K.nf(842.028, 1) + ' × 728 mm';
+    $('mSub').textContent = K.nf(cfg.L) + ' × ' + K.nf(cfg.W) + ' × ' + K.nf(cfg.H) + ' mm';
     $('ohChip').hidden = true;
     $('see').parentElement.hidden = true;
     $('showDesk').parentElement.hidden = true;
     $('person').parentElement.hidden = true;
     $('modelNote').textContent = M.desc + ' · ' + M.note;
     $('motWarning').hidden = false;
+    $('motWarning').textContent = M.note;
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => {
       let back = cfg;
       try { back = JSON.parse(localStorage.getItem('podnoz-before-mot-wip') || 'null') || K.motyliBase.normalize({ model: id }); ui = JSON.parse(localStorage.getItem('ui-before-mot-wip') || 'null') || ui; localStorage.removeItem('podnoz-before-mot-wip'); localStorage.removeItem('ui-before-mot-wip'); } catch (e) {}
@@ -524,15 +525,22 @@
     $('models').hidden = false;
     ['laysHead', 'lays', 'jointsHead', 'joints', 'topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
     document.querySelectorAll('.panel .steps > .step').forEach((x, i) => { if (i > 1) x.hidden = true; });
-    $('step2Title').textContent = 'Rozměry zdrojového STEP';
-    $('frameNote').textContent = 'Zobrazený model zachovává geometrii dodaného STEP jako náhledovou síť. Ovládání rozměrů bude dostupné po parametrickém překreslení.';
-    [['L', 1533], ['W', 842], ['H', 728]].forEach(([k, value]) => {
+    $('step2Title').textContent = 'Rozměry podnože';
+    $('frameNote').textContent = 'Délku a výšku lze měnit. Hloubka se dopočítá podle rozteče křídel. Průřezy jeklů zůstávají 40×40×3 mm; výrobní dosednutí při změně rozměrů není ověřené.';
+    const limits = K.MOTYLI_LIMITS;
+    [['L', cfg.L, limits.L], ['H', cfg.H, limits.H]].forEach(([k, value, limit]) => {
       const range = $(k), num = $(k + 'n');
-      range.min = range.max = String(value); range.step = '1';
-      range.value = value; num.value = value;
-      range.disabled = num.disabled = true;
-      range.title = num.title = 'Pevný rozměr podle zdrojového STEP';
+      range.min = num.min = String(limit.min); range.max = num.max = String(limit.max);
+      range.step = num.step = String(limit.step);
+      range.value = num.value = value;
+      range.disabled = num.disabled = false;
+      range.title = num.title = 'Rozsah ' + limit.min + '–' + limit.max + ' mm';
     });
+    const wRange = $('W'), wNum = $('Wn');
+    wRange.min = wNum.min = String(cfg.W); wRange.max = wNum.max = String(cfg.W);
+    wRange.step = wNum.step = '1'; wRange.value = wNum.value = cfg.W;
+    wRange.disabled = wNum.disabled = true;
+    wRange.title = wNum.title = 'Hloubka se dopočítá z délky, aby zůstaly zachované půdorysné úhly křídel';
     $('wField').hidden = false;
     document.querySelector('.buy').hidden = true;
     document.querySelector('.foot').hidden = true;
