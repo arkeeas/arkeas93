@@ -1,78 +1,242 @@
 {
-  "shift_y_mm": -16.771,
   "zdroj": "assets/motyli-podnoz/motyli_podnoz.step",
-  "varianty": {
-    "svar": {
-      "spoj": "svar",
-      "teles": 37,
-      "nevalidni": [],
-      "pruniky": [],
-      "otisk": {
-        "y": [
-          -52.36,
-          -7.64
-        ],
-        "z": [
-          268.77,
-          344.67
-        ],
-        "okraj_mm": 7.64,
-        "mezera_mezi_kridly_mm": 15.28
+  "velikosti": {
+    "S": {
+      "k": 0.81729,
+      "shift_y_mm": -16.771,
+      "vypln": {
+        "mustek_min_mm": 7.36,
+        "okraj_min_mm": 8.0,
+        "oriznute_otvory": 36
       },
-      "obalka_mm": [
-        1532.52,
-        821.9,
-        728.0
-      ],
-      "z_min": 0.0,
-      "objem_mm3": 6288967.8,
-      "hmotnost_kg": 49.37,
-      "soumerna_obalka": true,
-      "ok": true,
-      "step_teles_po_nacteni": 37,
-      "step_validni": true,
-      "soubory": [
-        "motyli-podnoz/motyli_podnoz_svar.FCStd",
-        "assets/motyli-podnoz/motyli_podnoz_svar.step",
-        "assets/motyli-podnoz/step_dily_svar.zip"
-      ],
-      "poznamka_z": "Ověřeno optimalBoundingBox() ve FreeCADu 1.1.1: spodní jekly ZMin 0,0 / ZMax 300,0; hodnota −4,014 byla nafouknutý BoundBox OCC."
+      "varianty": {
+        "svar": {
+          "spoj": "svar",
+          "teles": 37,
+          "nevalidni": [],
+          "pruniky": [],
+          "otisk": {
+            "y": [
+              -52.36,
+              -7.64
+            ],
+            "z": [
+              262.09,
+              348.18
+            ],
+            "okraj_mm": 7.64,
+            "mezera_mezi_kridly_mm": 15.28
+          },
+          "obalka_mm": [
+            1300.0,
+            705.64,
+            728.0
+          ],
+          "z_min": -0.0,
+          "objem_mm3": 5573239.1,
+          "hmotnost_kg": 43.75,
+          "soumerna_obalka": true,
+          "ok": true,
+          "step_teles_po_nacteni": 37,
+          "step_validni": true,
+          "soubory": [
+            "assets/motyli-podnoz/motyli_podnoz_S_svar.step",
+            "assets/motyli-podnoz/step_dily_S_svar.zip"
+          ]
+        },
+        "srouby": {
+          "spoj": "srouby",
+          "teles": 41,
+          "nevalidni": [],
+          "pruniky": [],
+          "otisk": {
+            "y": [
+              -52.36,
+              -7.64
+            ],
+            "z": [
+              262.09,
+              348.18
+            ],
+            "okraj_mm": 5.64,
+            "mezera_mezi_kridly_mm": 15.28
+          },
+          "obalka_mm": [
+            1324.0,
+            705.64,
+            728.0
+          ],
+          "z_min": -0.0,
+          "objem_mm3": 5842781.9,
+          "hmotnost_kg": 45.87,
+          "soumerna_obalka": true,
+          "ok": true,
+          "step_teles_po_nacteni": 41,
+          "step_validni": true,
+          "soubory": [
+            "assets/motyli-podnoz/motyli_podnoz_S_srouby.step",
+            "assets/motyli-podnoz/step_dily_S_srouby.zip"
+          ]
+        }
+      }
     },
-    "srouby": {
-      "spoj": "srouby",
-      "teles": 41,
-      "nevalidni": [],
-      "pruniky": [],
-      "otisk": {
-        "y": [
-          -52.36,
-          -7.64
-        ],
-        "z": [
-          268.77,
-          344.67
-        ],
-        "okraj_mm": 5.64,
-        "mezera_mezi_kridly_mm": 15.28
+    "M": {
+      "k": 1.0,
+      "shift_y_mm": -16.771,
+      "vypln": {
+        "mustek_min_mm": 9.0,
+        "okraj_min_mm": 8.0,
+        "oriznute_otvory": 1
       },
-      "obalka_mm": [
-        1556.52,
-        821.9,
-        728.0
-      ],
-      "z_min": 0.0,
-      "objem_mm3": 6531630.2,
-      "hmotnost_kg": 51.27,
-      "soumerna_obalka": true,
-      "ok": true,
-      "step_teles_po_nacteni": 41,
-      "step_validni": true,
-      "soubory": [
-        "motyli-podnoz/motyli_podnoz_srouby.FCStd",
-        "assets/motyli-podnoz/motyli_podnoz_srouby.step",
-        "assets/motyli-podnoz/step_dily_srouby.zip"
-      ],
-      "poznamka_z": "Ověřeno optimalBoundingBox() ve FreeCADu 1.1.1: spodní jekly ZMin 0,0 / ZMax 300,0; hodnota −4,014 byla nafouknutý BoundBox OCC."
+      "varianty": {
+        "svar": {
+          "spoj": "svar",
+          "teles": 37,
+          "nevalidni": [],
+          "pruniky": [],
+          "otisk": {
+            "y": [
+              -52.36,
+              -7.64
+            ],
+            "z": [
+              268.77,
+              344.67
+            ],
+            "okraj_mm": 7.64,
+            "mezera_mezi_kridly_mm": 15.28
+          },
+          "obalka_mm": [
+            1532.52,
+            821.9,
+            728.0
+          ],
+          "z_min": -0.0,
+          "objem_mm3": 6318148.9,
+          "hmotnost_kg": 49.6,
+          "soumerna_obalka": true,
+          "ok": true,
+          "step_teles_po_nacteni": 37,
+          "step_validni": true,
+          "soubory": [
+            "assets/motyli-podnoz/motyli_podnoz_M_svar.step",
+            "assets/motyli-podnoz/step_dily_M_svar.zip"
+          ]
+        },
+        "srouby": {
+          "spoj": "srouby",
+          "teles": 41,
+          "nevalidni": [],
+          "pruniky": [],
+          "otisk": {
+            "y": [
+              -52.36,
+              -7.64
+            ],
+            "z": [
+              268.77,
+              344.67
+            ],
+            "okraj_mm": 5.64,
+            "mezera_mezi_kridly_mm": 15.28
+          },
+          "obalka_mm": [
+            1556.52,
+            821.9,
+            728.0
+          ],
+          "z_min": -0.0,
+          "objem_mm3": 6587691.8,
+          "hmotnost_kg": 51.71,
+          "soumerna_obalka": true,
+          "ok": true,
+          "step_teles_po_nacteni": 41,
+          "step_validni": true,
+          "soubory": [
+            "assets/motyli-podnoz/motyli_podnoz_M_srouby.step",
+            "assets/motyli-podnoz/step_dily_M_srouby.zip"
+          ]
+        }
+      }
+    },
+    "L": {
+      "k": 1.1316,
+      "shift_y_mm": -16.771,
+      "vypln": {
+        "mustek_min_mm": 9.0,
+        "okraj_min_mm": 8.0,
+        "oriznute_otvory": 0
+      },
+      "varianty": {
+        "svar": {
+          "spoj": "svar",
+          "teles": 37,
+          "nevalidni": [],
+          "pruniky": [],
+          "otisk": {
+            "y": [
+              -52.36,
+              -7.64
+            ],
+            "z": [
+              272.11,
+              342.93
+            ],
+            "okraj_mm": 7.64,
+            "mezera_mezi_kridly_mm": 15.28
+          },
+          "obalka_mm": [
+            1700.0,
+            905.64,
+            728.0
+          ],
+          "z_min": -0.0,
+          "objem_mm3": 6911992.2,
+          "hmotnost_kg": 54.26,
+          "soumerna_obalka": true,
+          "ok": true,
+          "step_teles_po_nacteni": 37,
+          "step_validni": true,
+          "soubory": [
+            "assets/motyli-podnoz/motyli_podnoz_L_svar.step",
+            "assets/motyli-podnoz/step_dily_L_svar.zip"
+          ]
+        },
+        "srouby": {
+          "spoj": "srouby",
+          "teles": 41,
+          "nevalidni": [],
+          "pruniky": [],
+          "otisk": {
+            "y": [
+              -52.36,
+              -7.64
+            ],
+            "z": [
+              272.11,
+              342.93
+            ],
+            "okraj_mm": 5.64,
+            "mezera_mezi_kridly_mm": 15.28
+          },
+          "obalka_mm": [
+            1724.0,
+            905.64,
+            728.0
+          ],
+          "z_min": -0.0,
+          "objem_mm3": 7181535.0,
+          "hmotnost_kg": 56.38,
+          "soumerna_obalka": true,
+          "ok": true,
+          "step_teles_po_nacteni": 41,
+          "step_validni": true,
+          "soubory": [
+            "assets/motyli-podnoz/motyli_podnoz_L_srouby.step",
+            "assets/motyli-podnoz/step_dily_L_srouby.zip"
+          ]
+        }
+      }
     }
   }
 }
