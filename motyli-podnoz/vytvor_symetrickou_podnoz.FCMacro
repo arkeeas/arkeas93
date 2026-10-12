@@ -1,25 +1,29 @@
 # -*- coding: utf-8 -*-
-# Motýlí podnož – souměrná sestava (oprava geometrie z 10/2026).
+# Motýlí podnož – souměrná sestava ve velikostech S / M / L, spoj svar nebo šrouby.
 #
-# Proč: původní STEP měl křídla jen otočená o 180°, ne zrcadlená. Křídla 1 a 4
-# přečnívala konci jeklů 9 mm přes bok uzlu a 5,5 mm pod jeho spodek, křídla 2 a 3
-# zasahovala přes osu čela. Tady se vezme křídlo +X −Y (konce sedí výškově nejlépe),
-# posune se jen v ose Y tak, aby střed otisku jeho konců ležel na y = −30 mm,
-# a zrcadlí se do všech čtyř poloh. Délky a pokosy jeklů se nemění.
+# Oprava 10/2026: původní STEP měl křídla jen otočená o 180°, ne zrcadlená, a konce
+# křídel 1 a 4 přečnívaly přes uzel. Tady se vezme křídlo +X −Y, (pro S a L) se
+# vodorovně přepočítá kolem svého kořene u uzlu, posune se jen v ose Y tak, aby střed
+# otisku jeho konců ležel na y = −30 mm, a zrcadlí se do všech čtyř poloh.
 #
-# Uzel: svařená krabička z plechů 6 mm (2 bočnice 120 × 94, 2 bočnice 108 × 94,
-# víko 120 × 120), dole otevřená – zespodu je přístup ke šroubům.
+# Velikosti: křídlo se mění jen vodorovně (výška 728 mm, průřez jeklu 40×40×3 R6/R3,
+# tloušťka výplně 5 mm a dosednutí na uzel zůstávají). Pokosy jeklů se přepočítají.
+#   S  ~1300 mm (desky 160–180 × 90)   M  1533 mm (200 × 100)   L  ~1700 mm (220–240 × 100–110)
 #
-# Varianty (vytvoří se obě):
-#   svar   – konce jeklů přímo na bočnici uzlu (x = ±60), celá podnož jeden svařenec
-#   srouby – na konce jeklů čelní deska 12 × 56 × 94 se 2 závity M10 (předvrt Ø8,5),
-#            v bočnici uzlu 2× Ø11; šrouby M10 × 16 (8.8) zevnitř uzlu, bez podložky
-#            (16 − 6 bočnice = 10 mm v závitu, šroub nevyčnívá za čelní desku)
+# Uzel: svařená krabička z plechů 6 mm (bočnice 120 × 94 a 108 × 94, víko 120 × 120),
+# dole otevřená – zespodu přístup ke šroubům.
+#   svar   – konce jeklů přímo na bočnici uzlu (x = ±60)
+#   srouby – čelní deska 12 × 56 × 94 se 2 závity M10 (předvrt Ø8,5), v uzlu 2× Ø11;
+#            šrouby M10 × 16 (8.8) zevnitř uzlu bez podložky
 #
-# Spuštění:  freecadcmd vytvor_symetrickou_podnoz.FCMacro
-#            (nebo v GUI Makro → Spustit). Cesta k repu: proměnná ARKEAS93,
-#            jinak složka nad tímto makrem, jinak ~/src/arkeas93.
+# Výstupy (assets/motyli-podnoz/): motyli_podnoz_<S|M|L>_<svar|srouby>.step,
+# step_dily_<S|M|L>_<svar|srouby>.zip, kontrola_symetricka.json a pro web
+# ../../motyli-podnoz-kridla.js (síť vzorového křídla pro každou velikost).
+#
+# Spuštění: freecadcmd / freecad.cmd vytvor_symetrickou_podnoz.FCMacro,
+# nebo v konzoli FreeCADu exec(open(...).read()). Cesta k repu: proměnná ARKEAS93.
 import os, json, re, shutil, tempfile, zipfile, math
+import numpy as np
 import FreeCAD as App
 import Part
 from FreeCAD import Vector as V
@@ -35,29 +39,37 @@ def repo_dir():
             return os.path.abspath(os.path.join(here, '..'))
     except NameError:
         pass
-    return os.path.expanduser('~/src/arkeas93')
+    return '/home/arkeas/src/arkeas93'
 
 
 REPO = repo_dir()
 SRC_STEP = os.path.join(REPO, 'assets', 'motyli-podnoz', 'motyli_podnoz.step')   # původní (nesouměrný) STEP, 33 těles
 OUT_DIR = os.path.join(REPO, 'assets', 'motyli-podnoz')
-FCSTD_DIR = os.path.join(REPO, 'motyli-podnoz')
+JS_OUT = os.path.join(REPO, 'motyli-podnoz-kridla.js')
 
+SIZES = [('S', 1300.0), ('M', None), ('L', 1700.0)]        # délka varianty svar; None = původní křídlo
+SPOJE = ('svar', 'srouby')
 HUB_HALF, HUB_T, HUB_Z0, HUB_Z1 = 60.0, 6.0, 260.0, 360.0
 PATCH_CENTER = 30.0
 PLATE_T, PLATE_Y0, PLATE_Y1, PLATE_Z0, PLATE_Z1 = 12.0, 2.0, 58.0, 262.0, 356.0
 BOLTS = [(42.0, 282.0), (18.0, 336.0)]          # (|y|, z) úhlopříčně
-TAP_D, CLEAR_D = 8.5, 11.0                      # předvrt M10, průchozí otvor v uzlu
-TOL_VOL = 1.0                                   # mm³ – povolený numerický průnik
-MIN_MARGIN = 3.0                                # mm – otisk konce od kraje dosedací plochy
+TAP_D, CLEAR_D = 8.5, 11.0
+TOL_VOL = 1.0
+MIN_MARGIN = 3.0
 
 if not os.path.isfile(SRC_STEP):
     raise IOError('Nenalezen zdrojový STEP: ' + SRC_STEP)
-
-src = Part.read(SRC_STEP)
-solids = list(src.Solids)
+solids = list(Part.read(SRC_STEP).Solids)
 if len(solids) != 33:
     raise ValueError('Zdrojový STEP má %d těles, čekám 33' % len(solids))
+
+
+def unit(v):
+    o = V(v.x, v.y, v.z)
+    if o.Length < 1e-9:
+        raise ValueError('Nulový vektor')
+    o.normalize()
+    return o
 
 
 def centre(s):
@@ -76,22 +88,175 @@ if len(tubes) != 6:
 
 
 def faces_on_x(shape, x, tol=0.05):
-    out = []
-    for f in shape.Faces:
-        b = f.BoundBox
-        if abs(b.XMin - x) < tol and abs(b.XMax - x) < tol:
-            out.append(f)
-    return out
+    return [f for f in shape.Faces if abs(f.BoundBox.XMin - x) < tol and abs(f.BoundBox.XMax - x) < tol]
 
 
-root_faces = [f for t in tubes for f in faces_on_x(t, HUB_HALF)]
-if not root_faces:
-    raise ValueError('Žádný jekl vzorového křídla nedosedá na čelo uzlu x = 60')
-ry0 = min(f.BoundBox.YMin for f in root_faces); ry1 = max(f.BoundBox.YMax for f in root_faces)
-SHIFT_Y = -PATCH_CENTER - (ry0 + ry1) / 2.0
-print('SHIFT_Y', SHIFT_Y)
+# ---- pořadí jeklů v obvodu křídla: 0 a 5 sedí na uzlu, 0 je horní ----
+hub_tubes = sorted([t for t in tubes if faces_on_x(t, HUB_HALF)], key=lambda t: -centre(t).z)
+if len(hub_tubes) != 2:
+    raise ValueError('Na uzel musí dosedat 2 jekly, nalezeno %d' % len(hub_tubes))
+adj = {id(a): [b for b in tubes if b is not a and a.distToShape(b)[0] < 0.05] for a in tubes}
+ring = [hub_tubes[0]]
+prev = hub_tubes[1]                      # první krok vede od dolního jeklu u uzlu pryč
+while len(ring) < 6:
+    nxt = [x for x in adj[id(ring[-1])] if x is not prev]
+    if len(nxt) != 1:
+        raise ValueError('Jekly křídla netvoří jednoduchý obvod')
+    prev = ring[-1]
+    ring.append(nxt[0])
+if ring[5] is not hub_tubes[1]:
+    raise ValueError('Obvod křídla nekončí na dolním jeklu u uzlu')
 
-WING_PARTS = [('vypln_5mm', panel)] + [('jekl_40x40x3_%d' % (i + 1), t) for i, t in enumerate(sorted(tubes, key=lambda s: (round(centre(s).z), round(centre(s).x))))] + [('horni_deska_110x86x8', top_plate)]
+
+def axis_frame(shape):
+    groups = []
+    for face in shape.Faces:
+        if 'Plane' not in str(type(face.Surface)) or face.Area < 200:
+            continue
+        n = unit(face.normalAt(0, 0))
+        for g in groups:
+            if abs(g[0].dot(n)) > 0.999:
+                g[1] += face.Area
+                break
+        else:
+            groups.append([n, face.Area])
+    groups.sort(key=lambda g: -g[1])
+    pairs = [(groups[i][1] + groups[j][1], groups[i][0], groups[j][0]) for i in range(len(groups)) for j in range(i + 1, len(groups)) if abs(groups[i][0].dot(groups[j][0])) < 0.05]
+    pairs.sort(key=lambda p: -p[0])
+    n1, n2 = pairs[0][1], pairs[0][2]
+    axis = unit(n1.cross(n2))
+    pts = np.array([[v.Point.x, v.Point.y, v.Point.z] for v in shape.Vertexes])
+    a1 = pts @ np.array([n1.x, n1.y, n1.z]); a2 = pts @ np.array([n2.x, n2.y, n2.z])
+    cog = shape.CenterOfMass
+    rhs = np.array([(a1.max() + a1.min()) / 2, (a2.max() + a2.min()) / 2, axis.dot(V(cog.x, cog.y, cog.z))])
+    xyz = np.linalg.solve(np.array([[n1.x, n1.y, n1.z], [n2.x, n2.y, n2.z], [axis.x, axis.y, axis.z]]), rhs)
+    return axis, V(*[float(t) for t in xyz])
+
+
+def line_intersection(a, b):
+    u, p0 = a; v, q0 = b
+    t = np.linalg.lstsq(np.column_stack(([u.x, u.y, u.z], [-v.x, -v.y, -v.z])), [q0.x - p0.x, q0.y - p0.y, q0.z - p0.z], rcond=None)[0]
+    pa = p0 + u * float(t[0]); pb = q0 + v * float(t[1])
+    if (pa - pb).Length > 8.0:
+        raise ValueError('Osy sousedních jeklů se míjejí o %.3f mm' % (pa - pb).Length)
+    return (pa + pb) * 0.5
+
+
+FRAMES = [axis_frame(t) for t in ring]
+NODES = [line_intersection(FRAMES[a], FRAMES[b]) for a, b in [(0, 5), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]]
+ROOT = NODES[0]
+
+
+def rounded_profile(c, e1, e2, h, r):
+    def pt(x, y):
+        return c + e1 * x + e2 * y
+    def ln(a, b):
+        return Part.makeLine(pt(*a), pt(*b))
+    def arc(a, b, cc, a0, a1):
+        am = (a0 + a1) / 2
+        return Part.Arc(pt(*a), pt(cc[0] + r * math.cos(am), cc[1] + r * math.sin(am)), pt(*b)).toShape()
+    return Part.Wire([
+        ln((-h + r, -h), (h - r, -h)), arc((h - r, -h), (h, -h + r), (h - r, -h + r), -math.pi / 2, 0),
+        ln((h, -h + r), (h, h - r)), arc((h, h - r), (h - r, h), (h - r, h - r), 0, math.pi / 2),
+        ln((h - r, h), (-h + r, h)), arc((-h + r, h), (-h, h - r), (-h + r, h - r), math.pi / 2, math.pi),
+        ln((-h, h - r), (-h, -h + r)), arc((-h, -h + r), (-h + r, -h), (-h + r, -h + r), math.pi, 3 * math.pi / 2)])
+
+
+def halfspace(point, normal):
+    box = Part.makeBox(5000, 5000, 5000, V(-2500, -2500, -0.000001))
+    box.Placement = App.Placement(point, App.Rotation(V(0, 0, 1), unit(normal)))
+    return box
+
+
+def morph_tube(src, frame, k):
+    """Jekl přepočtený polem (k·x, k·y, z) kolem kořene; průřez přesně 40×40×3 R6/R3."""
+    field = lambda v: V(k * v.x, k * v.y, v.z)
+    src_axis, src_point = frame
+    origin = ROOT + field(src_point - ROOT)
+    axis = unit(field(src_axis))
+    pv = V(0, 0, 1) - src_axis * src_axis.z
+    if pv.Length < 0.1:
+        pv = V(1, 0, 0) - src_axis * src_axis.x
+    pv = unit(pv)
+    normals = []
+    for f in src.Faces:
+        if 'Plane' in str(type(f.Surface)) and f.Area >= 1000:
+            n = f.normalAt(0, 0); n = n - src_axis * n.dot(src_axis)
+            if n.Length > 0.9:
+                normals.append(unit(n))
+    e1o = max(normals, key=lambda n: abs(n.dot(pv))) if normals else pv
+    e1 = field(e1o) - axis * field(e1o).dot(axis)
+    if e1.Length < 0.1:
+        e1 = V(0, 0, 1) - axis * axis.z
+    e1 = unit(e1); e2 = unit(axis.cross(e1))
+    caps = []
+    cs = src.CenterOfMass
+    side = V(cs.x, cs.y, cs.z)
+    for f in src.Faces:
+        if 'Plane' not in str(type(f.Surface)) or f.Area > 2000:
+            continue
+        n = unit(f.normalAt(0, 0))
+        if abs(n.dot(src_axis)) < 0.28:
+            continue
+        c = f.CenterOfMass; cp = V(c.x, c.y, c.z)
+        on_hub = abs(abs(n.x) - 1) < 0.01 and abs(c.x - HUB_HALF) < 0.05
+        point = cp if on_hub else ROOT + field(cp - ROOT)
+        normal = unit(V(n.x / k, n.y / k, n.z))
+        if (side - cp).dot(n) < 0:
+            normal = -normal
+        if not any(abs(normal.dot(on)) > 0.9999 and abs(normal.dot(point - op)) < 0.02 for on, op in caps):
+            caps.append((normal, point))
+    st = [nn.dot(p - origin) / nn.dot(axis) for nn, p in caps if abs(nn.dot(axis)) > 1e-5]
+    lo, hi = min(st), max(st)
+    o = origin + axis * (lo - 100)
+    tube = Part.Face(rounded_profile(o, e1, e2, 20.0, 6.0)).extrude(axis * (hi - lo + 200)).cut(
+        Part.Face(rounded_profile(o, e1, e2, 17.0, 3.0)).extrude(axis * (hi - lo + 200)))
+    for nn, p in caps:
+        tube = tube.common(halfspace(p, nn))
+    tube = tube.removeSplitter()
+    if tube.isNull() or len(tube.Solids) != 1 or not tube.isValid():
+        raise ValueError('Neplatný přepočtený jekl')
+    return tube.Solids[0]
+
+
+pts = np.array([[v.Point.x, v.Point.y, v.Point.z] for v in panel.Vertexes])
+vals, vecs = np.linalg.eigh(np.cov((pts - pts.mean(axis=0)).T))
+_n = vecs[:, int(np.argmin(vals))]
+PANEL_N = unit(V(float(_n[0]), float(_n[1]), 0))
+
+
+def morph_panel(k):
+    n = PANEL_N; t = unit(V(-n.y, n.x, 0)); z = V(0, 0, 1)
+    vs, sc = [n, t, z], [1.0, k, 1.0]
+    A = [[sum(sc[q] * vs[q][i] * vs[q][j] for q in range(3)) for j in range(3)] for i in range(3)]
+    r = [ROOT.x, ROOT.y, ROOT.z]
+    tr = [r[i] - sum(A[i][j] * r[j] for j in range(3)) for i in range(3)]
+    M = App.Matrix(A[0][0], A[0][1], A[0][2], tr[0], A[1][0], A[1][1], A[1][2], tr[1], A[2][0], A[2][1], A[2][2], tr[2], 0, 0, 0, 1)
+    s = panel.transformGeometry(M)
+    if not s.isValid() or len(s.Solids) != 1:
+        raise ValueError('Neplatná přepočtená výplň')
+    return s.Solids[0]
+
+
+def wing(k):
+    """Vzorové křídlo (+X −Y) pro vodorovný faktor k; vrací [(název, tvar)]."""
+    if abs(k - 1) < 1e-9:
+        tubes_k = [t.copy() for t in ring]; panel_k = panel.copy(); plate_k = top_plate.copy()
+    else:
+        tubes_k = [morph_tube(t, f, k) for t, f in zip(ring, FRAMES)]
+        panel_k = morph_panel(k)
+        n2 = NODES[2]; d = V(ROOT.x + k * (n2.x - ROOT.x), ROOT.y + k * (n2.y - ROOT.y), n2.z) - n2
+        plate_k = top_plate.copy(); plate_k.translate(d)
+    return [('vypln_5mm', panel_k)] + [('jekl_40x40x3_%d' % (i + 1), t) for i, t in enumerate(tubes_k)] + [('horni_deska_110x86x8', plate_k)]
+
+
+def shift_y(parts):
+    fs = [f for n, s in parts if n.startswith('jekl') for f in faces_on_x(s, HUB_HALF)]
+    if not fs:
+        raise ValueError('Žádný jekl nedosedá na čelo uzlu')
+    return -PATCH_CENTER - (min(f.BoundBox.YMin for f in fs) + max(f.BoundBox.YMax for f in fs)) / 2.0
+
+
 QUADS = [('kridlo_pX_mY', 1, 1), ('kridlo_pX_pY', 1, -1), ('kridlo_mX_pY', -1, -1), ('kridlo_mX_mY', -1, 1)]
 
 
@@ -110,114 +275,120 @@ def hole_x(x0, length, y, z, d):
 
 def hub_parts(spoj):
     h, t, zt = HUB_HALF, HUB_T, HUB_Z1 - HUB_T
-    hgt = zt - HUB_Z0
-    px = Part.makeBox(t, 2 * h, hgt, V(h - t, -h, HUB_Z0))
+    px = Part.makeBox(t, 2 * h, zt - HUB_Z0, V(h - t, -h, HUB_Z0))
     if spoj == 'srouby':
         for sy in (1, -1):
-            for (by, bz) in BOLTS:
+            for by, bz in BOLTS:
                 px = px.cut(hole_x(h - t - 1, t + 2, sy * -by, bz, CLEAR_D))
-    mx = px.mirror(V(0, 0, 0), V(1, 0, 0))
-    py = Part.makeBox(2 * (h - t), t, hgt, V(-h + t, h - t, HUB_Z0))
-    my = py.mirror(V(0, 0, 0), V(0, 1, 0))
-    lid = Part.makeBox(2 * h, 2 * h, t, V(-h, -h, zt))
-    return [('uzel_bocnice_pX_pl6', px), ('uzel_bocnice_mX_pl6', mx), ('uzel_bocnice_pY_pl6', py),
-            ('uzel_bocnice_mY_pl6', my), ('uzel_viko_pl6', lid)]
+    py = Part.makeBox(2 * (h - t), t, zt - HUB_Z0, V(-h + t, h - t, HUB_Z0))
+    return [('uzel_bocnice_pX_pl6', px), ('uzel_bocnice_mX_pl6', px.mirror(V(0, 0, 0), V(1, 0, 0))),
+            ('uzel_bocnice_pY_pl6', py), ('uzel_bocnice_mY_pl6', py.mirror(V(0, 0, 0), V(0, 1, 0))),
+            ('uzel_viko_pl6', Part.makeBox(2 * h, 2 * h, t, V(-h, -h, zt)))]
 
 
 def end_plate():
     p = Part.makeBox(PLATE_T, PLATE_Y1 - PLATE_Y0, PLATE_Z1 - PLATE_Z0, V(HUB_HALF, -PLATE_Y1, PLATE_Z0))
-    for (by, bz) in BOLTS:
+    for by, bz in BOLTS:
         p = p.cut(hole_x(HUB_HALF - 1, PLATE_T + 2, -by, bz, TAP_D))
     return p
 
 
-def build(spoj):
+def assemble(wparts, sy_shift, spoj):
     dx = PLATE_T if spoj == 'srouby' else 0.0
     parts = [(n, s, 'uzel') for n, s in hub_parts(spoj)]
-    for qname, sx, sy in QUADS:
-        for n, s in WING_PARTS:
-            m = s.copy(); m.translate(V(dx, SHIFT_Y, 0))
-            parts.append((qname + '_' + n, place(m, sx, sy), qname))
+    for q, sx, sy in QUADS:
+        for n, s in wparts:
+            m = s.copy(); m.translate(V(dx, sy_shift, 0))
+            parts.append((q + '_' + n, place(m, sx, sy), q))
         if spoj == 'srouby':
-            parts.append((qname + '_celni_deska_12x56x94_2xM10', place(end_plate(), sx, sy), qname))
+            parts.append((q + '_celni_deska_12x56x94_2xM10', place(end_plate(), sx, sy), q))
     return parts
 
 
 def check(spoj, parts):
-    rep = {'spoj': spoj, 'teles': len(parts), 'nevalidni': [], 'pruniky': [], 'otisk': {}}
+    rep = {'spoj': spoj, 'teles': len(parts), 'nevalidni': [], 'pruniky': []}
     for n, s, g in parts:
         if s.isNull() or not s.isValid() or len(s.Solids) != 1 or s.Volume <= 0:
             rep['nevalidni'].append(n)
-    # průniky mezi skupinami (křídla navzájem, křídlo × uzel); dotyk = 0 mm³
     for i in range(len(parts)):
         for j in range(i + 1, len(parts)):
             ni, si, gi = parts[i]; nj, sj, gj = parts[j]
-            if gi == gj:
-                continue
-            bi, bj = si.BoundBox, sj.BoundBox
-            if not bi.intersect(bj):
+            if gi == gj or not si.BoundBox.intersect(sj.BoundBox):
                 continue
             v = si.common(sj).Volume
             if v > TOL_VOL:
                 rep['pruniky'].append([ni, nj, round(v, 3)])
-    # otisk konců jeklů vzorového křídla na dosedací ploše
     xf = HUB_HALF + (PLATE_T if spoj == 'srouby' else 0.0)
-    master_tubes = [s for n, s, g in parts if g == 'kridlo_pX_mY' and 'jekl' in n]
-    fs = [f for t in master_tubes for f in faces_on_x(t, xf)]
+    fs = [f for n, s, g in parts if g == 'kridlo_pX_mY' and 'jekl' in n for f in faces_on_x(s, xf)]
     y0 = min(f.BoundBox.YMin for f in fs); y1 = max(f.BoundBox.YMax for f in fs)
     z0 = min(f.BoundBox.ZMin for f in fs); z1 = max(f.BoundBox.ZMax for f in fs)
-    face = (-PLATE_Y1, -PLATE_Y0, PLATE_Z0, PLATE_Z1) if spoj == 'srouby' else (-HUB_HALF, HUB_HALF, HUB_Z0, HUB_Z1 - 0.0)
+    face = (-PLATE_Y1, -PLATE_Y0, PLATE_Z0, PLATE_Z1) if spoj == 'srouby' else (-HUB_HALF, HUB_HALF, HUB_Z0, HUB_Z1)
     margin = min(y0 - face[0], face[1] - y1, z0 - face[2], face[3] - z1)
-    rep['otisk'] = {'y': [round(y0, 2), round(y1, 2)], 'z': [round(z0, 2), round(z1, 2)], 'okraj_mm': round(margin, 2),
-                    'mezera_mezi_kridly_mm': round(-2 * y1, 2)}
+    rep['otisk'] = {'y': [round(y0, 2), round(y1, 2)], 'z': [round(z0, 2), round(z1, 2)], 'okraj_mm': round(margin, 2), 'mezera_mezi_kridly_mm': round(-2 * y1, 2)}
     comp = Part.makeCompound([s for n, s, g in parts])
-    b = comp.optimalBoundingBox()   # BoundBox je na rádiusech jeklů nafouknutý (dřív hlásil Z −4 mm)
+    b = comp.optimalBoundingBox()   # BoundBox je na rádiusech jeklů nafouknutý
     rep['obalka_mm'] = [round(b.XLength, 2), round(b.YLength, 2), round(b.ZLength, 2)]
     rep['z_min'] = round(b.ZMin, 3)
     rep['objem_mm3'] = round(comp.Volume, 1)
     rep['hmotnost_kg'] = round(comp.Volume * 7.85e-6, 2)
-    # souměrnost: obálka sestavy musí být souměrná podle XZ i YZ (díly jsou zrcadlené)
     rep['soumerna_obalka'] = abs(b.XMin + b.XMax) < 0.05 and abs(b.YMin + b.YMax) < 0.05
-    rep['ok'] = not rep['nevalidni'] and not rep['pruniky'] and margin >= MIN_MARGIN and rep['soumerna_obalka']
+    rep['ok'] = not rep['nevalidni'] and not rep['pruniky'] and margin >= MIN_MARGIN and rep['soumerna_obalka'] and abs(b.ZMin) < 0.05
     return rep
 
 
-def export(spoj, parts, rep):
-    doc = App.newDocument('MotyliPodnoz_' + spoj)
+def export(tag, parts, rep):
+    import Import
+    doc = App.newDocument('Motyli_' + tag)
     objs = []
     for n, s, g in parts:
-        o = doc.addObject('Part::Feature', re.sub(r'[^A-Za-z0-9_]', '_', n))
-        o.Label = n; o.Shape = s; objs.append(o)
+        o = doc.addObject('Part::Feature', re.sub(r'[^A-Za-z0-9_]', '_', n)); o.Label = n; o.Shape = s; objs.append(o)
     doc.recompute()
-    fc = os.path.join(FCSTD_DIR, 'motyli_podnoz_%s.FCStd' % spoj)
-    doc.saveAs(fc)
-    import Import
-    step = os.path.join(OUT_DIR, 'motyli_podnoz_%s.step' % spoj)
+    step = os.path.join(OUT_DIR, 'motyli_podnoz_%s.step' % tag)
     Import.export(objs, step)
     back = Part.read(step)
     rep['step_teles_po_nacteni'] = len(back.Solids)
     rep['step_validni'] = all(s.isValid() for s in back.Solids)
-    tmp = tempfile.mkdtemp(prefix='motyli_%s_' % spoj)
+    tmp = tempfile.mkdtemp(prefix='motyli_%s_' % tag, dir=OUT_DIR)
     try:
-        zp = os.path.join(OUT_DIR, 'step_dily_%s.zip' % spoj)
-        with zipfile.ZipFile(zp, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for k, o in enumerate(objs, 1):
-                p = os.path.join(tmp, '%02d_%s.step' % (k, o.Label))
-                Import.export([o], p); zf.write(p, os.path.basename(p))
+        with zipfile.ZipFile(os.path.join(OUT_DIR, 'step_dily_%s.zip' % tag), 'w', zipfile.ZIP_DEFLATED) as zf:
+            for i, o in enumerate(objs, 1):
+                p = os.path.join(tmp, '%02d_%s.step' % (i, o.Label)); Import.export([o], p); zf.write(p, os.path.basename(p))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     App.closeDocument(doc.Name)
-    rep['soubory'] = [os.path.relpath(fc, REPO), os.path.relpath(step, REPO), 'assets/motyli-podnoz/step_dily_%s.zip' % spoj]
+    rep['soubory'] = ['assets/motyli-podnoz/motyli_podnoz_%s.step' % tag, 'assets/motyli-podnoz/step_dily_%s.zip' % tag]
 
 
-report = {'shift_y_mm': round(SHIFT_Y, 3), 'zdroj': os.path.relpath(SRC_STEP, REPO), 'varianty': {}}
-for spoj in ('svar', 'srouby'):
-    parts = build(spoj)
-    rep = check(spoj, parts)
-    print(spoj, json.dumps(rep, ensure_ascii=False))
-    if rep['ok']:
-        export(spoj, parts, rep)
-    report['varianty'][spoj] = rep
+def mesh_of(shape, tol=0.25):
+    v, t = shape.tessellate(tol)
+    return {'verts': [[round(p.x, 2), round(p.y, 2), round(p.z, 2)] for p in v], 'tris': [list(x) for x in t]}
+
+
+# délka varianty svar ≈ 2·(kořen.x + k·(xmax − kořen.x)) → faktor k pro cílovou délku
+base_parts = wing(1.0)
+xmax1 = Part.makeCompound([s for n, s in base_parts]).optimalBoundingBox().XMax
+
+report = {'zdroj': os.path.relpath(SRC_STEP, REPO), 'velikosti': {}}
+js = {}
+for size, target in SIZES:
+    k = 1.0 if target is None else (target / 2.0 - ROOT.x) / (xmax1 - ROOT.x)
+    wparts = wing(k)
+    sy = shift_y(wparts)
+    srep = {'k': round(k, 5), 'shift_y_mm': round(sy, 3), 'varianty': {}}
+    for spoj in SPOJE:
+        parts = assemble(wparts, sy, spoj)
+        rep = check(spoj, parts)
+        print(size, spoj, json.dumps(rep, ensure_ascii=False))
+        if rep['ok']:
+            export('%s_%s' % (size, spoj), parts, rep)
+        srep['varianty'][spoj] = rep
+    report['velikosti'][size] = srep
+    js[size] = {'k': round(k, 5), 'shiftY': round(sy, 4), 'parts': [dict(name=n, **mesh_of(s)) for n, s in wparts]}
+
 with open(os.path.join(OUT_DIR, 'kontrola_symetricka.json'), 'w', encoding='utf-8') as fh:
     json.dump(report, fh, ensure_ascii=False, indent=2)
-print('HOTOVO', 'OK' if all(r['ok'] for r in report['varianty'].values()) else 'CHYBY – viz kontrola_symetricka.json')
+with open(JS_OUT, 'w', encoding='utf-8') as fh:
+    fh.write('/* Síť vzorového křídla motýlí podnože (+X −Y) pro velikosti S/M/L – generuje motyli-podnoz/vytvor_symetrickou_podnoz.FCMacro. */\n')
+    fh.write('window.MOTYLI_KRIDLA=' + json.dumps(js, separators=(',', ':')) + ';\n')
+ok = all(r['ok'] for s in report['velikosti'].values() for r in s['varianty'].values())
+print('HOTOVO', 'OK' if ok else 'CHYBY – viz kontrola_symetricka.json')
