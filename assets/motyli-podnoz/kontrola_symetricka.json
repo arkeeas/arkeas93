@@ -1,0 +1,76 @@
+{
+  "shift_y_mm": -16.771,
+  "zdroj": "assets/motyli-podnoz/motyli_podnoz.step",
+  "varianty": {
+    "svar": {
+      "spoj": "svar",
+      "teles": 37,
+      "nevalidni": [],
+      "pruniky": [],
+      "otisk": {
+        "y": [
+          -52.36,
+          -7.64
+        ],
+        "z": [
+          268.77,
+          344.67
+        ],
+        "okraj_mm": 7.64,
+        "mezera_mezi_kridly_mm": 15.28
+      },
+      "obalka_mm": [
+        1532.52,
+        821.9,
+        732.01
+      ],
+      "z_min": -4.014,
+      "objem_mm3": 6288967.8,
+      "hmotnost_kg": 49.37,
+      "soumerna_obalka": true,
+      "ok": true,
+      "step_teles_po_nacteni": 37,
+      "step_validni": true,
+      "soubory": [
+        "motyli-podnoz/motyli_podnoz_svar.FCStd",
+        "assets/motyli-podnoz/motyli_podnoz_svar.step",
+        "assets/motyli-podnoz/step_dily_svar.zip"
+      ]
+    },
+    "srouby": {
+      "spoj": "srouby",
+      "teles": 41,
+      "nevalidni": [],
+      "pruniky": [],
+      "otisk": {
+        "y": [
+          -52.36,
+          -7.64
+        ],
+        "z": [
+          268.77,
+          344.67
+        ],
+        "okraj_mm": 5.64,
+        "mezera_mezi_kridly_mm": 15.28
+      },
+      "obalka_mm": [
+        1556.52,
+        821.9,
+        732.01
+      ],
+      "z_min": -4.014,
+      "objem_mm3": 6531630.2,
+      "hmotnost_kg": 51.27,
+      "soumerna_obalka": true,
+      "ok": true,
+      "step_teles_po_nacteni": 41,
+      "step_validni": true,
+      "soubory": [
+        "motyli-podnoz/motyli_podnoz_srouby.FCStd",
+        "assets/motyli-podnoz/motyli_podnoz_srouby.step",
+        "assets/motyli-podnoz/step_dily_srouby.zip"
+      ]
+    }
+  }
+}
