@@ -1,10 +1,25 @@
 # Motýlí podnož
 
+## Velikosti S / M / L (10/2026)
+
+| Velikost | Svar | Šrouby | Pro desku | Hmotnost svar / šrouby | Nejužší můstek výplně |
+|---|---|---|---|---|---|
+| S | 1 300 × 706 × 728 | 1 324 × 706 × 728 | 160–180 × 90 cm | 43,8 / 45,9 kg | 7,4 mm |
+| M | 1 533 × 822 × 728 | 1 557 × 822 × 728 | 200–220 × 100 cm | 49,6 / 51,7 kg | 9 mm |
+| L | 1 700 × 906 × 728 | 1 724 × 906 × 728 | 240 × 110 cm | 54,3 / 56,4 kg | 9 mm |
+
+- Křídlo se mění **jen vodorovně** kolem svého kořene u uzlu. Výška, průřez jeklu 40×40×3 R6/R3 a výplň 5 mm zůstávají.
+- **Jekly se staví znovu z os.** Ve všech spojích originálu je čistý pokos v ose úhlu, u uzlu je řez rovinou čela. Při k = 1 vychází tvar na 0,001 mm stejně jako originál.
+- **Výplň** má nový šestiúhelníkový obrys ve vzdálenosti 20 mm od os jeklů (dotyk s vnitřní stěnou jeklu). Otvory se přepočítají a zastřihnou, aby okraj u jeklu byl všude ≥ 8 mm (jinak se při svaru propálí). U S je tak zastřižených 36 otvorů o ≤ 3,5 mm.
+- **Uzel** má pro všechny velikosti 120 × 120 × 110 mm (z 250–360). U S jdou jekly strměji a do původních 100 mm by se jejich konce vešly jen s okrajem 1–3 mm. Čelní deska je 12 × 56 × 104.
+- Makro `vytvor_symetrickou_podnoz.FCMacro` vygeneruje `assets/motyli-podnoz/motyli_podnoz_<S|M|L>_<svar|srouby>.step`, `step_dily_….zip`, `kontrola_symetricka.json` a síť pro web `motyli-podnoz-kridla.js` (MeshPart, 1,2 MB). Ověřeno ve FreeCADu 1.1.1: všech 6 variant platná tělesa, bez průniků, souměrné, Z 0–728.
+- Konfigurátor doporučí velikost podle zadané desky (přesah na bocích ≥ 80 mm, na čelech ≥ 150 mm). Dílna stahuje STEP podle velikosti a spoje.
+
 ## Oprava 10/2026 – souměrná sestava, svar nebo šrouby
 
 Kontrola původního STEP ukázala, že **sestava není souměrná**: křídla byla jen otočená o 180°, ne zrcadlená. Roviny křídel se míjely o ±16,7 mm od osy uzlu. Konce jeklů křídel 1 a 4 přečnívaly 9,1 mm přes bok uzlu a 5,5 mm pod jeho spodek. Křídla 2 a 3 zasahovala přes osu čela. Předchozí kontrola hlídala jen dotyk těles, ne kde se dotýkají.
 
-Nová sestava (`motyli-podnoz.js`, makro `vytvor_symetrickou_podnoz.FCMacro`):
+Nová sestava (`motyli-podnoz.js`, makro `vytvor_symetrickou_podnoz.FCMacro`) – rozměry platí pro M, uzel je dnes vysoký 110 mm (viz Velikosti):
 - Vzorem je křídlo +X −Y. Posune se jen v ose Y o −16,77 mm, aby střed otisku konců ležel na y = ±30 mm, a zrcadlí se. Délky a pokosy jeklů se nemění. Na čele zůstává okraj 7,6 mm a mezera mezi křídly 15,3 mm.
 - **Uzel** je svařená krabička z plechů 6 mm: bočnice 120 × 94 a 108 × 94 a víko 120 × 120. Dole je otevřená, aby šlo ke šroubům.
 - **Svar:** konce jeklů jdou přímo na bočnici uzlu. Rozměr 1 533 × 822 × 728 mm.

@@ -300,7 +300,7 @@
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
 <script src="motyli-podnoz-kridla.js?v=20261012a"></script>
-<script src="motyli-podnoz.js?v=20261012d"></script>
+<script src="motyli-podnoz.js?v=20261012e"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261012b"></script>
 <script>
@@ -521,7 +521,7 @@
     A = K.analyze(cfg, rates);
     const M = K.MODELS.find((m) => m.id === 'MOT');
     $('mName').textContent = M.lab;
-    $('mSub').textContent = K.nf(cfg.L, 1) + ' × ' + K.nf(cfg.W, 1) + ' × ' + K.nf(cfg.H, 1) + ' mm';
+    $('mSub').textContent = 'velikost ' + cfg.vel + ' · ' + K.nf(cfg.L) + ' × ' + K.nf(cfg.W) + ' × ' + K.nf(cfg.H) + ' mm';
     $('ohChip').hidden = true;
     $('see').parentElement.hidden = true;
     $('showDesk').parentElement.hidden = false;

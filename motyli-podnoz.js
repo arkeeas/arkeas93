@@ -33,8 +33,8 @@
   const STEEL = 7.85e-6;
   const VELIKOSTI = [
     { id: 'S', lab: 'S', deska: '160–180 × 90 cm' },
-    { id: 'M', lab: 'M', deska: '180–200 × 90–100 cm' },
-    { id: 'L', lab: 'L', deska: '220–240 × 100–110 cm' }
+    { id: 'M', lab: 'M', deska: '200–220 × 100 cm' },
+    { id: 'L', lab: 'L', deska: '240 × 110 cm' }
   ].filter((v) => DATA[v.id]);
   const SPOJE = [
     { id: 'srouby', lab: 'Šrouby', p: 'křídla zvlášť do lakovny i auta', c: '8× M10 zevnitř uzlu, přístup zespodu' },
@@ -116,9 +116,11 @@
     };
   }
 
-  /* Doporučená velikost podle desky: deska má přečnívat přes podnož na bocích aspoň 40 mm. */
+  /* Doporučená velikost podle desky: největší, u které deska přečnívá na bocích ≥ 80 mm a na čelech ≥ 150 mm
+     (na bocích sedí lidé, špičky křídel jsou u podlahy skoro na hraně podnože). */
+  const MIN_OH = { side: 80, end: 150 };
   function suggestVel(dL, dW) {
-    const ok = VELIKOSTI.filter((v) => { const d = geo(v.id, 'svar').dims; return d.Lf <= dL - 200 && d.Wf <= dW - 80; });
+    const ok = VELIKOSTI.filter((v) => { const d = geo(v.id, 'svar').dims; return d.Lf <= dL - 2 * MIN_OH.end && d.Wf <= dW - 2 * MIN_OH.side; });
     return ok.length ? ok[ok.length - 1].id : VELIKOSTI[0].id;
   }
 
@@ -160,7 +162,7 @@
     const DW = cfg.shape === 'circle' ? DL : cfg.dmode === 'own' ? cfg.dW : cfg.W;
     const ohEnd = Math.round((DL - cfg.L) / 2), ohSide = Math.round((DW - cfg.W) / 2);
     const ohWarn = ohEnd < 0 || ohSide < 0 ? { lvl: 'bad', t: 'Deska je menší než podnož – zvolte menší velikost podnože.' }
-      : ohSide < 40 ? { lvl: 'warn', t: 'Na bocích deska přečnívá jen ' + ohSide + ' mm – sedícím půjdou nohy ke křídlům. Zvažte menší velikost.' }
+      : ohSide < MIN_OH.side ? { lvl: 'warn', t: 'Na bocích deska přečnívá jen ' + ohSide + ' mm – sedícím půjdou nohy ke křídlům. Zvažte menší velikost.' }
       : ohEnd > 450 || ohSide > 300 ? { lvl: 'warn', t: 'Deska má velký přesah; zvažte větší velikost podnože.' } : null;
     const R = V.rates0(ratesIn), F = V.FIN.find((f) => f.id === cfg.fin) || V.FIN[0];
     const rows = [

@@ -53,7 +53,9 @@ for (const vel of ['S', 'M', 'L']) {
 function spojPrice(vel, spoj) { return V.analyze(V.normalize({ model: 'MOT', vel, spoj })).price; }
 assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 1800, dW: 900 })).suggestedVel, 'S', 'deska 180 × 90 → doporučeno S');
 assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 2000, dW: 1000 })).suggestedVel, 'M', 'deska 200 × 100 → doporučeno M');
+assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 2200, dW: 1000 })).suggestedVel, 'M', 'deska 220 × 100 → doporučeno M');
 assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 2400, dW: 1100 })).suggestedVel, 'L', 'deska 240 × 110 → doporučeno L');
+assert.equal(V.analyze(V.normalize({ model: 'MOT', vel: 'L', dmode: 'own', dL: 2000, dW: 1000 })).ohWarn.lvl, 'warn', 'L pod deskou 200 × 100 varuje na úzký přesah');
 const boardCfg = V.normalize({ model: 'MOT', shape: 'circle', dmode: 'own', dL: 1800, dW: 900, td: 40 });
 assert.equal(boardCfg.shape, 'circle', 'tvar desky MOT lze zvolit');
 assert.equal(boardCfg.dmode, 'own', 'MOT umožňuje vlastní rozměry desky');
