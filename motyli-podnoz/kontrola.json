@@ -87,26 +87,23 @@
     "stredovy_uzel": "120x120x6 mm"
   },
   "konfigurator_umělecké": {
-    "ovladani": "aktivní vstupy délky a výšky; hloubka se dopočítává z délky",
-    "rozsah_mm": {
-      "delka": [1400, 1600],
-      "hloubka_odvozena": [776, 876],
-      "vyska": [680, 800]
+    "podnoz": {
+      "ovladani": "pevná velikost podle původního STEP",
+      "rozmery_mm": [1532.523, 842.026, 728.0],
+      "telesa": 33
     },
-    "zkouska_nahledu_1600x780": {
-      "vstupy": [1600, 780],
-      "obalka_mm": [1600.05, 875.69, 779.51],
-      "telesa": 33,
-      "pricny_profil_jeklu_zachovan": true,
-      "kontakty_spoju_overeny": false
+    "deska": {
+      "ovladani": ["tvar", "podle podnože nebo vlastní rozměry", "tloušťka", "zobrazit nebo skrýt v náhledu"],
+      "vychozi_mm": [1532.523, 842.026, 18],
+      "cena_a_uchyceni_vypoctene": false
     }
   },
   "omezeni": [
     "Hloubka se odvozuje od společné rozteče, aby zůstaly půdorysné úhly křídel.",
-    "Rozsah vstupů: délka 1400–1650 mm a výška 680–800 mm.",
+    "Nativní FreeCAD generátor přijímá délku 1400–1650 mm a výšku 680–800 mm; webový konfigurátor Umělecké ponechává podnož v jedné velikosti podle původního STEP.",
     "Kontura výplně se transformuje v její rovině; její dosednutí v jiných rozměrech nebylo ověřeno a výrobní výkres není k dispozici.",
     "Parametrický výsledek tvoří generované B-rep tělesa; změna rozměru vyžaduje opětovné spuštění makra, nejde o historii plně editovatelných prvků.",
-    "Konfigurátor aktualizuje vizualizační síť při změně délky/výšky; dosednutí dílů mimo nominální variantu se nepovažuje za výrobně ověřené.",
+    "Tvar a rozměry desky v konfigurátoru Umělecké jsou pouze vizualizace; uchycení, cena, nosnost a stabilita nejsou ověřené.",
     "Neověřena pevnost, únosnost, svarové spoje, materiál ani výrobní tolerance."
   ]
 }

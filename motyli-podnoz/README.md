@@ -12,11 +12,11 @@ Složka obsahuje parametrický nativní FreeCAD model, jeho generátor a přesno
 - V nominální variantě má 24 sousedních spojů jeklů nulovou vypočtenou vzdálenost; největší numerický objemový průnik je 0,0021 mm³. Spoje jeklů, výplní, desek a uzlu byly samostatně porovnány v nominální variantě.
 - V krajních rozměrových variantách i při zkoušce 1 600 × 780 mm se vygenerovalo 33/33 validních těles. Kontakty výplní a rámu v těchto změněných variantách nejsou potvrzené.
 
-## Jak změnit rozměry
+## Konfigurátor Umělecké
 
-V konfigurátoru otevři záložku **Umělecké**, vyber **Motýlí podnož** a v kroku 2 uprav délku nebo výšku. Hloubka se dopočítává z délky, aby půdorysné úhly křídel zůstaly stejné. Webový 3D náhled upraví polohy a délky dílů, zachovává příčný profil jeklů a tloušťku výplně. Dosednutí spojů po změně rozměrů ale není výrobně ověřené.
+V konfigurátoru otevři záložku **Umělecké** a vyber **Motýlí podnož**. Webová varianta má jednu pevnou velikost podle STEP: 1 532,523 × 842,026 × 728 mm. V kroku **Deska** lze vybrat tvar, použít rozměry podnože nebo zadat vlastní rozměry a tloušťku. Desku lze zobrazit či skrýt v náhledu. Tato volba je pouze vizualizační; cena, uchycení desky a nosnost se nepočítají.
 
-V nativním FreeCAD souboru lze také upravit tabulku **Parametry**, buňky `B2` (délka) a `B4` (výška). Ulož a zavři dokument, potom spusť `vytvor_parametricky_model.FCMacro`. Generátor načte hodnoty z tabulky, přepočítá geometrii a přepíše FCStd. Výsledná hloubka je odvozena od konstrukce; je uvedena v `B11`.
+Rozměry nativního FreeCAD modelu lze stále upravit v tabulce **Parametry**, buňky `B2` (délka) a `B4` (výška). Ulož a zavři dokument, potom spusť `vytvor_parametricky_model.FCMacro`. Generátor načte hodnoty z tabulky, přepočítá geometrii a přepíše FCStd. Výsledná hloubka je odvozena od konstrukce; je uvedena v `B11`.
 
 ![Náhled parametrické rekonstrukce](/home/arkeas/src/arkeas93/motyli-podnoz/nahled_parametricky.png)
 
