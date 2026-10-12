@@ -18,9 +18,9 @@ Složka obsahuje parametrický nativní FreeCAD model, jeho generátor a přesno
 
 V konfigurátoru otevři záložku **Umělecké** a vyber **Motýlí podnož**. Webová varianta má jednu pevnou velikost podle náhledu STEP: 1 532,523 × 842,026 × 728 mm. V kroku **Deska** lze vybrat tvar, použít rozměry podnože nebo zadat vlastní rozměry a tloušťku. Desku lze zobrazit či skrýt v náhledu; do ceny ani STEP se nezahrnuje.
 
-Cena je orientační kalkulace podnože podle firemních sazeb v nastavení konfigurátoru. Při výchozích sazbách vychází na **14 220 Kč bez DPH / 17 210 Kč s DPH**. Kusovník používá 48,66 kg oceli a 33 dílů. Počet 68 svarových kontaktů a plocha práškového lakování 2,19 m² jsou výrobní odhady k potvrzení dílnou. Cena desky zákazníka je 0 Kč a není zahrnutá. Nosnost a uchycení desky se nepočítají.
+Zákazník vidí pouze konečnou orientační cenu podnože podle firemních sazeb v nastavení konfigurátoru a může odeslat poptávku stejným způsobem jako u ostatních modelů. Při výchozích sazbách vychází na **14 220 Kč bez DPH / 17 210 Kč s DPH**. Cena desky zákazníka není zahrnutá. Nosnost a uchycení desky se nepočítají.
 
-V konfigurátoru lze stáhnout STEP celé sestavy a ZIP se samostatnými STEP soubory všech 33 dílů. Sestava byla exportována z nativního FreeCAD B-rep modelu a znovu načtena: všech 33 těles je platných. Výsledek a počty ověření jsou v `assets/motyli-podnoz/kontrola_step.json`. Při přepočtu nativního modelu makro obnoví i oba STEP výstupy.
+Po odeslání poptávky jsou STEP celé sestavy a ZIP se samostatnými STEP soubory všech 33 dílů dostupné v seznamu poptávek v interní dílenské stránce. Zákaznický konfigurátor nemá odkazy ke stažení. Sestava byla exportována z nativního FreeCAD B-rep modelu a znovu načtena: všech 33 těles je platných. Výsledek a počty ověření jsou v `assets/motyli-podnoz/kontrola_step.json`. Při přepočtu nativního modelu makro obnoví i oba STEP výstupy.
 
 Rozměry nativního FreeCAD modelu lze stále upravit v tabulce **Parametry**, buňky `B2` (délka) a `B4` (výška). Ulož a zavři dokument, potom spusť `vytvor_parametricky_model.FCMacro`. Generátor načte hodnoty z tabulky, přepočítá geometrii a přepíše FCStd. Výsledná hloubka je odvozena od konstrukce; je uvedena v `B11`.
 
