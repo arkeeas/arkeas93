@@ -189,7 +189,7 @@
         <h2><small>Krok 1</small>Tvar podnože</h2>
         <div class="grid g4" id="models"></div>
         <p class="note" id="modelNote" style="margin:10px 0 0"></p>
-        <div class="box" id="motWarning" hidden>Rozměry lze upravit v kroku 2. Jde o vizualizační náhled; cena, nosnost a výrobní spoje nejsou ověřené.</div>
+        <div class="box" id="motWarning" hidden>Podnož má pevné rozměry podle původního STEP. Tvar a rozměry desky slouží jen pro 3D náhled.</div>
         <h3 class="subh" id="laysHead">Rozmístění noh</h3>
         <div class="grid g2" id="lays"></div>
         <h3 class="subh" id="jointsHead">Spojení noh</h3>
@@ -201,12 +201,13 @@
 
       <div class="step">
         <h2><small>Krok 2</small><span id="step2Title">Rozměry stolu (s deskou)</span></h2>
-        <div class="grid" style="gap:16px">
+        <div class="grid" style="gap:16px" id="standDims">
           <div class="field"><div class="row"><label for="L" id="lenLab">Délka</label><span class="num"><input id="Ln" type="number" inputmode="numeric" aria-labelledby="lenLab"> mm</span></div><input id="L" type="range" min="350" max="2400" step="10"></div>
           <div class="field" id="wField"><div class="row"><label for="W">Hloubka</label><span class="num"><input id="Wn" type="number" inputmode="numeric" aria-label="Hloubka v mm"> mm</span></div><input id="W" type="range" min="300" max="1100" step="10"></div>
           <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="350" max="1100" step="10"></div>
           <div class="note" id="frameNote"></div>
         </div>
+        <div id="motBoardSlot" hidden></div>
       </div>
 
       <div class="step">
@@ -226,24 +227,26 @@
         <div class="grid g4" id="fins"></div>
       </div>
 
-      <div class="step">
+      <div class="step" id="deskStep">
         <h2><small>Krok 6</small><span id="step6Title">Deska</span></h2>
-        <div class="grid g5" id="shapes"></div>
-        <div class="grid g2" style="margin-top:10px" id="dmodes"></div>
-        <div class="own" id="own" hidden>
-          <div class="grid g2">
-            <label for="dL"><span id="dLlab">Délka desky [mm]</span><input id="dL" type="number" inputmode="numeric"></label>
-            <label for="dW" id="dWwrap">Šířka desky [mm]<input id="dW" type="number" inputmode="numeric"></label>
+        <div id="motBoard">
+          <div class="grid g5" id="shapes"></div>
+          <div class="grid g2" style="margin-top:10px" id="dmodes"></div>
+          <div class="own" id="own" hidden>
+            <div class="grid g2">
+              <label for="dL"><span id="dLlab">Délka desky [mm]</span><input id="dL" type="number" inputmode="numeric"></label>
+              <label for="dW" id="dWwrap">Šířka desky [mm]<input id="dW" type="number" inputmode="numeric"></label>
+            </div>
+            <div>Přesah desky přes podnož: <strong id="ohTxt"></strong></div>
+            <div class="msg" id="ohWarn" hidden></div>
+            <div class="row" style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+              <span class="note" style="font-size:12px">Desku změřte v nejširším místě. Pohled Shora ukáže přesahy nejlépe.</span>
+              <button class="btn" id="fit" type="button">Přizpůsobit podnož desce</button>
+            </div>
           </div>
-          <div>Přesah desky přes podnož: <strong id="ohTxt"></strong></div>
-          <div class="msg" id="ohWarn" hidden></div>
-          <div class="row" style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
-            <span class="note" style="font-size:12px">Desku změřte v nejširším místě. Pohled Shora ukáže přesahy nejlépe.</span>
-            <button class="btn" id="fit" type="button">Přizpůsobit podnož desce</button>
-          </div>
+          <div class="field" style="margin-top:14px"><div class="row"><label for="td" id="tdLab">Tloušťka vaší desky</label><span id="tdv"></span></div><input id="td" type="range" min="18" max="80" step="2"></div>
+          <p class="note" id="deskNote" style="margin:10px 0 0">Desku dodáváte sami. Jak se k ní podnož uchytí, vyberete v dalším kroku. Desky z našeho e-shopu připravujeme.</p>
         </div>
-        <div class="field" style="margin-top:14px"><div class="row"><label for="td" id="tdLab">Tloušťka vaší desky</label><span id="tdv"></span></div><input id="td" type="range" min="18" max="80" step="2"></div>
-        <p class="note" id="deskNote" style="margin:10px 0 0">Desku dodáváte sami. Jak se k ní podnož uchytí, vyberete v dalším kroku. Desky z našeho e-shopu připravujeme.</p>
       </div>
 
       <div class="step">
@@ -294,7 +297,7 @@
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
 <script src="motyli-podnoz-mesh.js?v=20261011b"></script>
-<script src="motyli-podnoz.js?v=20261012a"></script>
+<script src="motyli-podnoz.js?v=20261012b"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261007o"></script>
 <script>
@@ -340,6 +343,9 @@
 
   function render() {
     if (cfg.model === 'MOT') { renderMotyli(); return; }
+    $('deskStep').appendChild($('motBoard'));
+    $('motBoardSlot').hidden = true;
+    $('standDims').hidden = false;
     document.querySelectorAll('.panel .steps > .step').forEach((x) => { x.hidden = false; });
     document.querySelector('.buy').hidden = false;
     document.querySelector('.foot').hidden = false;
@@ -363,6 +369,7 @@
     $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · ' + (M.tr ? 'jekl ' + cfg.trJ.replace('x', '×') : M.ks ? (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pásovina ' + cfg.ksD + '×' + cfg.ksT) : 'jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t) + ' · ' + F.lab;
     $('ohChip').textContent = 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
     $('td').min = 18;
+    $('fit').hidden = false;
     $('shapes').hidden = $('dmodes').hidden = false;
     $('own').hidden = cfg.dmode !== 'own';
 
@@ -509,14 +516,16 @@
     A = K.analyze(cfg, rates);
     const M = K.MODELS.find((m) => m.id === 'MOT');
     $('mName').textContent = M.lab;
-    $('mSub').textContent = K.nf(cfg.L) + ' × ' + K.nf(cfg.W) + ' × ' + K.nf(cfg.H) + ' mm';
+    $('mSub').textContent = K.nf(cfg.L, 1) + ' × ' + K.nf(cfg.W, 1) + ' × ' + K.nf(cfg.H, 1) + ' mm';
     $('ohChip').hidden = true;
     $('see').parentElement.hidden = true;
-    $('showDesk').parentElement.hidden = true;
+    $('showDesk').parentElement.hidden = false;
+    $('showDeskLab').textContent = 'Zobrazit desku';
+    $('showDesk').checked = ui.showDesk;
     $('person').parentElement.hidden = true;
     $('modelNote').textContent = M.desc + ' · ' + M.note;
     $('motWarning').hidden = false;
-    $('motWarning').textContent = M.note;
+    $('motWarning').textContent = 'Podnož má pevné rozměry podle původního STEP. Volby desky mění pouze její 3D náhled; cena, uchycení a nosnost nejsou pro tento model vypočítané.';
     group($('models'), K.MODELS, (m) => '<button type="button" class="opt" data-id="' + m.id + '" aria-pressed="' + (m.id === cfg.model) + '">' + svg(m.icon) + '<span class="l">' + m.lab + '</span></button>', (id) => {
       let back = cfg;
       try { back = JSON.parse(localStorage.getItem('podnoz-before-mot-wip') || 'null') || K.motyliBase.normalize({ model: id }); ui = JSON.parse(localStorage.getItem('ui-before-mot-wip') || 'null') || ui; localStorage.removeItem('podnoz-before-mot-wip'); localStorage.removeItem('ui-before-mot-wip'); } catch (e) {}
@@ -525,29 +534,31 @@
     $('models').hidden = false;
     ['laysHead', 'lays', 'jointsHead', 'joints', 'topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
     document.querySelectorAll('.panel .steps > .step').forEach((x, i) => { if (i > 1) x.hidden = true; });
-    $('step2Title').textContent = 'Rozměry podnože';
-    $('frameNote').textContent = 'Délku a výšku lze měnit. Hloubka se dopočítá podle rozteče křídel. Průřezy jeklů zůstávají 40×40×3 mm; výrobní dosednutí při změně rozměrů není ověřené.';
-    const limits = K.MOTYLI_LIMITS;
-    [['L', cfg.L, limits.L], ['H', cfg.H, limits.H]].forEach(([k, value, limit]) => {
-      const range = $(k), num = $(k + 'n');
-      range.min = num.min = String(limit.min); range.max = num.max = String(limit.max);
-      range.step = num.step = String(limit.step);
-      range.value = num.value = value;
-      range.disabled = num.disabled = false;
-      range.title = num.title = 'Rozsah ' + limit.min + '–' + limit.max + ' mm';
-    });
-    const wRange = $('W'), wNum = $('Wn');
-    wRange.min = wNum.min = String(cfg.W); wRange.max = wNum.max = String(cfg.W);
-    wRange.step = wNum.step = '1'; wRange.value = wNum.value = cfg.W;
-    wRange.disabled = wNum.disabled = true;
-    wRange.title = wNum.title = 'Hloubka se dopočítá z délky, aby zůstaly zachované půdorysné úhly křídel';
-    $('wField').hidden = false;
+    $('step2Title').textContent = 'Deska';
+    $('standDims').hidden = true;
+    $('motBoardSlot').hidden = false;
+    $('motBoardSlot').appendChild($('motBoard'));
+    group($('shapes'), K.SHAPES, (s) => '<button type="button" class="opt" data-id="' + s.id + '" aria-pressed="' + (s.id === cfg.shape) + '">' + svg(s.icon) + '<span class="l">' + s.lab + '</span></button>', (id) => set({ shape: id }));
+    group($('dmodes'), [{ id: 'table', l: 'Podle podnože' }, { id: 'own', l: 'Zadám rozměry desky' }], (o) => '<button type="button" class="opt" style="min-height:48px;justify-content:center" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.dmode) + '"><span class="l" style="font-size:14px">' + o.l + '</span></button>',
+      (id) => set(id === 'own' && cfg.dmode !== 'own' ? { dmode: 'own', dL: cfg.L, dW: cfg.W } : { dmode: id }));
+    $('own').hidden = cfg.dmode !== 'own';
+    const circle = cfg.shape === 'circle';
+    $('dLlab').textContent = circle ? 'Průměr desky [mm]' : 'Délka desky [mm]';
+    $('dWwrap').hidden = circle;
+    syncInput('dL', cfg.dL); syncInput('dW', cfg.dW);
+    $('ohTxt').textContent = 'čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
+    $('ohWarn').hidden = !A.ohWarn;
+    if (A.ohWarn) $('ohWarn').textContent = A.ohWarn.t;
+    $('fit').hidden = true;
+    $('td').min = 18; $('td').max = 80; $('td').step = 2;
+    syncInput('td', cfg.td); $('tdv').textContent = cfg.td + ' mm';
+    $('deskNote').textContent = 'Tvar, rozměr a tloušťka desky jsou jen pro 3D náhled. Výrobní uchycení ani cena nejsou pro tuto podnož ověřené.';
     document.querySelector('.buy').hidden = true;
     document.querySelector('.foot').hidden = true;
-    ui.showDesk = false; ui.person = null; ui.see = false;
+    ui.person = null; ui.see = false;
     $('ohChip').hidden = true; $('pHwrap').hidden = true; $('personChip').hidden = true;
     $('load').hidden = true;
-    viewer.update(A, { showDesk: false, see: false, person: null });
+    viewer.update(A, { showDesk: ui.showDesk, see: false, person: null });
   }
 
   ['L', 'W', 'H'].forEach((k) => {

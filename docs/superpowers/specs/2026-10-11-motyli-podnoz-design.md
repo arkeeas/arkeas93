@@ -1,5 +1,9 @@
 # Motýlí podnož v záložce Umělecké — návrh
 
+## Aktualizace zadání (2026-10-12)
+
+Aktuální webová varianta má jednu pevnou velikost podle STEP (1 532,523 × 842,026 × 728 mm); ovladače rozměrů podnože jsou odstraněné. Krok 2 místo nich nabízí tvar, rozměry a tloušťku desky a přepínač jejího zobrazení v náhledu. Deska je zatím vizualizace bez ceny, výpočtu uchycení nebo nosnosti. Tento dodatek nahrazuje níže uvedený záměr ovládat rozměry podnože ve webové kartě; samostatný FreeCAD generátor zůstává parametrický.
+
 ## Cíl a potvrzené zadání
 
 Zařadit podnož ve tvaru motýla do záložky **Umělecké** a umožnit měnit její celkovou délku, hloubku a výšku. Geometrie má vycházet z dodaného souboru `/home/arkeas/Desktop/cad_worker/motyli_podnoz.step`; při změně rozměrů musí zachovat skutečné průřezy profilů a tloušťky plechů. Uživatel zvolil parametrické překreslení, ne škálování hotového STEP.

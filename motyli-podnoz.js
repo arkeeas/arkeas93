@@ -4,13 +4,13 @@
   const V = root.Vyvoj, DATA = root.MOTYLI_MESH;
   if (!V || !DATA) throw new Error('Motýlí podnož vyžaduje Vyvoj a motyli-podnoz-mesh.js');
   const MODEL = {
-    id: 'MOT', lab: 'Motýlí podnož', desc: 'Parametrický náhled sestavy podle STEP',
+    id: 'MOT', lab: 'Motýlí podnož', desc: 'Pevná velikost podle původního STEP',
     icon: 'M4 24 L20 8 L32 20 L44 8 L60 24 L44 40 L32 28 L20 40 Z',
     note: 'Jde o vizualizační náhled; cena, nosnost a výrobní spoje nejsou ověřené.', wip: true
   };
   if (!V.MODELS.some((m) => m.id === MODEL.id)) V.MODELS.push(MODEL);
   const baseNormalize = V.normalize, baseBuild = V.build, baseAnalyze = V.analyze, baseAudit = V.audit, baseDescribe = V.describe;
-  const RANGE = { L: [1400, 1600], H: [680, 800] };
+  const FIXED = { L: DATA.bbox[0], W: DATA.bbox[1], H: DATA.bbox[2] };
   const SPREAD = { fixedL: 193.72, spanL: 1338.81, fixedW: 172.53, spanW: 669.50 };
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const add = (a, b) => a.map((x, i) => x + b[i]);
@@ -97,11 +97,15 @@
   function normalize(c) {
     if (!c || c.model !== 'MOT') return baseNormalize(c);
     const base = baseNormalize(c);
-    const rawL = Number(c.L), rawH = Number(c.H);
-    const L = clamp(Math.round(Number.isFinite(rawL) ? rawL : Math.round(DATA.bbox[0])), ...RANGE.L);
-    const H = clamp(Math.round(Number.isFinite(rawH) ? rawH : 732), ...RANGE.H);
-    const { W } = dimensions(L, H);
-    return Object.assign({}, base, { model: 'MOT', L, W: Math.round(W), H, shape: 'rect', dmode: 'table', dL: L, dW: Math.round(W), td: 18, fin: c.fin || 'black', qty: 1 });
+    const shape = base.shape || 'rect', dmode = c.dmode === 'own' ? 'own' : 'table';
+    const rawDL = Number(c.dL), rawDW = Number(c.dW);
+    const rawTd = Number(c.td);
+    const dL = clamp(Number.isFinite(rawDL) && rawDL > 0 ? rawDL : FIXED.L, 300, 3000);
+    const dW = shape === 'circle' ? dL : clamp(Number.isFinite(rawDW) && rawDW > 0 ? rawDW : FIXED.W, 250, 1500);
+    return Object.assign({}, base, {
+      model: 'MOT', L: FIXED.L, W: FIXED.W, H: FIXED.H, shape, dmode, dL, dW,
+      td: clamp(Number.isFinite(rawTd) ? rawTd : 18, 18, 80), fin: base.fin || 'black', qty: 1
+    });
   }
 
   function morphBeam(points, srcA, srcB, dstA, dstB) {
@@ -146,9 +150,9 @@
     }));
     return {
       cfg,
-      dims: { Lf: cfg.L, Wf: cfg.W, Hf: cfg.H },
+      dims: { Lf: FIXED.L, Wf: FIXED.W, Hf: FIXED.H },
       parts: shaped, plateBoxes: [], hwBodies: [], plates: [], hw: [], boltPts: [],
-      notes: ['Vizualizační přepočet drží průřezy jeklů a tloušťku výplně; styky při změně rozměrů nejsou výrobně ověřené.'],
+      notes: ['Tvar a rozměry desky jsou pouze vizualizace; její uchycení k podnoži není navrženo.'],
       weldJoints: null, glassTop: false
     };
   }
@@ -156,19 +160,27 @@
   function analyze(c) {
     if (!c || c.model !== 'MOT') return baseAnalyze(c);
     const cfg = normalize(c), B = build(cfg);
+    const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L;
+    const DW = cfg.shape === 'circle' ? DL : cfg.dmode === 'own' ? cfg.dW : cfg.W;
+    const ohEnd = Math.round((DL - FIXED.L) / 2), ohSide = Math.round((DW - FIXED.W) / 2);
+    const ohWarn = ohEnd < 0 || ohSide < 0 ? { lvl: 'bad', t: 'Deska je menší než podnož.' }
+      : ohEnd > 450 || ohSide > 300 ? { lvl: 'warn', t: 'Deska má velký přesah; stabilita této varianty nebyla ověřena.' } : null;
     return { cfg, build: B, B, audit: null, cost: null, capacity: null, price: null, load: null,
-      warnings: [MODEL.note, 'Cena a nosnost nejsou pro tento model vypočtené.'], DL: cfg.L, DW: cfg.W,
-      ohEnd: 0, ohSide: 0, ohWarn: null, rows: [], total: null, R: null, mount: null };
+      warnings: [MODEL.note, 'Cena, nosnost a uchycení desky nejsou pro tento model vypočtené.'], DL, DW,
+      ohEnd, ohSide, ohWarn, rows: [], total: null, R: null, mount: null };
   }
   function audit(c, rates) { return c && c.model === 'MOT' ? { overall: 'unknown', checks: [], warnings: ['Nosnost nebyla ověřena.'] } : baseAudit(c, rates); }
   function describe(c) {
     const cfg = normalize(c);
-    return c && c.model === 'MOT' ? 'Motýlí podnož – ' + cfg.L + ' × ' + cfg.W + ' × ' + cfg.H + ' mm' : baseDescribe(c);
+    if (!c || c.model !== 'MOT') return baseDescribe(c);
+    const DL = cfg.dmode === 'own' ? cfg.dL : cfg.L;
+    const DW = cfg.shape === 'circle' ? DL : cfg.dmode === 'own' ? cfg.dW : cfg.W;
+    return 'Motýlí podnož – pevně ' + Math.round(cfg.L) + ' × ' + Math.round(cfg.W) + ' × ' + Math.round(cfg.H) + ' mm; deska ' + cfg.shape + ' ' + DL + ' × ' + DW + ' × ' + cfg.td + ' mm';
   }
 
   Object.assign(V, {
     normalize, build, analyze, audit, describe,
-    MOTYLI_LIMITS: { L: { min: RANGE.L[0], max: RANGE.L[1], step: 1 }, W: { min: 776, max: 876, step: 1 }, H: { min: RANGE.H[0], max: RANGE.H[1], step: 1 } },
+    MOTYLI_FIXED_DIMS: Object.assign({}, FIXED),
     motyliBase: { normalize: baseNormalize, build: baseBuild, analyze: baseAnalyze, audit: baseAudit }
   });
 })(typeof window !== 'undefined' ? window : globalThis);

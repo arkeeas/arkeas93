@@ -14,6 +14,6 @@
 - Uživatel zvolil zachovat půdorysné úhly křídel a měnit jejich rozteč. Délka a hloubka jsou proto svázané společným faktorem; výška se může měnit nezávisle a sklony jeklů se přepočítají.
 - Parametrický generátor odvozuje šest profilových os na každé křídlo a původní řezné roviny z B-rep. Výplň se mění v její rovině se zachováním tloušťky 5 mm; její kontura je převzatá a protažená podle rámu, nikoli znovu navržená podle výrobního výkresu.
 - Generátor přijímá délku 1 400–1 650 mm a výšku 680–800 mm; krajní kombinace vytvářejí 33 validních těles. Kontakty dílů mimo nominální rozměr nejsou ověřené, zejména dosednutí transformované výplně na rám.
-- V konfigurátoru **Umělecké** jsou aktivní vstupy délky a výšky; hloubka se odvozuje od délky. Webový náhled po změně přepočítá díly, zachová příčné rozměry jeklů a tloušťku výplně. Nejde o výrobní geometrii a změněné styky se musí ověřit.
+- Webový konfigurátor **Umělecké** zobrazuje podnož v jedné pevné velikosti podle STEP (1 532,523 × 842,026 × 728 mm); rozměry podnože nelze měnit. Uživatel může v náhledu zvolit tvar, rozměry a tloušťku desky nebo desku skrýt. Cena, uchycení, nosnost a stabilita desky nejsou pro tuto variantu ověřené.
 - Nativní FCStd obsahuje generovanou B-rep geometrii a tabulku parametrů; změna rozměrů vyžaduje zavřít soubor a znovu spustit makro. Nejde o historii plně editovatelných náčrtů/prvků. Výrobní výkres ani ověřená pravidla pro novou konturu výplně nejsou k dispozici.
 - Materiál, svary, tolerance, únosnost a výrobní schválení nejsou potvrzené.
