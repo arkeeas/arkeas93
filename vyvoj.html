@@ -299,8 +299,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
 <script src="vyvoj.js?v=20261008j"></script>
-<script src="motyli-podnoz-mesh.js?v=20261011b"></script>
-<script src="motyli-podnoz.js?v=20261012c"></script>
+<script src="motyli-podnoz-kridla.js?v=20261012a"></script>
+<script src="motyli-podnoz.js?v=20261012d"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="viewer.js?v=20261012b"></script>
 <script>
@@ -392,6 +392,7 @@
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
     $('jointsHead').textContent = 'Spojení noh';
     $('jointsHead').hidden = $('joints').hidden = !!M.pav;
+    $('laysHead').textContent = 'Rozmístění noh';
     $('laysHead').hidden = $('lays').hidden = !M.pav;
     if (M.ks || M.tr) $('jointsHead').hidden = $('joints').hidden = true;
     $('topsHead').textContent = M.ks || M.tr ? 'Tvary a spoje' : 'Horní část – na čem leží deska';
@@ -529,7 +530,7 @@
     $('person').parentElement.hidden = true;
     $('modelNote').textContent = M.desc + ' · ' + M.note;
     $('motWarning').hidden = false;
-    $('motWarning').textContent = 'Cena je orientační a týká se pevné podnože (křídla ' + (cfg.spoj === 'srouby' ? 'šroubovaná 8× M10' : 'přivařená') + '). Deska zákazníka není zahrnuta; její volby mění pouze 3D náhled. Nosnost ani uchycení desky nejsou ověřené.';
+    $('motWarning').textContent = 'Cena je orientační a týká se podnože velikosti ' + cfg.vel + ' (křídla ' + (cfg.spoj === 'srouby' ? 'šroubovaná 8× M10' : 'přivařená') + '). Deska zákazníka není zahrnuta; její volby mění pouze 3D náhled. Nosnost ani uchycení desky nejsou ověřené.';
     $('price').textContent = K.nf(A.total) + ' Kč';
     $('priceSub').textContent = 's DPH';
     $('qty').textContent = cfg.qty + ' ks';
@@ -539,7 +540,10 @@
       set(Object.assign({}, back, { model: id }));
     });
     $('models').hidden = false;
-    ['laysHead', 'lays', 'topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
+    ['topsHead', 'tops', 'topDims'].forEach((id) => { $(id).hidden = true; });
+    $('laysHead').hidden = $('lays').hidden = false;
+    $('laysHead').textContent = 'Velikost podnože';
+    group($('lays'), K.MOTYLI_VELIKOSTI, (o) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.vel) + '"><span class="t">' + o.lab + ' · ' + K.nf(o.dims.Lf) + ' × ' + K.nf(o.dims.Wf) + ' mm</span><span class="p">deska ' + esc(o.deska) + '</span>' + (A.suggestedVel === o.id && o.id !== cfg.vel ? '<span class="c">doporučeno k vaší desce</span>' : '') + '</button>', (id) => set({ vel: id }));
     $('jointsHead').hidden = $('joints').hidden = false;
     $('jointsHead').textContent = 'Spojení křídel s uzlem';
     group($('joints'), K.MOTYLI_SPOJE, (o) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.spoj) + '"><span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span></button>', (id) => set({ spoj: id }));

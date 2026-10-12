@@ -5,50 +5,55 @@ const fs = require('node:fs');
 require('../core.js');
 require('../vyvoj.js');
 globalThis.window = globalThis;
-require('../motyli-podnoz-mesh.js');
+require('../motyli-podnoz-kridla.js');
 require('../motyli-podnoz.js');
 const V = globalThis.Vyvoj;
 assert(V.MODELS.some((m) => m.id === 'MOT'), 'MOT je v katalogu Umělecké');
 const cfg = V.normalize({ model: 'MOT' });
 assert.equal(cfg.model, 'MOT');
+assert.equal(cfg.spoj, 'srouby', 'výchozí spoj křídel jsou šrouby');
+assert.equal(cfg.vel, 'M', 'výchozí velikost je M');
 const A = V.analyze(cfg);
 assert.equal(A.capacity, null, 'nosnost se netvrdí');
-assert(A.cost > 0, 'orientační cena podnože se počítá');
-assert(A.price > 0 && A.vat > A.price, 'cena obsahuje marži a DPH');
+assert(A.cost > 0 && A.price > 0 && A.vat > A.price, 'cena obsahuje marži a DPH');
 assert.equal(V.analyze(Object.assign({}, cfg, { qty: 2 })).total, A.vat * 2, 'konečná cena v objednávce zahrnuje počet kusů');
-assert.equal(cfg.spoj, 'srouby', 'výchozí spoj křídel jsou šrouby');
-assert.equal(A.kg, V.MOTYLI_BOM.srouby.kg, 'hmotnost vychází z objemu souměrné sestavy');
-assert(A.kg > 45 && A.kg < 56, 'hmotnost je v rozumném rozsahu');
 assert.equal(A.rows.find((r) => r.id === 'board').amount, 0, 'zákaznická deska není započtená');
 assert.equal(A.rows.find((r) => r.id === 'weld').qty, 76, '68 kontaktů ze STEP + 8 švů krabičky uzlu');
-assert.equal(A.rows.find((r) => r.id === 'bolt').qty, 8, 'šroubovaná varianta má 8× M10');
-const AS = V.analyze(V.normalize({ model: 'MOT', spoj: 'svar' }));
-assert.equal(AS.rows.find((r) => r.id === 'bolt').qty, 0, 'svařovaná varianta nemá šrouby');
-assert(AS.price < A.price, 'svar je levnější než šrouby');
-const higherSteelRate = V.analyze(cfg, Object.assign({}, V.DEFAULT_RATES, { kg: 100 }));
-assert(higherSteelRate.price > A.price, 'změna firemní sazby materiálu se projeví v ceně MOT');
-assert.equal(V.analyze(cfg, Object.assign({}, V.DEFAULT_RATES, { kg: 100 })).rows.find((r) => r.id === 'board').amount, 0);
-assert.equal(A.build.parts.length, 41, 'šrouby: 5 plechů uzlu + 4 × (8 dílů křídla + čelní deska)');
-assert.equal(AS.build.parts.length, 37, 'svar: 5 plechů uzlu + 4 × 8 dílů křídla');
-assert(A.build.parts.every((p) => p.solid.verts.length && p.solid.faces.length));
-for (const X of [A, AS]) {
-  const key = (v) => v.map((x) => Math.round(x * 10)).join(',');
-  const all = X.build.parts.flatMap((p) => p.solid.verts), set = new Set(all.map(key));
-  assert(all.every((v) => set.has(key([v[0], -v[1], v[2]])) && set.has(key([-v[0], v[1], v[2]]))), 'sestava je zrcadlově souměrná podle XZ i YZ (' + X.cfg.spoj + ')');
-  assert(X.seat.margin >= 5, 'otisk konců křídla leží na dosedací ploše s okrajem ≥ 5 mm (' + X.cfg.spoj + ')');
-  assert(X.seat.centreGap >= 10, 'konce sousedních křídel se na čele uzlu nedotýkají');
+assert(V.analyze(cfg, Object.assign({}, V.DEFAULT_RATES, { kg: 100 })).price > A.price, 'změna firemní sazby materiálu se projeví v ceně MOT');
+
+// FreeCAD kontrola (makro vytvor_symetrickou_podnoz.FCMacro): rozměry, hmotnost a STEP všech variant
+const sym = JSON.parse(fs.readFileSync(require.resolve('../assets/motyli-podnoz/kontrola_symetricka.json'), 'utf8'));
+const want = { S: [1300, 706], M: [1533, 822], L: [1700, 906] };
+assert.deepEqual(V.MOTYLI_VELIKOSTI.map((v) => v.id), ['S', 'M', 'L']);
+let prevPrice = 0;
+for (const vel of ['S', 'M', 'L']) {
+  const fc = sym.velikosti[vel];
+  assert(fc.vypln.mustek_min_mm >= 6, 'výplň ' + vel + ': nejužší můstek ≥ 6 mm');
+  assert(fc.vypln.okraj_min_mm >= 7.9, 'výplň ' + vel + ': okraj u jeklu ≥ 8 mm');
+  for (const spoj of ['svar', 'srouby']) {
+    const X = V.analyze(V.normalize({ model: 'MOT', vel, spoj })), r = fc.varianty[spoj], tag = vel + ' ' + spoj;
+    assert(r.ok && r.step_validni && r.step_teles_po_nacteni === r.teles, 'FreeCAD kontrola prošla: ' + tag);
+    assert.equal(X.build.parts.length, spoj === 'srouby' ? 41 : 37, 'počet dílů ' + tag);
+    assert.equal(X.build.parts.length, r.teles, 'náhled má stejné díly jako STEP: ' + tag);
+    assert(Math.abs(X.cfg.L - r.obalka_mm[0]) <= 1 && Math.abs(X.cfg.W - r.obalka_mm[1]) <= 1 && X.cfg.H === 728, 'rozměry náhledu = STEP: ' + tag + ' ' + X.cfg.L + '×' + X.cfg.W);
+    assert(Math.abs(X.kg - r.hmotnost_kg) / r.hmotnost_kg < 0.01, 'hmotnost z náhledu ±1 % proti STEP: ' + tag + ' ' + X.kg + ' / ' + r.hmotnost_kg);
+    assert.equal(X.rows.find((q) => q.id === 'bolt').qty, spoj === 'srouby' ? 8 : 0);
+    const key = (v) => v.map((x) => Math.round(x * 10)).join(',');
+    const all = X.build.parts.flatMap((p) => p.solid.verts), set = new Set(all.map(key));
+    assert(all.every((v) => set.has(key([v[0], -v[1], v[2]])) && set.has(key([-v[0], v[1], v[2]]))), 'souměrnost XZ i YZ: ' + tag);
+    assert(X.seat.margin >= 5 && X.seat.centreGap >= 10, 'konce křídla sedí na čele s okrajem ≥ 5 mm: ' + tag);
+    assert(Math.abs(X.seat.margin - r.otisk.okraj_mm) < 0.2, 'okraj otisku náhled = FreeCAD: ' + tag);
+    const f = V.motyliStepFiles(X.cfg);
+    assert(fs.existsSync(require.resolve('../' + f.step)) && fs.existsSync(require.resolve('../' + f.zip)), 'STEP a ZIP existují: ' + tag);
+  }
+  if (spojPrice(vel, 'svar') >= spojPrice(vel, 'srouby')) assert.fail('svar má být levnější než šrouby: ' + vel);
+  assert(Math.abs(V.normalize({ model: 'MOT', vel, spoj: 'svar' }).L - want[vel][0]) <= 2 && Math.abs(V.normalize({ model: 'MOT', vel, spoj: 'svar' }).W - want[vel][1]) <= 2, 'cílové rozměry ' + vel);
+  const p = spojPrice(vel, 'svar'); assert(p > prevPrice, 'větší velikost je dražší'); prevPrice = p;
 }
-const xyz = A.build.parts.flatMap((p) => p.solid.verts);
-const bounds = [0, 1, 2].map((axis) => [Math.min(...xyz.map((v) => v[axis])), Math.max(...xyz.map((v) => v[axis]))]);
-assert(Math.abs(bounds[0][1] - bounds[0][0] - A.build.dims.Lf) < 2);
-assert(Math.abs(bounds[1][1] - bounds[1][0] - A.build.dims.Wf) < 2);
-assert(Math.abs(bounds[2][1] - bounds[2][0] - A.build.dims.Hf) < 2, 'nominální náhled odpovídá výšce podnože');
-assert.deepEqual(AS.build.dims, { Lf: 1532.5, Wf: 821.9, Hf: 728 });
-assert.deepEqual(A.build.dims, { Lf: 1556.5, Wf: 821.9, Hf: 728 }, 'čelní deska 12 mm odsune každé křídlo');
-const resized = V.normalize({ model: 'MOT', L: 1600, H: 780 });
-assert.equal(resized.L, 1556.5, 'délka podnože zůstává pevná');
-assert.equal(resized.W, 821.9, 'hloubka podnože zůstává pevná');
-assert.equal(resized.H, 728, 'původní výška podnože zůstává pevná');
+function spojPrice(vel, spoj) { return V.analyze(V.normalize({ model: 'MOT', vel, spoj })).price; }
+assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 1800, dW: 900 })).suggestedVel, 'S', 'deska 180 × 90 → doporučeno S');
+assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 2000, dW: 1000 })).suggestedVel, 'M', 'deska 200 × 100 → doporučeno M');
+assert.equal(V.analyze(V.normalize({ model: 'MOT', dmode: 'own', dL: 2400, dW: 1100 })).suggestedVel, 'L', 'deska 240 × 110 → doporučeno L');
 const boardCfg = V.normalize({ model: 'MOT', shape: 'circle', dmode: 'own', dL: 1800, dW: 900, td: 40 });
 assert.equal(boardCfg.shape, 'circle', 'tvar desky MOT lze zvolit');
 assert.equal(boardCfg.dmode, 'own', 'MOT umožňuje vlastní rozměry desky');
@@ -58,17 +63,15 @@ assert.equal(boardCfg.td, 40, 'tloušťka desky se zachová');
 assert.equal(V.analyze(boardCfg).DL, 1800, 'náhled desky používá vlastní délku');
 assert.equal(V.analyze(boardCfg).DW, 1800, 'náhled desky kruhový průměr odpovídá délce');
 const defaultBoard = V.analyze(cfg);
-assert.equal(defaultBoard.DL, 1556.5, 'výchozí deska přebírá délku pevné podnože');
-assert.equal(defaultBoard.DW, 821.9, 'výchozí deska přebírá hloubku pevné podnože');
-assert.equal(defaultBoard.build.dims.Hf, 728, 'deska se pokládá na původní výšku podnože');
+assert.equal(defaultBoard.DL, cfg.L, 'výchozí deska přebírá délku podnože');
+assert.equal(defaultBoard.DW, cfg.W, 'výchozí deska přebírá hloubku podnože');
+assert.equal(defaultBoard.build.dims.Hf, 728, 'deska se pokládá na výšku podnože');
 assert.match(V.describe(boardCfg), /deska circle 1800 × 1800 × 40 mm/, 'popis konfigurace obsahuje volbu desky');
-const resizedBuild = V.build(resized);
-assert.deepEqual(resizedBuild.parts[2].solid.verts, A.build.parts[2].solid.verts, 'vstupy délky a výšky nemění pevnou geometrii podnože');
 const clamped = V.normalize({ model: 'MOT', L: 1200, W: 700, H: 900 });
-assert.equal(clamped.L, 1556.5, 'délku podnože nelze měnit');
+assert.equal(clamped.L, cfg.L, 'délka se volí jen velikostí');
 assert.equal(clamped.H, 728, 'výšku podnože nelze měnit');
 assert.equal(V.normalize({ model: 'PZ' }).model, 'PZ', 'ostatní modely zůstávají dostupné');
-assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /motyli-podnoz-mesh\.js[\s\S]*motyli-podnoz\.js/);
+assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /motyli-podnoz-kridla\.js[\s\S]*motyli-podnoz\.js/);
 assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /function renderMotyli\(\)/);
 assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /id="motBoardSlot"/);
 assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /id="motBoard"/);
@@ -81,21 +84,9 @@ assert.match(motRender, /\$\('price'\)\.textContent\s*=\s*K\.nf\(A\.total\) \+ '
 assert.match(motRender, /document\.querySelector\('\.buy'\)\.hidden\s*=\s*false/, 'objednávkový pruh je pro Motýlí podnož viditelný');
 assert.match(motRender, /document\.querySelector\('\.foot'\)\.hidden\s*=\s*false/, 'standardní informace a dílenský vstup zůstávají dostupné');
 const workshopHtml = fs.readFileSync(require.resolve('../interni.html'), 'utf8');
-assert.match(workshopHtml, /it\.config\s*&&\s*it\.config\.model\s*===\s*'MOT'[\s\S]*?motyli_podnoz_' \+ sp \+ '\.step[\s\S]*?step_dily_' \+ sp \+ '\.zip/, 'dílna nabízí STEP podle zvoleného spoje');
+assert.match(workshopHtml, /it\.config\s*&&\s*it\.config\.model\s*===\s*'MOT'[\s\S]*?motyli_podnoz_' \+ t \+ '\.step[\s\S]*?step_dily_' \+ t \+ '\.zip/, 'dílna nabízí STEP podle velikosti a spoje');
 assert.match(customerHtml, /K\.MOTYLI_SPOJE/, 'zákazník volí spoj křídel');
-const symPath = require('node:path').join(__dirname, '../assets/motyli-podnoz/kontrola_symetricka.json');
-if (fs.existsSync(symPath)) {
-  const sym = JSON.parse(fs.readFileSync(symPath, 'utf8'));
-  for (const sp of ['svar', 'srouby']) {
-    const r = sym.varianty[sp];
-    assert(r && r.ok, 'FreeCAD kontrola souměrné sestavy prošla: ' + sp);
-    assert.equal(r.step_teles_po_nacteni, r.teles, 'STEP po načtení má všechna tělesa: ' + sp);
-    assert(fs.existsSync(require.resolve('../assets/motyli-podnoz/motyli_podnoz_' + sp + '.step')));
-    assert(fs.existsSync(require.resolve('../assets/motyli-podnoz/step_dily_' + sp + '.zip')));
-  }
-} else {
-  console.warn('POZOR: STEP souměrné sestavy ještě nevznikl – spusť motyli-podnoz/vytvor_symetrickou_podnoz.FCMacro ve FreeCADu.');
-}
+assert.match(customerHtml, /K\.MOTYLI_VELIKOSTI/, 'zákazník volí velikost');
 assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /\$\('standDims'\)\.hidden = true/);
 assert.match(fs.readFileSync(require.resolve('../vyvoj.html'), 'utf8'), /\$\('motBoardSlot'\)\.appendChild\(\$\('motBoard'\)\)/);
-console.log('OK kontrola MOT: souměrná sestava, svar i šrouby, volby desky');
+console.log('OK kontrola MOT: velikosti S/M/L × svar/šrouby souhlasí s FreeCAD STEP, volby desky');

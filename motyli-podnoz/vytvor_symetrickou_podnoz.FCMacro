@@ -11,9 +11,10 @@
 #   S  ~1300 mm (desky 160–180 × 90)   M  1533 mm (200 × 100)   L  ~1700 mm (220–240 × 100–110)
 #
 # Uzel: svařená krabička z plechů 6 mm (bočnice 120 × 94 a 108 × 94, víko 120 × 120),
-# dole otevřená – zespodu přístup ke šroubům.
+# dole otevřená – zespodu přístup ke šroubům. Výška uzlu 110 mm (250–360), aby se do ní
+# vešly konce strmějších jeklů velikosti S.
 #   svar   – konce jeklů přímo na bočnici uzlu (x = ±60)
-#   srouby – čelní deska 12 × 56 × 94 se 2 závity M10 (předvrt Ø8,5), v uzlu 2× Ø11;
+#   srouby – čelní deska 12 × 56 × 104 se 2 závity M10 (předvrt Ø8,5), v uzlu 2× Ø11;
 #            šrouby M10 × 16 (8.8) zevnitř uzlu bez podložky
 #
 # Výstupy (assets/motyli-podnoz/): motyli_podnoz_<S|M|L>_<svar|srouby>.step,
@@ -49,9 +50,9 @@ JS_OUT = os.path.join(REPO, 'motyli-podnoz-kridla.js')
 
 SIZES = [('S', 1300.0), ('M', None), ('L', 1700.0)]        # délka varianty svar; None = původní křídlo
 SPOJE = ('svar', 'srouby')
-HUB_HALF, HUB_T, HUB_Z0, HUB_Z1 = 60.0, 6.0, 260.0, 360.0
+HUB_HALF, HUB_T, HUB_Z0, HUB_Z1 = 60.0, 6.0, 250.0, 360.0   # uzel 120 × 120 × 110 pro všechny velikosti
 PATCH_CENTER = 30.0
-PLATE_T, PLATE_Y0, PLATE_Y1, PLATE_Z0, PLATE_Z1 = 12.0, 2.0, 58.0, 262.0, 356.0
+PLATE_T, PLATE_Y0, PLATE_Y1, PLATE_Z0, PLATE_Z1 = 12.0, 2.0, 58.0, 252.0, 356.0
 BOLTS = [(42.0, 282.0), (18.0, 336.0)]          # (|y|, z) úhlopříčně
 TAP_D, CLEAR_D = 8.5, 11.0
 TOL_VOL = 1.0
@@ -168,86 +169,144 @@ def halfspace(point, normal):
     return box
 
 
-def morph_tube(src, frame, k):
-    """Jekl přepočtený polem (k·x, k·y, z) kolem kořene; průřez přesně 40×40×3 R6/R3."""
-    field = lambda v: V(k * v.x, k * v.y, v.z)
-    src_axis, src_point = frame
-    origin = ROOT + field(src_point - ROOT)
-    axis = unit(field(src_axis))
-    pv = V(0, 0, 1) - src_axis * src_axis.z
-    if pv.Length < 0.1:
-        pv = V(1, 0, 0) - src_axis * src_axis.x
-    pv = unit(pv)
-    normals = []
-    for f in src.Faces:
-        if 'Plane' in str(type(f.Surface)) and f.Area >= 1000:
-            n = f.normalAt(0, 0); n = n - src_axis * n.dot(src_axis)
-            if n.Length > 0.9:
-                normals.append(unit(n))
-    e1o = max(normals, key=lambda n: abs(n.dot(pv))) if normals else pv
-    e1 = field(e1o) - axis * field(e1o).dot(axis)
-    if e1.Length < 0.1:
-        e1 = V(0, 0, 1) - axis * axis.z
-    e1 = unit(e1); e2 = unit(axis.cross(e1))
-    caps = []
-    cs = src.CenterOfMass
-    side = V(cs.x, cs.y, cs.z)
-    for f in src.Faces:
-        if 'Plane' not in str(type(f.Surface)) or f.Area > 2000:
-            continue
-        n = unit(f.normalAt(0, 0))
-        if abs(n.dot(src_axis)) < 0.28:
-            continue
-        c = f.CenterOfMass; cp = V(c.x, c.y, c.z)
-        on_hub = abs(abs(n.x) - 1) < 0.01 and abs(c.x - HUB_HALF) < 0.05
-        point = cp if on_hub else ROOT + field(cp - ROOT)
-        normal = unit(V(n.x / k, n.y / k, n.z))
-        if (side - cp).dot(n) < 0:
-            normal = -normal
-        if not any(abs(normal.dot(on)) > 0.9999 and abs(normal.dot(point - op)) < 0.02 for on, op in caps):
-            caps.append((normal, point))
-    st = [nn.dot(p - origin) / nn.dot(axis) for nn, p in caps if abs(nn.dot(axis)) > 1e-5]
-    lo, hi = min(st), max(st)
-    o = origin + axis * (lo - 100)
-    tube = Part.Face(rounded_profile(o, e1, e2, 20.0, 6.0)).extrude(axis * (hi - lo + 200)).cut(
-        Part.Face(rounded_profile(o, e1, e2, 17.0, 3.0)).extrude(axis * (hi - lo + 200)))
-    for nn, p in caps:
-        tube = tube.common(halfspace(p, nn))
-    tube = tube.removeSplitter()
-    if tube.isNull() or len(tube.Solids) != 1 or not tube.isValid():
-        raise ValueError('Neplatný přepočtený jekl')
-    return tube.Solids[0]
+SEG = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)]   # jekl i leží mezi uzly SEG[i]
+RIM = 8.0                                                 # min. okraj výplně u jeklu (originál má 8 mm)
+
+
+def fld(p, k):
+    return V(ROOT.x + k * (p.x - ROOT.x), ROOT.y + k * (p.y - ROOT.y), p.z)
+
+
+def tube_rebuild(i, k):
+    """Jekl i znovu z os: pokosy v ose úhlu se sousedy, jekly u uzlu seříznuté rovinou x = 60.
+    Ve všech spojích originálu je čistý pokos (ověřeno), při k = 1 vychází tvar přesně (odchylka < 0,001 mm)."""
+    nodes = [fld(p, k) for p in NODES]
+    a, b = SEG[i]; pa, pb = nodes[a], nodes[b]; ax = unit(pb - pa)
+    e1 = PANEL_N; e2 = unit(ax.cross(e1))
+    o = pa - ax * 200; L = (pb - pa).Length + 400
+    t = Part.Face(rounded_profile(o, e1, e2, 20.0, 6.0)).extrude(ax * L).cut(Part.Face(rounded_profile(o, e1, e2, 17.0, 3.0)).extrude(ax * L))
+    up = unit(nodes[SEG[(i - 1) % 6][1]] - nodes[SEG[(i - 1) % 6][0]])
+    un = unit(nodes[SEG[(i + 1) % 6][1]] - nodes[SEG[(i + 1) % 6][0]])
+    na = unit(ax + up); nb = unit(ax + un)
+    t = t.common(halfspace(pa, na if na.dot(ax) > 0 else -na)).common(halfspace(pb, nb if nb.dot(ax) < 0 else -nb))
+    if i in (0, 5):
+        t = t.common(halfspace(V(HUB_HALF, 0, 0), V(1, 0, 0)))
+    t = t.removeSplitter()
+    if t.isNull() or len(t.Solids) != 1 or not t.isValid():
+        raise ValueError('Neplatný jekl %d pro k = %.4f' % (i, k))
+    return t.Solids[0]
 
 
 pts = np.array([[v.Point.x, v.Point.y, v.Point.z] for v in panel.Vertexes])
 vals, vecs = np.linalg.eigh(np.cov((pts - pts.mean(axis=0)).T))
 _n = vecs[:, int(np.argmin(vals))]
 PANEL_N = unit(V(float(_n[0]), float(_n[1]), 0))
+_faces = sorted(panel.Faces, key=lambda f: -f.Area)
+F0 = _faces[0]; NF = unit(F0.normalAt(0, 0))
+THICK = abs((_faces[1].CenterOfMass - F0.CenterOfMass).dot(NF))
+TV = unit(V(-PANEL_N.y, PANEL_N.x, 0)); ZZ = V(0, 0, 1)
+PLANE_OFF = (F0.CenterOfMass - ROOT).dot(PANEL_N)
 
 
-def morph_panel(k):
-    n = PANEL_N; t = unit(V(-n.y, n.x, 0)); z = V(0, 0, 1)
-    vs, sc = [n, t, z], [1.0, k, 1.0]
-    A = [[sum(sc[q] * vs[q][i] * vs[q][j] for q in range(3)) for j in range(3)] for i in range(3)]
-    r = [ROOT.x, ROOT.y, ROOT.z]
-    tr = [r[i] - sum(A[i][j] * r[j] for j in range(3)) for i in range(3)]
-    M = App.Matrix(A[0][0], A[0][1], A[0][2], tr[0], A[1][0], A[1][1], A[1][2], tr[1], A[2][0], A[2][1], A[2][2], tr[2], 0, 0, 0, 1)
-    s = panel.transformGeometry(M)
-    if not s.isValid() or len(s.Solids) != 1:
-        raise ValueError('Neplatná přepočtená výplň')
-    return s.Solids[0]
+def to2(p):
+    d = p - ROOT
+    return (d.dot(TV), d.z)
+
+
+def to3(u, w):
+    return ROOT + TV * u + ZZ * w + PANEL_N * PLANE_OFF
+
+
+def _axis2(j, k):
+    nodes = [fld(p, k) for p in NODES]
+    A = to2(nodes[SEG[j][0]]); B = to2(nodes[SEG[j][1]])
+    ux, uy = B[0] - A[0], B[1] - A[1]; ul = math.hypot(ux, uy)
+    return A, (ux / ul, uy / ul)
+
+
+# hrany obrysu výplně: ke kterému jeklu patří a v jaké vzdálenosti od jeho osy leží
+EDGE_TUBE = []
+for e in F0.OuterWire.OrderedEdges:
+    a2 = to2(e.Vertexes[0].Point); b2 = to2(e.Vertexes[-1].Point)
+    m2 = ((a2[0] + b2[0]) / 2, (a2[1] + b2[1]) / 2)
+    L = math.hypot(b2[0] - a2[0], b2[1] - a2[1]); d2 = ((b2[0] - a2[0]) / L, (b2[1] - a2[1]) / L)
+    best = None
+    for j in range(6):
+        A, u = _axis2(j, 1.0)
+        if abs(d2[0] * u[0] + d2[1] * u[1]) < 0.9999:
+            continue
+        sgn = (m2[0] - A[0]) * (-u[1]) + (m2[1] - A[1]) * u[0]
+        if best is None or abs(sgn) < abs(best[1]):
+            best = (j, sgn)
+    if best is None:
+        raise ValueError('Hrana výplně neleží podél žádného jeklu')
+    EDGE_TUBE.append(best)
+
+
+def panel_rebuild(k):
+    """Výplň 5 mm: nový šestiúhelníkový obrys ve stejné vzdálenosti od os jeklů, otvory přepočtené
+    vodorovně (k) a oříznuté tak, aby okraj u jeklu zůstal aspoň RIM."""
+    lines = []
+    for j, sgn in EDGE_TUBE:
+        A, u = _axis2(j, k)
+        lines.append(((A[0] - u[1] * sgn, A[1] + u[0] * sgn), u))
+    def isect(l1, l2):
+        (p, u), (q, v) = l1, l2
+        t = ((q[0] - p[0]) * v[1] - (q[1] - p[1]) * v[0]) / (u[0] * v[1] - u[1] * v[0])
+        return (p[0] + u[0] * t, p[1] + u[1] * t)
+    pts2 = [isect(lines[i - 1], lines[i]) for i in range(len(lines))]
+    outer = Part.makePolygon([to3(*p) for p in pts2] + [to3(*pts2[0])])
+    M = None
+    if abs(k - 1) > 1e-12:
+        vs, sc = [PANEL_N, TV, ZZ], [1.0, k, 1.0]
+        A = [[sum(sc[q] * vs[q][i] * vs[q][j] for q in range(3)) for j in range(3)] for i in range(3)]
+        r = [ROOT.x, ROOT.y, ROOT.z]
+        tr = [r[i] - sum(A[i][j] * r[j] for j in range(3)) for i in range(3)]
+        M = App.Matrix(A[0][0], A[0][1], A[0][2], tr[0], A[1][0], A[1][1], A[1][2], tr[1], A[2][0], A[2][1], A[2][2], tr[2], 0, 0, 0, 1)
+    full = Part.Face(outer); inset = full.makeOffset2D(-RIM)
+    holes, clipped = [], 0
+    for w in F0.Wires[1:]:
+        hf = Part.Face(w if M is None else w.transformGeometry(M).Wires[0])
+        c = hf.common(inset)
+        if abs(c.Area - hf.Area) > 0.01:
+            clipped += 1
+        if c.Area > 1.0:
+            holes.append(c)
+    s = full.cut(Part.makeCompound(holes)).extrude(NF * (-THICK)).removeSplitter()
+    if s.isNull() or len(s.Solids) != 1 or not s.isValid():
+        raise ValueError('Neplatná výplň pro k = %.4f' % k)
+    return s.Solids[0], outer, [f.OuterWire for h in holes for f in h.Faces], clipped
+
+
+def bridges(outer, holes, step=0.5):
+    """Nejužší můstek mezi otvory a nejužší okraj u jeklu (mm), vzorkováno po 0,5 mm."""
+    from scipy.spatial import cKDTree
+    def smp(w):
+        return np.array([to2(p) for p in w.discretize(max(8, int(w.Length / step)))])
+    S = [smp(h) for h in holes]; O = smp(outer)
+    lab = np.concatenate([np.full(len(x), i) for i, x in enumerate(S)] + [np.full(len(O), -1)])
+    P = np.concatenate(S + [O]); d, idx = cKDTree(P).query(P, k=40)
+    best = rim = 1e9
+    for r in range(len(P)):
+        for dd, j in zip(d[r][1:], idx[r][1:]):
+            if lab[j] != lab[r]:
+                if lab[r] == -1 or lab[j] == -1:
+                    rim = min(rim, dd)
+                else:
+                    best = min(best, dd)
+                break
+    return round(float(best), 2), round(float(rim), 2)
 
 
 def wing(k):
-    """Vzorové křídlo (+X −Y) pro vodorovný faktor k; vrací [(název, tvar)]."""
-    if abs(k - 1) < 1e-9:
-        tubes_k = [t.copy() for t in ring]; panel_k = panel.copy(); plate_k = top_plate.copy()
-    else:
-        tubes_k = [morph_tube(t, f, k) for t, f in zip(ring, FRAMES)]
-        panel_k = morph_panel(k)
-        n2 = NODES[2]; d = V(ROOT.x + k * (n2.x - ROOT.x), ROOT.y + k * (n2.y - ROOT.y), n2.z) - n2
-        plate_k = top_plate.copy(); plate_k.translate(d)
-    return [('vypln_5mm', panel_k)] + [('jekl_40x40x3_%d' % (i + 1), t) for i, t in enumerate(tubes_k)] + [('horni_deska_110x86x8', plate_k)]
+    """Vzorové křídlo (+X −Y) pro vodorovný faktor k; vrací ([(název, tvar)], info o výplni)."""
+    tubes_k = [tube_rebuild(i, k) for i in range(6)]
+    panel_k, outer, holes, clipped = panel_rebuild(k)
+    mid0 = (NODES[1] + NODES[2]) * 0.5; mid1 = (fld(NODES[1], k) + fld(NODES[2], k)) * 0.5
+    plate_k = top_plate.copy(); plate_k.translate(mid1 - mid0)
+    br, rim = bridges(outer, holes)
+    info = {'mustek_min_mm': br, 'okraj_min_mm': rim, 'oriznute_otvory': clipped}
+    return [('vypln_5mm', panel_k)] + [('jekl_40x40x3_%d' % (i + 1), t) for i, t in enumerate(tubes_k)] + [('horni_deska_110x86x8', plate_k)], info
 
 
 def shift_y(parts):
@@ -301,7 +360,7 @@ def assemble(wparts, sy_shift, spoj):
             m = s.copy(); m.translate(V(dx, sy_shift, 0))
             parts.append((q + '_' + n, place(m, sx, sy), q))
         if spoj == 'srouby':
-            parts.append((q + '_celni_deska_12x56x94_2xM10', place(end_plate(), sx, sy), q))
+            parts.append((q + '_celni_deska_12x56x104_2xM10', place(end_plate(), sx, sy), q))
     return parts
 
 
@@ -359,22 +418,39 @@ def export(tag, parts, rep):
     rep['soubory'] = ['assets/motyli-podnoz/motyli_podnoz_%s.step' % tag, 'assets/motyli-podnoz/step_dily_%s.zip' % tag]
 
 
-def mesh_of(shape, tol=0.25):
-    v, t = shape.tessellate(tol)
-    return {'verts': [[round(p.x, 2), round(p.y, 2), round(p.z, 2)] for p in v], 'tris': [list(x) for x in t]}
+def mesh_of(shape):
+    import MeshPart   # tessellate() dává u výplně s 64 otvory ~95 000 bodů (17 MB JS), MeshPart ~7 000
+    m = MeshPart.meshFromShape(Shape=shape, LinearDeflection=0.3, AngularDeflection=0.35, Relative=False)
+    return {'verts': [[round(p.x, 1), round(p.y, 1), round(p.z, 1)] for p in m.Points], 'tris': [list(f.PointIndices) for f in m.Facets]}
 
 
 # délka varianty svar ≈ 2·(kořen.x + k·(xmax − kořen.x)) → faktor k pro cílovou délku
-base_parts = wing(1.0)
-xmax1 = Part.makeCompound([s for n, s in base_parts]).optimalBoundingBox().XMax
+def wing_xmax(k):
+    nodes_k = [tube_rebuild(i, k) for i in range(6)]
+    mid0 = (NODES[1] + NODES[2]) * 0.5; mid1 = (fld(NODES[1], k) + fld(NODES[2], k)) * 0.5
+    pl = top_plate.copy(); pl.translate(mid1 - mid0)
+    return Part.makeCompound(nodes_k + [pl]).optimalBoundingBox().XMax
+
+
+def solve_k(target):
+    """Faktor k tak, aby délka varianty svar byla přesně target (sečny, 0,1 mm)."""
+    k0, k1 = 1.0, (target / 2.0 - ROOT.x) / (wing_xmax(1.0) - ROOT.x)
+    f0 = 2 * wing_xmax(k0) - target
+    for _ in range(8):
+        f1 = 2 * wing_xmax(k1) - target
+        if abs(f1) < 0.1:
+            break
+        k0, k1, f0 = k1, k1 - f1 * (k1 - k0) / (f1 - f0), f1
+    return k1
 
 report = {'zdroj': os.path.relpath(SRC_STEP, REPO), 'velikosti': {}}
 js = {}
 for size, target in SIZES:
-    k = 1.0 if target is None else (target / 2.0 - ROOT.x) / (xmax1 - ROOT.x)
-    wparts = wing(k)
+    k = 1.0 if target is None else solve_k(target)
+    wparts, pinfo = wing(k)
     sy = shift_y(wparts)
-    srep = {'k': round(k, 5), 'shift_y_mm': round(sy, 3), 'varianty': {}}
+    srep = {'k': round(k, 5), 'shift_y_mm': round(sy, 3), 'vypln': pinfo, 'varianty': {}}
+    print(size, 'k', round(k, 4), 'výplň', pinfo)
     for spoj in SPOJE:
         parts = assemble(wparts, sy, spoj)
         rep = check(spoj, parts)
@@ -390,5 +466,5 @@ with open(os.path.join(OUT_DIR, 'kontrola_symetricka.json'), 'w', encoding='utf-
 with open(JS_OUT, 'w', encoding='utf-8') as fh:
     fh.write('/* Síť vzorového křídla motýlí podnože (+X −Y) pro velikosti S/M/L – generuje motyli-podnoz/vytvor_symetrickou_podnoz.FCMacro. */\n')
     fh.write('window.MOTYLI_KRIDLA=' + json.dumps(js, separators=(',', ':')) + ';\n')
-ok = all(r['ok'] for s in report['velikosti'].values() for r in s['varianty'].values())
+ok = all(r['ok'] for s in report['velikosti'].values() for r in s['varianty'].values()) and all(s['vypln']['mustek_min_mm'] >= 6.0 and s['vypln']['okraj_min_mm'] >= RIM - 0.1 for s in report['velikosti'].values())
 print('HOTOVO', 'OK' if ok else 'CHYBY – viz kontrola_symetricka.json')
