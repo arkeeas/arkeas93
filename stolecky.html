@@ -183,6 +183,9 @@
       <div class="stage-side">
         <div class="chip" id="ohChip"></div>
         <label class="check" for="see"><input id="see" type="checkbox"> Průhledná deska</label>
+        <label class="check" for="boardMaterial">Vzhled desky
+          <select id="boardMaterial"><option value="oak">Dub</option><option value="ash">Jasan</option><option value="epoxy">Dub s modrozeleným říčním epoxidem</option></select>
+        </label>
         <label class="check" for="showDesk"><input id="showDesk" type="checkbox" checked> Zobrazit desku</label>
         <label class="check" for="person">Postava
           <select id="person">
@@ -296,7 +299,7 @@
 <script src="core.js?v=20261008g"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="stolecky-core.js?v=20261011c"></script>
-<script src="stolecky-viewer.js?v=20261012a"></script>
+<script src="stolecky-viewer.js?v=20261012b"></script>
 <script>
 (function () {
   'use strict';
@@ -310,7 +313,7 @@
   /* profily seskupené podle rozměru (šířka × hloubka), tloušťka stěny zvlášť – jako u podnoží */
   const SIZES = [];
   S.PROFILES.forEach((p) => { const k = p.hp + 'x' + p.hd; let z = SIZES.find((q) => q.id === k); if (!z) SIZES.push(z = { id: k, hp: p.hp, hd: p.hd, walls: [] }); z.walls.push(p.wall); });
-  let cfg = S.normalize(S.DEFAULT_CFG), rates = S.DEFAULT_RATES, B = null, db = null, uid = null, ui = { showDesk: true, see: false, person: null, view: 'iso' };
+  let cfg = S.normalize(S.DEFAULT_CFG), rates = S.DEFAULT_RATES, B = null, db = null, uid = null, ui = { showDesk: true, see: false, person: null, view: 'iso', boardMaterial: localStorage.getItem('skovo-board-material-v1') || 'ash' };
   try { const st = JSON.parse(localStorage.getItem('stolecky-retez') || 'null'); if (st) cfg = S.normalize(st); } catch (e) { /* bez paměti */ }
   const nf = (n) => Number(n).toLocaleString('cs-CZ', { maximumFractionDigits: 0 });
   const fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
@@ -362,7 +365,7 @@
     group($('tops'), S.TOPS.map((o) => card(o, o.id === cfg.top)).join(''), (id) => set({ top: id }));
     group($('mounts'), S.MOUNTS.map((m) => card(m, m.id === cfg.mount, m.minTd && cfg.topT < m.minTd ? '<span class="c"><strong>Deska ' + cfg.topT + ' mm je na to tenká.</strong></span>' : '')).join(''), (id) => set({ mount: id }));
     group($('fins'), S.FIN.map((f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>').join(''), (id) => set({ fin: id }));
-    $('see').checked = ui.see; $('showDesk').checked = ui.showDesk;
+    $('see').checked = ui.see; $('showDesk').checked = ui.showDesk; $('boardMaterial').value = ui.boardMaterial;
     $('person').value = ui.person ? ui.person.kind + '-' + ui.person.pose : '';
     $('pHwrap').hidden = !ui.person;
     if (ui.person) $('pH').value = Math.round(ui.person.S / 10);
@@ -419,7 +422,7 @@
   const viewer = StoViewer.create($('viz'));
   if (!viewer) $('hint').hidden = true;
   const view = (v) => { ui.view = v; document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v))); if (viewer) viewer.view(v); };
-  const build3d = (B) => { if (viewer) viewer.update(B, { showDesk: ui.showDesk, see: ui.see, person: ui.person }); };
+  const build3d = (B) => { if (viewer) viewer.update(B, { showDesk: ui.showDesk, see: ui.see, person: ui.person, boardMaterial: ui.boardMaterial }); };
 
   function render() { B = S.build(cfg); syncForm(); facts(B); build3d(B); }
 
@@ -432,6 +435,7 @@
   }));
   $('see').addEventListener('change', (e) => { ui.see = e.target.checked; render(); });
   $('showDesk').addEventListener('change', (e) => { ui.showDesk = e.target.checked; render(); });
+  $('boardMaterial').addEventListener('change', (e) => { ui.boardMaterial = e.target.value; try { localStorage.setItem('skovo-board-material-v1', ui.boardMaterial); } catch (err) {} render(); });
   $('person').addEventListener('change', (e) => {
     const v = e.target.value;
     if (!v) ui.person = null;

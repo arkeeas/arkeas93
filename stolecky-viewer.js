@@ -15,10 +15,10 @@
     try { return root.Postava.build(A, person).bodies; } catch (e) { return []; }
   }
 
-  function ashTexture(THREE, renderer) {
+  function ashTexture(THREE, renderer, oak) {
     const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512;
     const ctx = canvas.getContext('2d'), base = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    base.addColorStop(0, '#BFA77D'); base.addColorStop(0.24, '#E1D0AA'); base.addColorStop(0.58, '#CFB98D'); base.addColorStop(1, '#B59B6E');
+    base.addColorStop(0, oak ? '#875632' : '#BFA77D'); base.addColorStop(0.24, oak ? '#C08A55' : '#E1D0AA'); base.addColorStop(0.58, oak ? '#A87545' : '#CFB98D'); base.addColorStop(1, oak ? '#704526' : '#B59B6E');
     ctx.fillStyle = base; ctx.fillRect(0, 0, canvas.width, canvas.height);
     let seed = 1618;
     const rand = () => { seed = (1664525 * seed + 1013904223) >>> 0; return seed / 4294967296; };
@@ -31,7 +31,7 @@
       }
       const dark = rand() > 0.47;
       ctx.strokeStyle = dark ? `rgba(75,57,34,${0.07 + rand() * 0.18})` : `rgba(255,246,221,${0.09 + rand() * 0.2})`;
-      ctx.lineWidth = 0.6 + rand() * 3.2; ctx.stroke();
+      ctx.lineWidth = 0.6 + rand() * (oak ? 4.2 : 3.2); ctx.stroke();
     }
     for (let i = 0; i < 18; i++) {
       const x = rand() * 1024, y = rand() * 512, rx = 12 + rand() * 34, ry = 3 + rand() * 8;
@@ -41,6 +41,17 @@
     const texture = new THREE.CanvasTexture(canvas); texture.encoding = THREE.sRGBEncoding;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     return texture;
+  }
+
+  function epoxyTexture(THREE, renderer, oak) {
+    const wood = ashTexture(THREE, renderer, oak), canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(wood.image, 0, 0);
+    ctx.beginPath();
+    for (let y = -10; y <= 522; y += 10) { const x = 512 + Math.sin(y * .013) * 55 + Math.sin(y * .037) * 18; if (y === -10) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    for (let y = 522; y >= -10; y -= 10) ctx.lineTo(512 + Math.sin(y * .013 + 1.6) * 55 + Math.sin(y * .037 + 1.6) * 18, y);
+    ctx.closePath(); const g = ctx.createLinearGradient(420, 0, 620, 0); g.addColorStop(0, '#063246'); g.addColorStop(.3, '#0D7180'); g.addColorStop(.62, '#168C91'); g.addColorStop(1, '#082E48'); ctx.fillStyle = g; ctx.fill();
+    for (let i = 0; i < 24; i++) { const y = i * 22, x = 510 + Math.sin(i * .8) * 43; ctx.beginPath(); ctx.ellipse(x, y, 15 + (i % 4) * 8, 3 + (i % 3) * 2, .2, 0, Math.PI * 2); ctx.fillStyle = i % 3 ? 'rgba(120,235,219,.15)' : 'rgba(1,34,55,.25)'; ctx.fill(); }
+    const texture = new THREE.CanvasTexture(canvas); texture.encoding = THREE.sRGBEncoding; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); wood.dispose(); return texture;
   }
 
   function mapDeskUv(THREE, geometry) {
@@ -62,7 +73,7 @@
     try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { host.innerHTML = '<p class="nojs" style="padding:24px;color:#5E5A54">3D náhled nejde spustit (WebGL).</p>'; return null; }
     r.setPixelRatio(Math.min(2, root.devicePixelRatio || 1));
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.outputEncoding = THREE.sRGBEncoding;
-    const deskTexture = ashTexture(THREE, r);
+    const deskTextures = { ash: ashTexture(THREE, r, false), oak: ashTexture(THREE, r, true), epoxy: epoxyTexture(THREE, r, true) };
     host.appendChild(r.domElement); r.domElement.style.display = 'block'; r.domElement.style.touchAction = 'none';
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(32, 1, 1, 12000); cam.up.set(0, 0, 1);
@@ -99,7 +110,8 @@
       while (grp.children.length) { const x = grp.children.pop(); x.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
       const c = B.cfg, G = B.G, see = !!st.o.see, M = METAL[c.fin] || METAL.black;
       const steel = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2] });
-      const wood = new THREE.MeshStandardMaterial({ map: deskTexture, color: '#FFFFFF', roughness: 0.66, metalness: 0, transparent: see, opacity: see ? 0.32 : 1, depthWrite: !see });
+      const board = ['oak', 'epoxy'].includes(st.o.boardMaterial) ? st.o.boardMaterial : 'ash';
+      const wood = new THREE.MeshStandardMaterial({ map: deskTextures[board], color: '#FFFFFF', roughness: board === 'epoxy' ? 0.24 : 0.66, metalness: board === 'epoxy' ? 0.08 : 0, transparent: see, opacity: see ? 0.32 : 1, depthWrite: !see });
       const edgeMat = new THREE.LineBasicMaterial({ color: 0x8A847B });
       if (B.model === 'motylek') {
         const ownTop = c.motylekTop === 'vlastni';
@@ -117,7 +129,7 @@
             const transparent = see && isDesk;
             if (isDesk) mapDeskUv(THREE, g);
             const mat = isDesk
-              ? new THREE.MeshStandardMaterial({ map: deskTexture, color: '#FFFFFF', roughness: 0.66, metalness: 0, transparent, opacity: transparent ? 0.4 : 1, depthWrite: !transparent, side: THREE.DoubleSide })
+              ? new THREE.MeshStandardMaterial({ map: deskTextures[board], color: '#FFFFFF', roughness: board === 'epoxy' ? 0.24 : 0.66, metalness: board === 'epoxy' ? 0.08 : 0, transparent, opacity: transparent ? 0.4 : 1, depthWrite: !transparent, side: THREE.DoubleSide })
               : new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2], side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(g, mat); mesh.castShadow = true; mesh.receiveShadow = true; grp.add(mesh);
           });
