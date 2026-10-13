@@ -366,6 +366,8 @@
     group($('mounts'), S.MOUNTS.map((m) => card(m, m.id === cfg.mount, m.minTd && cfg.topT < m.minTd ? '<span class="c"><strong>Deska ' + cfg.topT + ' mm je na to tenká.</strong></span>' : '')).join(''), (id) => set({ mount: id }));
     group($('fins'), S.FIN.map((f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>').join(''), (id) => set({ fin: id }));
     $('see').checked = ui.see; $('showDesk').checked = ui.showDesk; $('boardMaterial').value = ui.boardMaterial;
+    // Vzhled dřeva dává smysl jen pro dřevěnou desku; ocelová deska Motýlka se kreslí jako ocel.
+    $('boardMaterial').closest('label').style.display = (cfg.model === 'motylek' && cfg.motylekTop !== 'vlastni') ? 'none' : '';
     $('person').value = ui.person ? ui.person.kind + '-' + ui.person.pose : '';
     $('pHwrap').hidden = !ui.person;
     if (ui.person) $('pH').value = Math.round(ui.person.S / 10);

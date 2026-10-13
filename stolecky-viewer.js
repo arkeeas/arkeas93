@@ -126,11 +126,9 @@
             g.setAttribute('position', new THREE.Float32BufferAttribute(part.positions, 3));
             g.setIndex(part.indices);
             g.computeVertexNormals();
+            // Zde je deska vždy ocelová (vlastní dřevěná se vykresluje níže jako válec) → ocelový materiál se zvoleným povrchem, žádná textura dřeva.
             const transparent = see && isDesk;
-            if (isDesk) mapDeskUv(THREE, g);
-            const mat = isDesk
-              ? new THREE.MeshStandardMaterial({ map: deskTextures[board], color: '#FFFFFF', roughness: board === 'epoxy' ? 0.24 : 0.66, metalness: board === 'epoxy' ? 0.08 : 0, transparent, opacity: transparent ? 0.4 : 1, depthWrite: !transparent, side: THREE.DoubleSide })
-              : new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2], side: THREE.DoubleSide });
+            const mat = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2], side: THREE.DoubleSide, transparent, opacity: transparent ? 0.4 : 1, depthWrite: !transparent });
             const mesh = new THREE.Mesh(g, mat); mesh.castShadow = true; mesh.receiveShadow = true; grp.add(mesh);
           });
           if (ownTop) {
