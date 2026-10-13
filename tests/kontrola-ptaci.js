@@ -134,3 +134,10 @@ const interni = fs.readFileSync(path.join(root, 'interni.html'), 'utf8');
 for (const id of ['t-pta', 'p-pta', 'paOrder', 'paDetail', 'paRefs']) assert.ok(interni.includes(`id="${id}"`), 'interni.html: #' + id);
 assert.ok(interni.includes("it.product === 'ptak'") && interni.includes('ptaci-dilna.js'));
 console.log('kontrola-ptaci: stránka + dílna napojeny OK');
+
+/* ---------- poptávka: kompatibilita se serverem (dilna_api/poptavky.php) ---------- */
+assert.match(js, /const id = 'A' \+ stamp/, 'ID poptávky začíná povolenou předponou');
+const phpRule = fs.readFileSync(path.join(root, 'dilna_api/poptavky.php'), 'utf8').match(/preg_match\('\/\^\[([A-Z]+)\]/);
+assert.ok(phpRule && phpRule[1].includes('A'), 'server přijímá předponu A');
+assert.ok(js.includes('result.emailSkipped') && js.includes('result.emailAccepted'), 'odeslání zpracuje odpověď e-mailové služby');
+console.log('kontrola-ptaci: kompatibilita se serverem OK');

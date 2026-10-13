@@ -75,7 +75,7 @@
     if (!mod.validate(raw).ok) { msg('Zkontrolujte nastavení a počet kusů.', 'bad'); $('modal').hidden = true; return; }
     if (!name || !mod.validEmail(email)) { msg('Vyplňte jméno a platný e-mail.', 'bad'); return; }
     const now = new Date(), stamp = String(now.getFullYear()).slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-    const id = (isP ? 'V' : 'A') + stamp + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    const id = 'A' + stamp + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();   // server (dilna_api/poptavky.php) přijímá jen předpony P, S, Z, A
     const c = mod.normalize(raw), p = mod.price(c, rates);
     const item = { id, product: isP ? 'ptak' : 'zastena', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim() }, note: $('fNote').value.trim(), config: c };
     if (p) {
@@ -86,8 +86,11 @@
     $('send').disabled = true;
     try {
       const ref = db.doc('poptavky/' + uid), snap = await ref.get(), items = snap.exists ? (snap.data().items || []).slice() : [];
-      items.push(item); await ref.set({ uid, updated: now.toISOString(), items });
-      $('modal').hidden = true; msg('Děkujeme, poptávka ' + id + ' je odeslaná. Dílna se ozve s potvrzením proveditelnosti a ceny.', 'ok');
+      items.push(item); const result = await ref.set({ uid, updated: now.toISOString(), items });
+      $('modal').hidden = true;
+      msg(result && result.emailSkipped ? 'Testovací poptávka ' + id + ' byla uložena do Dílna. E-mail se neposílá.'
+        : (result && result.emailAccepted === false ? 'Poptávka ' + id + ' je uložená, ale e-mailové upozornění se nepodařilo odeslat. Kontaktujte prosím firmu.'
+        : 'Děkujeme, poptávka ' + id + ' je odeslaná. Dílna se ozve s potvrzením proveditelnosti a ceny.'), 'ok');
     } catch (err) {
       $('modal').hidden = true; msg('Odeslání se nepovedlo. Pošlete prosím tento kód na [E-MAIL FIRMY]:<div class="code">' + codeFor(item) + '</div>', 'bad');
     } finally { $('send').disabled = false; }
