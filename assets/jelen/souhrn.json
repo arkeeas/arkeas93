@@ -1,0 +1,15 @@
+{
+ "valid": true,
+ "solids": 1,
+ "kg": 1.45,
+ "flat": [
+  700.0,
+  402.1
+ ],
+ "cut_mm": 5638,
+ "faces": 1127,
+ "short_edges": 0,
+ "hooks": 8,
+ "min_width_5mm": true,
+ "hook_out": 30.0
+}

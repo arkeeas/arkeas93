@@ -230,3 +230,36 @@ assert.match(fakeDoc.els.paDetail.innerHTML, /rozložení na stěně 1000 × 700
 assert.doesNotMatch(fakeDoc.els.paDetail.innerHTML, /Kč s DPH \/ ks/);
 assert.match(D.describe({ layout: lay }), /4 ks/);
 console.log('kontrola-ptaci: rozložení na stěně OK');
+
+/* ---------- věšák Jelen ---------- */
+const J = require('../jelen-core.js'), JV = require('../jelen-view.js');
+const jsum = JSON.parse(fs.readFileSync(path.join(root, 'assets/jelen/souhrn.json'), 'utf8'));
+assert.equal(jsum.valid, true); assert.equal(jsum.solids, 1); assert.equal(jsum.short_edges, 0); assert.equal(jsum.hooks, J.SPEC.hooks);
+assert.deepEqual(J.SPEC.flat, jsum.flat); assert.equal(J.SPEC.kg, jsum.kg); assert.equal(J.SPEC.cutMm, jsum.cut_mm); assert.equal(J.SPEC.hookOut, jsum.hook_out);
+const jdxf = fs.readFileSync(path.join(root, 'assets/jelen/jelen_rozvin.dxf'), 'utf8');
+for (const l of ['OBRYS', 'OTVORY', 'OHYB']) assert.ok(jdxf.includes(l), 'DXF jelen: ' + l);
+assert.equal((jdxf.match(/\nOHYB\n/g) || []).length, J.SPEC.bends, 'počet ohybových čar = ohyby');
+assert.ok(jdxf.trimEnd().endsWith('EOF'));
+assert.ok(fs.readFileSync(path.join(root, 'assets/jelen/jelen.step'), 'utf8').slice(0, 20).startsWith('ISO-10303-21'));
+assert.equal(J.validate({ finish: 'black', qty: 1 }).ok, true);
+for (const q of [0, -1, 1.5, '', null, NaN]) assert.equal(J.validate({ finish: 'black', qty: q }).ok, false);
+assert.equal(J.validate({ finish: 'x', qty: 1 }).ok, false);
+assert.match(J.describe({ finish: 'anth', qty: 2 }), /Jelen.*700 × 402.*8 háčků.*Antracit.*2 ks/);
+const jo = (o) => Object.assign({ kg: 0, rez: 0, svar: 0, barva: 0, priprava: 0, marze: 0, ohyb: 0 }, o);
+assert.equal(J.price({ qty: 1 }, jo({ ohyb: 10 })).price, 160); assert.equal(J.price({ qty: 1 }, jo({ rez: 10 })).price, 200);
+assert.equal(J.price({ qty: 10 }, jo({ priprava: 600 })).price, 60);
+const jp = J.price({ qty: 1 }); assert.ok(jp.price > 0 && jp.vat > jp.price && jp.total === jp.vat);
+assert.ok(J.price({ qty: 5 }).price < jp.price);
+const jart = (() => { const c2 = { window: {} }; vm.createContext(c2); vm.runInContext(fs.readFileSync(path.join(root, 'assets/jelen/artwork.js'), 'utf8'), c2); return c2.window.JelenArtwork; })();
+assert.equal(jart.bends.length, 16); assert.equal(jart.slots.length, 16); assert.equal(jart.holes.length, 3); assert.equal(JV.hookTabs(jart).length, 8);
+for (const mode of ['front', 'rozvin']) { const sv = JV.svg(jart, { mode, finish: 'raw' }); assert.ok(sv.startsWith('<svg') && sv.endsWith('</svg>')); assert.ok(!/NaN|undefined/.test(sv), mode); }
+D.init({ document: fakeDoc });
+assert.equal(D.accepts({ product: 'jelen' }), true);
+assert.match(D.production({ finish: 'black', qty: 2 }, 'jelen'), /700 × 402,1.*1,45 kg.*5638 mm.*8 háčků = 16 ohybů.*2 ks/);
+assert.match(D.describe({ finish: 'black', qty: 1 }, 'jelen'), /Jelen/);
+D.open({ id: 'A261013-JELN', created: 'x', product: 'jelen', customer: { name: 'Jan', email: 'a@b.cz' }, config: { finish: 'black', qty: 1 }, priceEstimate: true, price: 2540, vat: 3070, total: 3070, priceBreakdown: { kg: 1.45, cuts: 20, bends: 16, surfaceM2: 0.14 } });
+assert.match(fakeDoc.els.paDetail.innerHTML, /Věšák Jelen/); assert.match(fakeDoc.els.paRefs.innerHTML, /jelen_rozvin\.dxf/);
+for (const f of D.referenceFiles('jelen')) assert.ok(fs.existsSync(path.join(root, f.path)), 'chybí ' + f.path);
+for (const src of ['assets/jelen/artwork.js', 'jelen-core.js', 'jelen-view.js']) assert.ok(html.includes(`src="${src}"`), 'ostatni.html: ' + src);
+assert.ok(interni.includes('jelen-core.js') && interni.includes("it.product === 'jelen'"));
+console.log('kontrola-ptaci: Jelen OK');
