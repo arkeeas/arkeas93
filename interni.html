@@ -15,7 +15,6 @@
     --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
     color-scheme: light;
   }
-  .dilna-live .modebar { display: none; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; background: var(--ground); color: var(--ink); }
@@ -502,7 +501,7 @@
     all.sort((a, b) => String(b.it.created).localeCompare(String(a.it.created)));
     const nNew = all.filter((x) => x.it.status === 'nova').length;
     $('popCount').hidden = !nNew; $('popCount').textContent = nNew;
-    if (!all.length) { $('popRows').innerHTML = '<tr><td colspan="7" class="empty">' + (db ? (location.hostname === 'dilna.skovem.cz' ? 'Zatím žádná poptávka. Nové poptávky z webových formulářů se objeví tady.' : 'Zatím žádná poptávka. Odešli ji v záložce Zákazník (tlačítko Nezávazně poptat) – objeví se tady.') : 'Poptávky se nedají načíst – databáze není na tomto zobrazení dostupná.') + '</td></tr>'; return; }
+    if (!all.length) { $('popRows').innerHTML = '<tr><td colspan="7" class="empty">' + (db ? 'Zatím žádná poptávka. Odešli ji v záložce Zákazník (tlačítko Nezávazně poptat) – objeví se tady.' : 'Poptávky se nedají načíst – databáze není na tomto zobrazení dostupná.') + '</td></tr>'; return; }
     $('popRows').innerHTML = all.map((x, n) => {
       const it = x.it, c = it.customer || {}, dt = new Date(it.created);
       const priceLabel = (it.product === 'zastena' || it.product === 'ptak') ? (it.priceEstimate && it.total != null && Number.isFinite(Number(it.total)) ? K.nf(Number(it.total)) + ' Kč · orientačně' : 'Ruční cena') : K.nf(it.total || it.vat || 0) + ' Kč';
