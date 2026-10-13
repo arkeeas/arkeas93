@@ -1,0 +1,22 @@
+# Dílna – redirect before showing the Basic Auth prompt.
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=302,L]
+
+AuthType Basic
+AuthName "SKOVEM – Dílna"
+AuthUserFile /data/web/virtuals/405398/virtual/www/subdom/dilna/.htpasswd
+AuthGroupFile /dev/null
+Require valid-user
+
+# Public only for exact-origin CORS inquiry creation; PHP rejects every other POST operation.
+<Files "poptavky.php">
+  <RequireAny>
+    Require method POST OPTIONS
+    Require valid-user
+  </RequireAny>
+</Files>
+
+<Files ".htpasswd">
+  Require all denied
+</Files>

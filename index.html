@@ -477,10 +477,10 @@
       const ref = db.doc('poptavky/' + uid), snap = await ref.get();
       const items = snap.exists ? (snap.data().items || []).slice() : [];
       items.push(item);
-      await ref.set({ uid, updated: now.toISOString(), items });
+      const result = await ref.set({ uid, updated: now.toISOString(), items });
       $('form').querySelectorAll('input,textarea').forEach((x) => { x.disabled = true; });
       $('formTitle').textContent = 'Děkujeme, poptávka je odeslaná';
-      msg('Číslo poptávky <strong>' + id + '</strong>. Ozveme se vám na ' + esc(email) + ' s finální cenou a termínem.' + (window.claude && claude.lokalni ? '<br><br><strong>Test:</strong> poptávku teď uvidíš v záložce <a href="interni.html">Dílna → Poptávky</a>, tam se z ní stáhnou podklady (.zip).' : ''), 'ok');
+      msg(result && result.emailSkipped ? 'Testovací poptávka ' + id + ' byla uložena do Dílna. E-mail se neposílá.' : (result && result.emailAccepted === false ? 'Poptávka ' + id + ' je uložená, ale e-mailové upozornění se nepodařilo odeslat. Kontaktujte prosím firmu.' : 'Číslo poptávky <strong>' + id + '</strong>. Ozveme se vám na ' + esc(email) + ' s finální cenou a termínem.' + (window.claude && claude.lokalni ? '<br><br><strong>Test:</strong> poptávku teď uvidíš v záložce <a href="interni.html">Dílna → Poptávky</a>, tam se z ní stáhnou podklady (.zip).' : '')), 'ok');
     } catch (err) {
       $('send').disabled = false;
       msg('Odeslání se nepovedlo (' + esc(err && err.code || 'chyba') + '). Zkuste to prosím znovu, nebo pošlete kód e-mailem:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad');
