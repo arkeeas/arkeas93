@@ -266,3 +266,29 @@ for (const f of D.referenceFiles('jelen')) assert.ok(fs.existsSync(path.join(roo
 for (const src of ['assets/jelen/artwork.js', 'jelen-core.js', 'jelen-view.js']) assert.ok(html.includes(`src="${src}"`), 'ostatni.html: ' + src);
 assert.ok(interni.includes('jelen-core.js') && interni.includes("it.product === 'jelen'"));
 console.log('kontrola-ptaci: Jelen OK');
+
+/* ---------- věšák Jelen velký (1200) ---------- */
+const JG = require('../jelen-velky-core.js'), JGV = require('../jelen-velky-view.js');
+const jvsum = JSON.parse(fs.readFileSync(path.join(root, 'assets/jelen-velky/souhrn.json'), 'utf8'));
+assert.deepEqual(JG.SPEC.flat, jvsum.flat); assert.equal(JG.SPEC.kg, jvsum.kg); assert.equal(JG.SPEC.cutMm, jvsum.cut_mm);
+assert.equal(JG.SPEC.hooks, jvsum.hooks); assert.equal(JG.SPEC.pierces, jvsum.konturu); assert.equal(JG.SPEC.t, jvsum.t_predpoklad); assert.equal(JG.SPEC.hookWidth, jvsum.hook_width);
+const jvdxf = fs.readFileSync(path.join(root, 'assets/jelen-velky/jelen_velky_1200_paleni.dxf'), 'utf8');
+assert.equal((jvdxf.match(/\nPOLYLINE\r?\n/g) || []).length, JG.SPEC.pierces, 'počet kontur v DXF'); assert.ok(jvdxf.trimEnd().endsWith('EOF'));
+assert.equal(JG.validate({ finish: 'black', qty: 1 }).ok, true);
+for (const q of [0, -1, 1.5, '', null, NaN]) assert.equal(JG.validate({ finish: 'black', qty: q }).ok, false);
+assert.match(JG.describe({ finish: 'white', qty: 3 }), /Jelen velký.*1200 × 744.*10 háčků.*Bílá.*3 ks/);
+assert.equal(JG.price({ qty: 1 }, jo({ ohyb: 10 })).price, 200); assert.equal(JG.price({ qty: 1 }, jo({ rez: 10 })).price, 230);
+const jvp = JG.price({ qty: 1 }); assert.ok(jvp.price > J.price({ qty: 1 }).price, 'velký dražší než malý'); assert.ok(JG.price({ qty: 5 }).price < jvp.price);
+const jvart = (() => { const c2 = { window: {} }; vm.createContext(c2); vm.runInContext(fs.readFileSync(path.join(root, 'assets/jelen-velky/artwork.js'), 'utf8'), c2); return c2.window.JelenVelkyArtwork; })();
+assert.equal(jvart.tabs.length, 10); assert.equal(jvart.holes.length, 22);
+for (const t of jvart.tabs) { assert.ok(Math.abs(t[1] - t[0] - 20) < 0.6, 'šířka jazyka'); assert.ok(t[3] - t[2] > 30, 'délka jazyka'); }
+for (const mode of ['front', 'rozvin']) { const sv = JGV.svg(jvart, { mode, finish: 'white' }); assert.ok(sv.startsWith('<svg') && sv.endsWith('</svg>')); assert.ok(!/NaN|undefined/.test(sv), mode); }
+assert.equal(D.accepts({ product: 'jelenvelky' }), true);
+assert.match(D.production({ finish: 'black', qty: 2 }, 'jelenvelky'), /1200 × 743,9.*4,37 kg.*15721 mm.*CHYBÍ.*2 ks/);
+D.open({ id: 'A261013-JVEL', created: 'x', product: 'jelenvelky', customer: { name: 'Jan', email: 'a@b.cz' }, config: { finish: 'black', qty: 1 }, priceEstimate: true, price: jvp.price, vat: jvp.vat, total: jvp.total, priceBreakdown: { kg: 4.37, cuts: 23, bends: 20, surfaceM2: 0.42 } });
+assert.match(fakeDoc.els.paDetail.innerHTML, /Jelen velký/); assert.match(fakeDoc.els.paRefs.innerHTML, /jelen_velky_1200_paleni\.dxf/);
+for (const f of D.referenceFiles('jelenvelky')) assert.ok(fs.existsSync(path.join(root, f.path)), 'chybí ' + f.path);
+for (const src of ['assets/jelen-velky/artwork.js', 'jelen-velky-core.js', 'jelen-velky-view.js']) assert.ok(html.includes(`src="${src}"`), 'ostatni.html: ' + src);
+assert.ok(html.includes('data-prod="jelenvelky"') && html.includes('id="prod-jelenv"'));
+assert.ok(interni.includes('jelen-velky-core.js') && interni.includes("it.product === 'jelenvelky'"));
+console.log('kontrola-ptaci: Jelen velký OK');

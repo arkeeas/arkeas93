@@ -14,17 +14,20 @@
     ['Obrysy a parametry (ptaci.json)', 'nastroje/ptaci/ptaci.json']
   ];
   const jelenFiles = [['Jelen – rozvin DXF (laser)', 'assets/jelen/jelen_rozvin.dxf'], ['Jelen – model STEP', 'assets/jelen/jelen.step'], ['Souhrn kontroly FreeCAD (souhrn.json)', 'assets/jelen/souhrn.json']];
+  const jelenVelkyFiles = [['Jelen velký – pálicí DXF (laser, jen obrys a výřezy)', 'assets/jelen-velky/jelen_velky_1200_paleni.dxf'], ['Souhrn z DXF (souhrn.json)', 'assets/jelen-velky/souhrn.json'], ['Výpočet souhrnu (jelen_velky.py)', 'nastroje/jelen_velky.py']];
   const nf = (n) => new Intl.NumberFormat('cs-CZ').format(n);
   function escape(text) {
     return String(text == null ? '' : text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
-  function accepts(value) { return !!value && (value.product === 'ptak' || value.product === 'jelen'); }
+  function accepts(value) { return !!value && (value.product === 'ptak' || value.product === 'jelen' || value.product === 'jelenvelky'); }
   function jel() { return root.Jelen || (typeof require === 'function' ? require('./jelen-core.js') : null); }
+  function jelv() { return root.JelenVelky || (typeof require === 'function' ? require('./jelen-velky-core.js') : null); }
   function core() { return root.Ptaci || (typeof require === 'function' ? require('./ptaci-core.js') : null); }
   function P0() { return core(); }
-  function describe(config, product) { if (product === 'jelen') { const J = jel(); return J ? J.describe(config) : 'Věšák Jelen'; } const P = core(); return P ? P.describe(config) : 'Ptačí věšák'; }
+  function describe(config, product) { if (product === 'jelenvelky') { const J = jelv(); return J ? J.describe(config) : 'Věšák Jelen velký'; } if (product === 'jelen') { const J = jel(); return J ? J.describe(config) : 'Věšák Jelen'; } const P = core(); return P ? P.describe(config) : 'Ptačí věšák'; }
   const dec = (n) => String(n).replace('.', ',');
   function production(config, product) {
+    if (product === 'jelenvelky') { const J = jelv(), S = J.SPEC, c = J.normalize(config); return 'Rozvin ' + dec(S.flat[0]) + ' × ' + dec(S.flat[1]) + ' mm · plech S235 ' + S.t + ' mm (předpoklad, v DXF není) · ' + dec(S.kg) + ' kg · délka řezu ' + S.cutMm + ' mm · ' + S.pierces + ' průstřelů · ' + S.hooks + ' háčků z jazyků ' + S.hookWidth + ' mm, navrženo ' + S.bends + ' ohybů 90° – OHYBOVÉ ČÁRY A OTVORY NA UCHYCENÍ V DXF CHYBÍ, doplnit před pálením · pálení C2 × ' + c.qty + ' ks'; }
     if (product === 'jelen') { const J = jel(), S = J.SPEC, c = J.normalize(config); return 'Rozvin ' + dec(S.flat[0]) + ' × ' + dec(S.flat[1]) + ' mm · plech S235 ' + S.t + ' mm · ' + dec(S.kg) + ' kg · délka řezu ' + S.cutMm + ' mm · ' + S.hooks + ' háčků = ' + S.bends + ' ohybů 90° (vnitřní R3, K = 0,33) · 3 otvory Ø5,5 se zahloubením Ø11 · pálení C2 × ' + c.qty + ' ks'; }
     const P = core(); if (!P) return '';
     if (config && config.layout) {
@@ -41,7 +44,7 @@
     const n = P.normalizeLayout(config.layout);
     return n.pieces.map((p, i) => ({ no: i + 1, label: P.POSES[p.pose].label.split(' – ')[0], finish: P.FINISH_LABELS[p.finish], x: p.x, y: p.y }));
   }
-  function referenceFiles(product) { if (product === 'jelen') return jelenFiles.map((f) => ({ label: f[0], path: f[1] })); return files.map((f) => ({ label: f[0], path: f[1] })); }
+  function referenceFiles(product) { if (product === 'jelenvelky') return jelenVelkyFiles.map((f) => ({ label: f[0], path: f[1] })); if (product === 'jelen') return jelenFiles.map((f) => ({ label: f[0], path: f[1] })); return files.map((f) => ({ label: f[0], path: f[1] })); }
   function render() {
     if (!options.document || !item) return;
     const doc = options.document, get = (id) => doc.getElementById(id), c = item.customer || {}, config = item.config || {};

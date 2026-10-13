@@ -1,4 +1,4 @@
-/* Stránka Ostatní: přepínač výrobků (zástěna Motýli, ptačí věšák), cena, poptávka do dílny. */
+/* Stránka Ostatní: přepínač výrobků (zástěna Motýli, ptačí věšák, věšáky Jelen a Jelen velký), cena, poptávka do dílny. */
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -7,7 +7,7 @@
   let product = 'zastena', mode = 'kus', viewerZ = null, viewerP = null, db = null, uid = null;
   let rates = Object.assign({}, Zasteny.DEFAULT_RATES);
 
-  const msg = (html, kind) => { const el = $(product === 'jelen' ? 'jMessage' : product === 'ptak' ? (mode === 'stena' ? 'sMessage' : 'pMessage') : 'message'); el.innerHTML = html; el.className = 'message ' + (kind || ''); el.hidden = false; };
+  const msg = (html, kind) => { const el = $(product === 'jelenvelky' ? 'jvMessage' : product === 'jelen' ? 'jMessage' : product === 'ptak' ? (mode === 'stena' ? 'sMessage' : 'pMessage') : 'message'); el.innerHTML = html; el.className = 'message ' + (kind || ''); el.hidden = false; };
   const codeFor = (item) => btoa(unescape(encodeURIComponent(JSON.stringify(item))));
 
   /* ---------- zástěna ---------- */
@@ -147,9 +147,24 @@
   ['jFinish', 'jQty'].forEach((id) => { $(id).addEventListener('input', updateJ); $(id).addEventListener('change', updateJ); });
   document.querySelectorAll('[data-jmode]').forEach((b) => b.addEventListener('click', () => { jMode = b.dataset.jmode; drawJ(); }));
 
+  /* ---------- věšák Jelen velký ---------- */
+  let jvMode = 'front';
+  const configJV = () => ({ finish: $('jvFinish').value, qty: $('jvQty').value === '' ? '' : Number($('jvQty').value) });
+  function drawJV() { try { $('viewerJV').innerHTML = JelenVelkyView.svg(window.JelenVelkyArtwork, { mode: jvMode, finish: $('jvFinish').value }); } catch (e) { $('viewerJV').textContent = 'Náhled se nepodařilo načíst. Nastavení a poptávka zůstávají dostupné.'; } }
+  function updateJV() {
+    const c = configJV(), v = JelenVelky.validate(c), p = v.ok ? JelenVelky.price(c, rates) : null;
+    $('jvSummary').textContent = JelenVelky.describe(c);
+    $('jvPriceBox').innerHTML = p
+      ? '<strong>Orientačně ' + nf(p.total) + ' Kč s DPH</strong><br>' + nf(p.price) + ' Kč bez DPH / ks · ' + nf(p.vat) + ' Kč s DPH / ks · cena pro ' + c.qty + ' ks<br><span class="muted">Výpočet používá dílenský ceník, ' + String(p.kg).replace('.', ',') + ' kg, ' + p.cuts + ' průstřelů pálení a ' + p.bends + ' ohybů. Konečnou cenu potvrdí dílna.</span>'
+      : '<strong>Zadejte počet kusů.</strong>';
+    drawJV();
+  }
+  ['jvFinish', 'jvQty'].forEach((id) => { $(id).addEventListener('input', updateJV); $(id).addEventListener('change', updateJV); });
+  document.querySelectorAll('[data-jvmode]').forEach((b) => b.addEventListener('click', () => { jvMode = b.dataset.jvmode; drawJV(); }));
+
   /* ---------- přepínač výrobků ---------- */
   function show(name, newMode) {
-    product = name === 'ptak' ? 'ptak' : name === 'jelen' ? 'jelen' : 'zastena';
+    product = name === 'ptak' ? 'ptak' : name === 'jelen' ? 'jelen' : name === 'jelenvelky' ? 'jelenvelky' : 'zastena';
     if (product === 'ptak') mode = newMode === 'stena' ? 'stena' : (newMode === 'kus' ? 'kus' : mode);
     document.querySelectorAll('[data-prod]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.prod === product)));
     document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
@@ -157,8 +172,9 @@
     $('prod-zastena').hidden = product !== 'zastena';
     $('prod-ptak').hidden = !(product === 'ptak' && mode === 'kus');
     $('prod-jelen').hidden = product !== 'jelen';
+    $('prod-jelenv').hidden = product !== 'jelenvelky';
     $('prod-stena').hidden = !(product === 'ptak' && mode === 'stena');
-    try { history.replaceState(null, '', product === 'ptak' ? (mode === 'stena' ? '#stena' : '#ptak') : product === 'jelen' ? '#jelen' : location.pathname + location.search); } catch (e) { /* file:// */ }
+    try { history.replaceState(null, '', product === 'ptak' ? (mode === 'stena' ? '#stena' : '#ptak') : product === 'jelen' ? '#jelen' : product === 'jelenvelky' ? '#jelen-velky' : location.pathname + location.search); } catch (e) { /* file:// */ }
     if (product === 'ptak' && mode === 'kus') {
       if (!viewerP) {
         try { viewerP = PtaciViewer.create($('viewerP')); viewerP.update(configP()); }
@@ -166,7 +182,7 @@
       } else viewerP.resize();
     }
   }
-  const fromHash = () => (location.hash === '#stena' ? ['ptak', 'stena'] : location.hash === '#ptak' ? ['ptak', 'kus'] : location.hash === '#jelen' ? ['jelen'] : ['zastena']);
+  const fromHash = () => (location.hash === '#stena' ? ['ptak', 'stena'] : location.hash === '#ptak' ? ['ptak', 'kus'] : location.hash === '#jelen' ? ['jelen'] : location.hash === '#jelen-velky' ? ['jelenvelky'] : ['zastena']);
   document.querySelectorAll('[data-prod]').forEach((b) => b.addEventListener('click', () => show(b.dataset.prod)));
   document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => show('ptak', b.dataset.mode)));
   window.addEventListener('hashchange', () => show(...fromHash()));
@@ -187,15 +203,16 @@
       $('formSummary').textContent = Ptaci.describeLayout(layout) + '. Orientačně ' + nf(p.total) + ' Kč s DPH celkem; dílna cenu potvrdí.';
       $('sMessage').hidden = true; $('modal').hidden = false; $('fName').focus(); return;
     }
-    const isJ0 = product === 'jelen', c = isJ0 ? configJ() : product === 'ptak' ? configP() : configZ(), mod = isJ0 ? Jelen : product === 'ptak' ? Ptaci : Zasteny, v = mod.validate(c), p = v.ok ? mod.price(c, rates) : null;
+    const isJ0 = product === 'jelen', isJV0 = product === 'jelenvelky', c = isJV0 ? configJV() : isJ0 ? configJ() : product === 'ptak' ? configP() : configZ(), mod = isJV0 ? JelenVelky : isJ0 ? Jelen : product === 'ptak' ? Ptaci : Zasteny, v = mod.validate(c), p = v.ok ? mod.price(c, rates) : null;
     if (!v.ok) { msg(v.errors.join(' '), 'bad'); return; }
     $('formSummary').textContent = mod.describe(c) + '. ' + (p ? 'Orientačně ' + nf(p.total) + ' Kč s DPH za ' + c.qty + ' ks; dílna cenu potvrdí.' : 'Cenu stanoví dílna ručně.');
-    $('message').hidden = true; $('pMessage').hidden = true; $('jMessage').hidden = true; $('modal').hidden = false; $('fName').focus();
+    $('message').hidden = true; $('pMessage').hidden = true; $('jMessage').hidden = true; $('jvMessage').hidden = true; $('modal').hidden = false; $('fName').focus();
   }
   $('ask').addEventListener('click', openForm);
   $('pAsk').addEventListener('click', openForm);
   $('sAsk').addEventListener('click', openForm);
   $('jAsk').addEventListener('click', openForm);
+  $('jvAsk').addEventListener('click', openForm);
   $('cancel').addEventListener('click', () => { $('modal').hidden = true; });
   $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modal').hidden = true; });
@@ -203,16 +220,16 @@
   $('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = $('fName').value.trim(), email = $('fEmail').value.trim();
-    const isJ = product === 'jelen', isP = product === 'ptak', isW = wallMode(), mod = isJ ? Jelen : isP ? Ptaci : Zasteny, raw = isW ? { layout } : isJ ? configJ() : isP ? configP() : configZ();
+    const isJ = product === 'jelen', isJV = product === 'jelenvelky', isP = product === 'ptak', isW = wallMode(), mod = isJV ? JelenVelky : isJ ? Jelen : isP ? Ptaci : Zasteny, raw = isW ? { layout } : isJV ? configJV() : isJ ? configJ() : isP ? configP() : configZ();
     if (isW ? !(Ptaci.validateLayout(layout).ok && S.status(layout, ART).ok) : !mod.validate(raw).ok) { msg('Zkontrolujte nastavení a počet kusů.', 'bad'); $('modal').hidden = true; return; }
     if (!name || !mod.validEmail(email)) { msg('Vyplňte jméno a platný e-mail.', 'bad'); return; }
     const now = new Date(), stamp = String(now.getFullYear()).slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
     const id = 'A' + stamp + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();   // server (dilna_api/poptavky.php) přijímá jen předpony P, S, Z, A
     const lay = isW ? Ptaci.normalizeLayout(layout) : null, c = isW ? { layout: lay, qty: lay.pieces.length } : mod.normalize(raw), p = isW ? Ptaci.priceLayout(lay, rates) : mod.price(c, rates);
-    const item = { id, product: isJ ? 'jelen' : isP ? 'ptak' : 'zastena', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim() }, note: $('fNote').value.trim(), config: c };
+    const item = { id, product: isJV ? 'jelenvelky' : isJ ? 'jelen' : isP ? 'ptak' : 'zastena', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim() }, note: $('fNote').value.trim(), config: c };
     if (p) {
       Object.assign(item, { price: p.price, vat: p.vat, total: p.total, priceEstimate: true });
-      item.priceBreakdown = isJ ? { kg: p.kg, cuts: p.cuts, bends: p.bends, cutMm: p.cutMm, surfaceM2: p.surfaceM2 } : isW ? { kg: p.kg, cuts: p.cuts, bends: p.bends, cutMm: p.cutMm, surfaceM2: p.surfaceM2 } : isP ? { kg: p.kg, cuts: p.cuts, bends: p.bends, cutMm: p.cutMm, surfaceM2: p.surfaceM2 } : { kg: p.kg, cuts: p.cuts, welds: p.welds, surfaceM2: p.surfaceM2 };
+      item.priceBreakdown = (isJ || isJV) ? { kg: p.kg, cuts: p.cuts, bends: p.bends, cutMm: p.cutMm, surfaceM2: p.surfaceM2 } : isW ? { kg: p.kg, cuts: p.cuts, bends: p.bends, cutMm: p.cutMm, surfaceM2: p.surfaceM2 } : isP ? { kg: p.kg, cuts: p.cuts, bends: p.bends, cutMm: p.cutMm, surfaceM2: p.surfaceM2 } : { kg: p.kg, cuts: p.cuts, welds: p.welds, surfaceM2: p.surfaceM2 };
     }
     if (!db || !uid) { $('modal').hidden = true; msg('Poptávku se nepodařilo připojit k dílně. Pošlete prosím tento kód na [E-MAIL FIRMY]:<div class="code">' + codeFor(item) + '</div>', 'bad'); return; }
     $('send').disabled = true;
@@ -229,7 +246,7 @@
   });
 
   /* ---------- start ---------- */
-  updateZ(); updateP(); updateJ(); setLayout(layout);
+  updateZ(); updateP(); updateJ(); updateJV(); setLayout(layout);
   try { viewerZ = ZastenyViewer.create($('viewer')); viewerZ.update(configZ()); }
   catch (e) { $('viewer').textContent = '3D náhled se nepodařilo načíst. Nastavení a poptávka zůstávají dostupné.'; }
   show(...fromHash());
@@ -239,7 +256,7 @@
     try {
       const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]);
       db = d; if (u) uid = await u.id();
-      if (db) db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = Object.assign({}, Zasteny.DEFAULT_RATES, s.data()); updateZ(); updateP(); updateS(); updateJ(); } }, () => {});
+      if (db) db.doc('nastaveni/cenik').onSnapshot((s) => { if (s.exists) { rates = Object.assign({}, Zasteny.DEFAULT_RATES, s.data()); updateZ(); updateP(); updateS(); updateJ(); updateJV(); } }, () => {});
     } catch (e) { db = null; uid = null; }
   })();
 })();
