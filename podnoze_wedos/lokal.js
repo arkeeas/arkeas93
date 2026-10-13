@@ -10,11 +10,7 @@
  */
 (function () {
   'use strict';
-  const host = location.hostname.toLowerCase();
-  const isWorkshop = host === 'dilna.skovem.cz';
-  const isPublicForm = host === 'b2b.skovem.cz' || host === 'arkeeas.github.io';
-  // Production hosts must use this adapter even if another script injected a local Claude shim.
-  if (!isWorkshop && !isPublicForm && window.claude && window.claude.use) return;
+  if (window.claude && window.claude.use) return;
 
   const PFX = 'konfigurator:';
   const mem = {};
@@ -40,6 +36,9 @@
   };
 
   const API = 'https://dilna.skovem.cz/poptavky.php';
+  const host = location.hostname.toLowerCase();
+  const isWorkshop = host === 'dilna.skovem.cz';
+  const isPublicForm = host === 'b2b.skovem.cz' || host === 'arkeeas.github.io';
   if (isWorkshop) document.documentElement.classList.add('dilna-live');
   const inquiryPath = (path) => /^poptavky\/[A-Za-z0-9_-]{1,64}$/.test(path);
   async function api(url, options) {
