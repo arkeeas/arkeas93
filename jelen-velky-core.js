@@ -8,7 +8,7 @@
   const SPEC = {
     label: 'Věšák Jelen velký', width: 1200, height: 744, t: 3, hooks: 10, hookWidth: 20,
     flat: [1200.0, 743.9], kg: 4.37, cutMm: 15721,
-    pierces: 23,      // 1 vnější obrys + 22 vnitřních výřezů (oči, uši, nos, srst); otvory na uchycení v DXF nejsou
+    pierces: 23,      // 1 vnější obrys + 22 vnitřních výřezů (oči, uši, nos, srst); otvory na uchycení v DXF nejsou – uchycení přes 6 sloupků zezadu (jekl 20×20×2 L31 + destička s klíčovou dírkou), pozice v jelen_velky_1200_znaceni_rubem.dxf
     bends: 20,        // předpoklad: 10 háčků × 2 ohyby 90° jako u malého Jelena – ohybové čáry v DXF nejsou
     steelKgPerMm3: 7.85e-6
   };

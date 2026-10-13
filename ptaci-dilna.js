@@ -14,7 +14,7 @@
     ['Obrysy a parametry (ptaci.json)', 'nastroje/ptaci/ptaci.json']
   ];
   const jelenFiles = [['Jelen – rozvin DXF (laser)', 'assets/jelen/jelen_rozvin.dxf'], ['Jelen – model STEP', 'assets/jelen/jelen.step'], ['Souhrn kontroly FreeCAD (souhrn.json)', 'assets/jelen/souhrn.json']];
-  const jelenVelkyFiles = [['Jelen velký – pálicí DXF (laser, jen obrys a výřezy)', 'assets/jelen-velky/jelen_velky_1200_paleni.dxf'], ['Souhrn z DXF (souhrn.json)', 'assets/jelen-velky/souhrn.json'], ['Výpočet souhrnu (jelen_velky.py)', 'nastroje/jelen_velky.py']];
+  const jelenVelkyFiles = [['Jelen velký – pálicí DXF (laser, jen obrys a výřezy)', 'assets/jelen-velky/jelen_velky_1200_paleni.dxf'], ['Jelen velký – DXF se značením sloupků (zrcadleně, pálit rubem nahoru; hladina ZNACENI)', 'assets/jelen-velky/jelen_velky_1200_znaceni_rubem.dxf'], ['Destička s klíčovou dírkou 25×60×4 – DXF (6 ks)', 'assets/jelen-velky/desticka_klicova_dirka_25x60x4.dxf'], ['Souhrn z DXF (souhrn.json)', 'assets/jelen-velky/souhrn.json'], ['Výpočet souhrnu (jelen_velky.py)', 'nastroje/jelen_velky.py']];
   const nf = (n) => new Intl.NumberFormat('cs-CZ').format(n);
   function escape(text) {
     return String(text == null ? '' : text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
