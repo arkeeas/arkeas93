@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="cs">
 <head>
-<link rel="stylesheet" href="modebar.css?v=20261006a">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Dílna – podklady k výrobě</title>
@@ -15,7 +14,6 @@
     --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
     color-scheme: light;
   }
-  .dilna-live .modebar { display: none; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; background: var(--ground); color: var(--ink); }
@@ -85,7 +83,6 @@
 </style>
 </head>
 <body>
-<div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="index.html">Zákazník</a><a href="interni.html" aria-current="page">Dílna</a><a href="montaz.html">Testing</a><a href="skica.html">Skicář</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
 <header>
   <h1>Dílna · podklady k výrobě</h1>
 </header>
@@ -334,7 +331,7 @@
   </section>
 </main>
 
-<script src="lokal.js?v=20261006a"></script>
+<script src="lokal.js?v=20261013b"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
@@ -562,7 +559,7 @@
   $('resetRates').addEventListener('click', () => { rates = JSON.parse(JSON.stringify(K.DEFAULT_RATES)); fillRates(); $('rateMsg').textContent = 'Výchozí hodnoty – ulož, aby platily.'; });
 
   fillRates();
-  $('oNum').value = 'OBJ-TEST-01'; $('oDate').value = today(); $('cName').value = 'Jan Novák';
+  $('oNum').value = ''; $('oDate').value = today(); $('cName').value = '';
   render();
   StoDilna.setRates(rates);
   if (location.hash === '#stolecky') tab('sto');
