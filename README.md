@@ -124,8 +124,17 @@ U spoje na tupo / se zámečky je přesah **samostatný kus** (se zámečky má 
 - **Konec ke zdi** – na koncovém sloupku 2 plotny 120×100×10 (u horního a spodního rámu), mezera ke zdi 20 mm = plotna + 10 mm podložka / vyrovnání. Kotvy do zdi mají vlastní podklad (zdivo / beton) a cenu; konec u zdi se v kontrole kotev počítá jako ukotvený. Ve stavbě jde jen u konce „u zdi“.
 - **Tepelně oddělující podložka** 10 mm pod plotny na čele a na zdi (ramena z boku, přes čelo, ke zdi). Rameno se o ni zkrátí. Cena `podlozka` v Dílna → Ceník (orientačně).
 
-## Zástěny
+## Ostatní (zástěny, ptačí věšáky)
 
-Zákaznický konfigurátor je na stránce `zasteny.html`. Zákazník zadá šířku a výšku v milimetrech, povrch a počet kusů; náhled je pouze ilustrační. Poptávka se ukládá jako `product: "zastena"` do stejného seznamu `poptavky/{uid}.items` jako ostatní výrobky a zpracovává se v Dílna → **Zástěny – poptávky**. Pokud databázové připojení není dostupné, stránka nabídne zakódovaný požadavek k ručnímu předání. Mimo připojenou aplikaci se poptávky ukládají podle stávajícího testovacího režimu do lokálního úložiště prohlížeče.
+Záložka **Ostatní** (`ostatni.html`, dřív `zasteny.html` – ten jen přesměrovává) je místo pro výrobky v **pevných variantách**: zákazník nevybírá rozměr, jen variantu, povrch a počet kusů. Nahoře je přepínač výrobků, odkaz `ostatni.html#ptak` otevře rovnou ptačí věšák. Poptávky jdou do stejného seznamu `poptavky/{uid}.items` jako ostatní výrobky.
 
-Dílna zobrazuje konfiguraci, kontakt, poznámku a odkazy na FreeCAD, STEP, DXF a kusovník. Všechny dodané soubory v `assets/zasteny/motyli_800x2000/` jsou výrobní reference **pouze pro 800 × 2000 mm**. Vlastní rozměr vyžaduje ruční potvrzení proveditelnosti a ceny; konfigurátor pro něj nevypočítává cenu ani negeneruje výrobní STEP nebo DXF. Náhled nepotvrzuje stabilitu, kotvení ani zatížení.
+**Zástěna Motýli** – jediná varianta **800 × 2000 mm** (rám z jeklu 40 × 40, výplň plech 2 mm, dvě patky). Výrobní reference (FreeCAD, STEP, DXF, kusovník) jsou v `assets/zasteny/motyli_800x2000/`. Poptávka je `product: "zastena"`, dílna ji zpracuje v Dílna → **Ostatní – zástěny**. Jádro `zasteny-core.js` zůstává beze změny a umí i jiné rozměry, ale stránka je nenabízí.
+
+**Ptačí věšák** – silueta vlaštovky z plechu S235 4 mm, velikost pevně **160 mm**, jazýček 22 mm se ohne do háčku (2 ohyby 90°). Zákazník vybírá **pózu** (vzlet, mávnutí, plachtění, klouzání), povrch a počet kusů. Poptávka je `product: "ptak"`, dílna ji zpracuje v Dílna → **Ostatní – ptáci**.
+- `ptaci-core.js` – pózy, validace, cena. Rozvin, hmotnost a délka řezu jsou z ověřeného běhu FreeCADu (`nastroje/ptaci/README.md`).
+- `ptaci-viewer.js` + `assets/ptaci/artwork.js` – 3D náhled (plech + ohnutý háček + zeď). `artwork.js` se generuje z `nastroje/ptaci/ptaci.json`.
+- `nastroje/ptaci/` – zdrojové skripty (`ptaci.py` tvary, `ptaci_fc.py` + `vesak_lib.py` FreeCAD → DXF rozvin a STEP, `nahled.py`). **DXF a STEP v repu zatím nejsou**: vzniknou spuštěním `ptaci_fc.py` ve FreeCADu (cesty ve skriptu jsou na `/home/arkeas/...`).
+- Cena (orientačně, stejný ceník `nastaveni/cenik` jako zástěna): materiál + 5 průstřelů pálení + 2 ohyby + povrch + příprava zakázky **rozpočítaná na kusy**, marže, DPH 21 %. **Sazba za ohyb (`ohyb`, výchozí 30 Kč) v ceníku zatím není** – je to odhad v `ptaci-core.js`.
+- Nová velikost nebo póza: upravit `P.span` / `POSES` v `nastroje/ptaci/ptaci.py`, přegenerovat `ptaci.json` a `assets/ptaci/artwork.js`, a doplnit hodnoty (rozvin, kg, délka řezu) do `POSES` v `ptaci-core.js` z nového běhu FreeCADu.
+
+Testy: `node tests/kontrola-zasteny.js`, `node tests/kontrola-ptaci.js`. Náhledy nepotvrzují stabilitu, kotvení ani zatížení.
