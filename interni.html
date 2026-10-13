@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="cs">
 <head>
+<link rel="stylesheet" href="modebar.css?v=20261006a">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Dílna – podklady k výrobě</title>
@@ -83,6 +84,7 @@
 </style>
 </head>
 <body>
+<div class="modebar"><span class="mb-badge">TEST</span><nav aria-label="Režim"><a href="index.html">Zákazník</a><a href="interni.html" aria-current="page">Dílna</a><a href="montaz.html">Testing</a><a href="skica.html">Skicář</a></nav><span class="mb-note">Testovací verze – poptávky a ceník se ukládají jen v tomto prohlížeči.</span></div>
 <header>
   <h1>Dílna · podklady k výrobě</h1>
 </header>
@@ -331,7 +333,7 @@
   </section>
 </main>
 
-<script src="lokal.js?v=20261013b"></script>
+<script src="lokal.js?v=20261006a"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="core.js?v=20261008g"></script>
@@ -499,7 +501,7 @@
     all.sort((a, b) => String(b.it.created).localeCompare(String(a.it.created)));
     const nNew = all.filter((x) => x.it.status === 'nova').length;
     $('popCount').hidden = !nNew; $('popCount').textContent = nNew;
-    if (!all.length) { $('popRows').innerHTML = '<tr><td colspan="7" class="empty">' + (db ? (location.hostname === 'dilna.skovem.cz' ? 'Zatím žádná poptávka. Nové poptávky z webových formulářů se objeví tady.' : 'Zatím žádná poptávka. Odešli ji v záložce Zákazník (tlačítko Nezávazně poptat) – objeví se tady.') : 'Poptávky se nedají načíst – databáze není na tomto zobrazení dostupná.') + '</td></tr>'; return; }
+    if (!all.length) { $('popRows').innerHTML = '<tr><td colspan="7" class="empty">' + (db ? 'Zatím žádná poptávka. Odešli ji v záložce Zákazník (tlačítko Nezávazně poptat) – objeví se tady.' : 'Poptávky se nedají načíst – databáze není na tomto zobrazení dostupná.') + '</td></tr>'; return; }
     $('popRows').innerHTML = all.map((x, n) => {
       const it = x.it, c = it.customer || {}, dt = new Date(it.created);
       const priceLabel = (it.product === 'zastena' || it.product === 'ptak') ? (it.priceEstimate && it.total != null && Number.isFinite(Number(it.total)) ? K.nf(Number(it.total)) + ' Kč · orientačně' : 'Ruční cena') : K.nf(it.total || it.vat || 0) + ' Kč';
@@ -559,7 +561,7 @@
   $('resetRates').addEventListener('click', () => { rates = JSON.parse(JSON.stringify(K.DEFAULT_RATES)); fillRates(); $('rateMsg').textContent = 'Výchozí hodnoty – ulož, aby platily.'; });
 
   fillRates();
-  $('oNum').value = ''; $('oDate').value = today(); $('cName').value = '';
+  $('oNum').value = 'OBJ-TEST-01'; $('oDate').value = today(); $('cName').value = 'Jan Novák';
   render();
   StoDilna.setRates(rates);
   if (location.hash === '#stolecky') tab('sto');
