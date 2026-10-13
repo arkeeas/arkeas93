@@ -109,7 +109,7 @@ const D = require('../ptaci-dilna.js');
 assert.equal(D.accepts({ product: 'ptak' }), true);
 assert.equal(D.accepts({ product: 'zastena' }), false);
 assert.match(D.describe({ pose: 'plachteni', finish: 'black', qty: 2 }), /Plachtění.*2 ks/);
-assert.match(D.production({ pose: 'vzlet', qty: 4 }), /150 × 229.*0,29 kg.*884 mm.*2 ohyby.*4 ks/);
+assert.match(D.production({ pose: 'vzlet', qty: 4 }), /150,3 × 229,4.*0,278 kg.*961 mm.*2 ohyby.*4 ks/);
 assert.match(D.escape('<script>'), /&lt;script&gt;/);
 const fakeDoc = { els: {}, getElementById(id) { return this.els[id] || (this.els[id] = {}); } };
 D.init({ document: fakeDoc });
@@ -123,7 +123,7 @@ console.log('kontrola-ptaci: dílna OK');
 const html = fs.readFileSync(path.join(root, 'ostatni.html'), 'utf8'), js = fs.readFileSync(path.join(root, 'ostatni.js'), 'utf8');
 const wanted = [...new Set([...js.matchAll(/\$\('([A-Za-z0-9_-]+)'\)/g)].map((x) => x[1]))];
 for (const id of wanted) assert.ok(new RegExp(`id="${id}"`).test(html), `ostatni.html nemá prvek #${id}`);
-for (const src of ['assets/ptaci/artwork.js', 'ptaci-core.js', 'ptaci-viewer.js', 'zasteny-core.js', 'zasteny-viewer.js', 'ostatni.js']) assert.ok(html.includes(`src="${src}"`), 'chybí skript ' + src);
+for (const src of ['assets/ptaci/artwork.js', 'ptaci-core.js', 'ptaci-viewer.js', 'ptaci-stena.js', 'zasteny-core.js', 'zasteny-viewer.js', 'ostatni.js']) assert.ok(html.includes(`src="${src}"`), 'chybí skript ' + src);
 for (const page of ['index.html', 'vyvoj.html', 'zabradli.html', 'stolecky.html', 'ostatni.html']) {
   const s = fs.readFileSync(path.join(root, page), 'utf8');
   assert.ok(s.includes('<a href="ostatni.html"') && s.includes('>Ostatní</a>'), page + ' odkazuje na Ostatní');
@@ -141,3 +141,92 @@ const phpRule = fs.readFileSync(path.join(root, 'dilna_api/poptavky.php'), 'utf8
 assert.ok(phpRule && phpRule[1].includes('A'), 'server přijímá předponu A');
 assert.ok(js.includes('result.emailSkipped') && js.includes('result.emailAccepted'), 'odeslání zpracuje odpověď e-mailové služby');
 console.log('kontrola-ptaci: kompatibilita se serverem OK');
+
+/* ---------- výrobní soubory a souhrn z FreeCADu ---------- */
+const souhrn = JSON.parse(fs.readFileSync(path.join(root, 'assets/ptaci/souhrn.json'), 'utf8'));
+assert.equal(souhrn.length, 4);
+for (const r of souhrn) {
+  const pose = P.POSES[r.pose];
+  assert.ok(pose, 'póza ze souhrnu existuje: ' + r.pose);
+  assert.equal(r.valid, true); assert.equal(r.solids, 1); assert.equal(r.short_edges, 0);
+  assert.deepEqual(pose.flat, r.flat, r.pose + ': rozvin odpovídá souhrnu');
+  assert.equal(pose.kg, r.kg, r.pose + ': hmotnost odpovídá souhrnu');
+  assert.equal(pose.cutMm, r.cut_mm, r.pose + ': délka řezu odpovídá souhrnu');
+  const dxf = fs.readFileSync(path.join(root, `assets/ptaci/ptak_${r.pose}_rozvin.dxf`), 'utf8');
+  for (const layer of ['OBRYS', 'OTVORY', 'OHYB']) assert.ok(dxf.includes(layer), `${r.pose}: DXF má vrstvu ${layer}`);
+  assert.ok(dxf.trimEnd().endsWith('EOF'), r.pose + ': DXF je úplný');
+  const step = fs.readFileSync(path.join(root, `assets/ptaci/ptak_${r.pose}.step`), 'utf8').slice(0, 200);
+  assert.ok(step.startsWith('ISO-10303-21'), r.pose + ': STEP hlavička');
+}
+console.log('kontrola-ptaci: DXF/STEP + souhrn OK');
+
+/* ---------- rozložení na stěně ---------- */
+const S = require('../ptaci-stena.js');
+const poses = Object.keys(P.POSES);
+// jádro: normalizace, validace, popis, cena
+assert.equal(P.normalizeLayout({}).wall.w, P.WALL_LIMITS.defaultW);
+assert.deepEqual(P.normalizeLayout({ wall: { w: 99999, h: 1 }, pieces: [{ pose: 'x', finish: 'y', x: 'a', y: 5 }] }), { wall: { w: 6000, h: 300 }, pieces: [{ pose: 'vzlet', finish: 'black', x: 0, y: 5 }] });
+assert.equal(P.normalizeLayout({ pieces: Array(100).fill({ pose: 'vzlet', finish: 'black', x: 1, y: 1 }) }).pieces.length, P.WALL_LIMITS.maxPieces);
+assert.equal(P.validateLayout({ wall: { w: 1000, h: 700 }, pieces: [] }).ok, false);
+assert.equal(P.validateLayout({ wall: { w: 1000, h: 700 }, pieces: [{ pose: 'vzlet', finish: 'black', x: 100, y: 100 }] }).ok, true);
+assert.equal(P.validateLayout({ wall: { w: 10, h: 700 }, pieces: [{ pose: 'vzlet', finish: 'black', x: 100, y: 100 }] }).ok, false);
+assert.equal(P.validateLayout({ wall: { w: 1000, h: 700 }, pieces: [{ pose: 'xx', finish: 'black', x: 1, y: 1 }] }).ok, false);
+assert.equal(P.validateLayout({ wall: { w: 1000, h: 700 }, pieces: [{ pose: 'vzlet', finish: 'black', x: NaN, y: 1 }] }).ok, false);
+const lay1 = { wall: { w: 1000, h: 700 }, pieces: [{ pose: 'klouzani', finish: 'anth', x: 500, y: 400 }] };
+// jeden kus na stěně stojí stejně jako jeden kus v konfigurátoru
+assert.equal(P.priceLayout(lay1).total, P.price({ pose: 'klouzani', finish: 'anth', qty: 1 }).total);
+const two = { wall: lay1.wall, pieces: [lay1.pieces[0], lay1.pieces[0]] };
+assert.equal(P.priceLayout(two).total, P.price({ pose: 'klouzani', finish: 'anth', qty: 2 }).total, 'dva stejné kusy = qty 2');
+// různé pózy sdílejí přípravu: 4 různí ptáci jsou levnější na kus než 4× samostatně
+const four = { wall: lay1.wall, pieces: poses.map((pose) => ({ pose, finish: 'black', x: 0, y: 0 })) };
+const sep = poses.reduce((sum, pose) => sum + P.price({ pose, finish: 'black', qty: 1 }).total, 0);
+assert.ok(P.priceLayout(four).total < sep, 'společná příprava zlevňuje');
+assert.equal(P.priceLayout(four).qty, 4); assert.equal(P.priceLayout(four).bends, 8);
+assert.match(P.describe({ layout: four }), /rozložení na stěně 1000 × 700 mm.*4 ks/);
+assert.deepEqual(P.groupPieces(two), [{ pose: 'klouzani', finish: 'anth', qty: 2 }]);
+// geometrie: obrys, odstupy, kolize
+for (const k of poses) {
+  const f = S.footprint(art, k);
+  assert.ok(f.bbox.maxX - f.bbox.minX >= 155 && f.bbox.maxX - f.bbox.minX <= 165, k + ': šířka obrysu ≈ 160');
+  assert.ok(Math.abs(f.bbox.minY + 60) < 0.01, k + ': jazýček sahá 60 mm pod kotvící bod');
+  assert.equal(f.hulls.length, 7);
+}
+const at = (pose, x, y) => ({ pose, finish: 'black', x, y });
+assert.equal(S.pieceDistance(art, at('vzlet', 300, 300), at('vzlet', 300, 300)), 0, 'stejné místo = překryv');
+assert.ok(S.pieceDistance(art, at('vzlet', 300, 300), at('mavnuti', 700, 300)) > 100);
+assert.ok(S.pieceDistance(art, at('vzlet', 300, 300), at('vzlet', 300, 300 + 200)) > 0);
+const dist = (d) => S.pieceDistance(art, at('plachteni', 300, 300), at('plachteni', 300 + d, 300));
+assert.ok(dist(100) < dist(200) && dist(200) < dist(300), 'vzdálenost roste s odstupem');
+assert.equal(S.status({ wall: { w: 1000, h: 700 }, pieces: [at('vzlet', 300, 300), at('vzlet', 310, 305)] }, art).ok, false, 'překrývající se kusy neprojdou');
+assert.equal(S.status({ wall: { w: 1000, h: 700 }, pieces: [at('vzlet', 5, 300)] }, art).ok, false, 'kus mimo stěnu neprojde');
+assert.equal(S.status({ wall: { w: 1000, h: 700 }, pieces: [at('vzlet', 300, 300), at('vzlet', 700, 300)] }, art).ok, true);
+// přichycení a ohraničení
+const cl = S.clampPiece(art, at('vzlet', -999, 99999), { w: 1000, h: 700 });
+const cb = S.bounds(art, cl); assert.ok(cb.minX >= S.MARGIN - 0.01 && cb.maxY <= 700 - S.MARGIN + 0.01);
+// přidávání: postupně se zaplní stěna bez kolizí, nakonec už místo není
+let L = S.emptyLayout(), added = 0;
+for (let i = 0; i < 60; i++) { const r = S.addPiece(L, art, poses[i % 4], 'black'); if (!r.added) break; L = r.layout; added++; assert.equal(S.status(L, art).ok, true, 'po přidání ' + added + '. kusu bez kolizí'); }
+assert.ok(added >= 6 && added <= P.WALL_LIMITS.maxPieces, 'na 1000 × 700 se vejde několik kusů: ' + added);
+assert.equal(S.addPiece(L, art, 'vzlet', 'black').added, added >= P.WALL_LIMITS.maxPieces ? false : false);
+// rozmístění: 4 různé pózy i na malé stěně bez kolizí
+for (const [w, h] of [[1000, 700], [1500, 1000], [800, 800], [2000, 600]]) {
+  const A = S.arrange({ wall: { w, h }, pieces: poses.map((pose) => at(pose, 0, 0)) }, art);
+  const st = S.status(A, art); assert.deepEqual(st.errors, [], `rozmístění 4 ptáků na ${w}×${h}`); assert.equal(st.close.length, 0, `odstupy ${w}×${h}`);
+}
+// SVG
+const svg = S.svg(A0(), { art, selected: 0, wall: 'dark' });
+function A0() { return S.arrange({ wall: { w: 1000, h: 700 }, pieces: poses.map((pose) => at(pose, 0, 0)) }, art); }
+assert.ok(svg.startsWith('<svg') && svg.endsWith('</svg>'));
+assert.equal((svg.match(/class="bird/g) || []).length, 4); assert.ok(svg.includes('bird sel'));
+assert.equal(svg.includes('NaN') || svg.includes('undefined'), false, 'SVG bez NaN/undefined');
+assert.match(S.svg({ wall: { w: 1000, h: 700 }, pieces: [] }, { art }), /1000 mm/);
+// dílna: rozložení
+D.init({ document: fakeDoc });
+const lay = A0();
+assert.match(D.production({ layout: lay }), /1× Vzlet.*1× Klouzání.*celkem 4 ks/);
+assert.equal(D.placement({ layout: lay }).length, 4);
+D.open({ id: 'A261013-ABCD', created: 'x', product: 'ptak', customer: { name: 'Jan', email: 'a@b.cz' }, config: { layout: lay, qty: 4 }, priceEstimate: true, price: 2160, vat: 2600, total: 2600, priceBreakdown: { kg: 0.977, cuts: 20, bends: 8, surfaceM2: 0.08 } });
+assert.match(fakeDoc.els.paDetail.innerHTML, /rozložení na stěně 1000 × 700 mm/); assert.match(fakeDoc.els.paDetail.innerHTML, /Rozmístění/); assert.match(fakeDoc.els.paDetail.innerHTML, /2\s?600 Kč s DPH celkem/);
+assert.doesNotMatch(fakeDoc.els.paDetail.innerHTML, /Kč s DPH \/ ks/);
+assert.match(D.describe({ layout: lay }), /4 ks/);
+console.log('kontrola-ptaci: rozložení na stěně OK');

@@ -5,12 +5,12 @@
   const FINISH_LABELS = { black: 'Černá mat', anth: 'Antracit', white: 'Bílá', raw: 'Ocel + lak' };
   // Pevná velikost: největší rozměr siluety 160 mm, plech S235 4 mm, jazýček / háček 22 mm.
   const SIZE = { span: 160, t: 4, tongueW: 22 };
-  // Hodnoty z ověřeného běhu ptaci_fc.py ve FreeCADu (nastroje/ptaci/README.md): rozvin [mm], hmotnost [kg], délka řezu [mm].
+  // Hodnoty ze skutečného běhu ptaci_fc.py ve FreeCADu (assets/ptaci/souhrn.json): rozvin [mm], hmotnost [kg], délka řezu [mm].
   const POSES = {
-    vzlet: { label: 'Vzlet – obě křídla nahoru', flat: [150, 229], kg: 0.29, cutMm: 884 },
-    mavnuti: { label: 'Mávnutí – křídlo nahoru a dolů', flat: [147, 217], kg: 0.24, cutMm: 824 },
-    plachteni: { label: 'Plachtění – křídla roztažená', flat: [152, 202], kg: 0.22, cutMm: 789 },
-    klouzani: { label: 'Klouzání – křídla dozadu', flat: [152, 204], kg: 0.27, cutMm: 846 }
+    vzlet: { label: 'Vzlet – obě křídla nahoru', flat: [150.3, 229.4], kg: 0.278, cutMm: 961 },
+    mavnuti: { label: 'Mávnutí – křídlo nahoru a dolů', flat: [146.9, 217.2], kg: 0.231, cutMm: 901 },
+    plachteni: { label: 'Plachtění – křídla roztažená', flat: [152, 201.5], kg: 0.208, cutMm: 866 },
+    klouzani: { label: 'Klouzání – křídla dozadu', flat: [152.1, 203.8], kg: 0.26, cutMm: 923 }
   };
   // Pálení: 1 vnější obrys + 2 díry na vruty + 2 drážky v ohybech = 5 průstřelů; ohyby 2×.
   const BASIS = { pierces: 5, bends: 2, steelKgPerMm3: 7.85e-6 };
@@ -36,22 +36,76 @@
     return { ok: errors.length === 0, errors };
   }
   function describe(config) {
+    if (config && config.layout) return describeLayout(config.layout);
     const c = normalize(config);
     return 'Ptačí věšák · ' + POSES[c.pose].label + ' · ' + SIZE.span + ' mm · ' + FINISH_LABELS[c.finish] + ' · ' + c.qty + ' ks';
   }
   function validEmail(value) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(value || '').trim()); }
-  function price(config, rates) {
-    const c = normalize(config), pose = POSES[c.pose], R = Object.assign({}, DEFAULT_RATES, rates || {});
+  // Jednotková cena kusu; příprava zakázky se dělí mezi `share` kusů celé objednávky.
+  function unit(c, R, share) {
+    const pose = POSES[c.pose];
     const areaMm2 = pose.kg / BASIS.steelKgPerMm3 / SIZE.t;          // plocha plechu (včetně rozvinutého jazýčku)
     const surfaceM2 = (2 * areaMm2 + pose.cutMm * SIZE.t) / 1e6;       // obě strany + hrany
     const finishFactor = c.finish === 'raw' ? 0.7 : 1;
-    // Příprava zakázky se rozpočítá na kusy – u věšáků se vyrábí víc kusů najednou.
-    const unitCost = pose.kg * R.kg + BASIS.pierces * R.rez + BASIS.bends * R.ohyb + surfaceM2 * R.barva * finishFactor + R.priprava / c.qty;
-    const unitPrice = Math.round(unitCost * (1 + R.marze / 100) / 10) * 10;
-    const unitVat = Math.round(unitPrice * 1.21 / 10) * 10;
-    return { estimate: true, price: unitPrice, vat: unitVat, total: unitVat * c.qty, kg: pose.kg, cuts: BASIS.pierces, bends: BASIS.bends, cutMm: pose.cutMm, surfaceM2: Math.round(surfaceM2 * 10000) / 10000, finishFactor };
+    const cost = pose.kg * R.kg + BASIS.pierces * R.rez + BASIS.bends * R.ohyb + surfaceM2 * R.barva * finishFactor + R.priprava / share;
+    const price = Math.round(cost * (1 + R.marze / 100) / 10) * 10;
+    return { price, vat: Math.round(price * 1.21 / 10) * 10, surfaceM2, finishFactor };
   }
-  const api = { SIZE, POSES, BASIS, FINISHES, FINISH_LABELS, DEFAULTS, DEFAULT_RATES, normalize, validate, describe, price, validEmail };
+  function price(config, rates) {
+    const c = normalize(config), pose = POSES[c.pose], R = Object.assign({}, DEFAULT_RATES, rates || {});
+    const u = unit(c, R, c.qty);
+    return { estimate: true, price: u.price, vat: u.vat, total: u.vat * c.qty, kg: pose.kg, cuts: BASIS.pierces, bends: BASIS.bends, cutMm: pose.cutMm, surfaceM2: Math.round(u.surfaceM2 * 10000) / 10000, finishFactor: u.finishFactor };
+  }
+
+  /* ---------- rozložení na stěně: více kusů (různé pózy a povrchy) v jedné objednávce ---------- */
+  const WALL_LIMITS = { minW: 300, maxW: 6000, minH: 300, maxH: 4000, maxPieces: 40, defaultW: 1000, defaultH: 700 };
+  const num = (v) => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) && Number.isFinite(Number(v)) ? Number(v) : null;
+  const clampNum = (v, lo, hi, fb) => { const n = num(v); return n == null ? fb : Math.min(hi, Math.max(lo, n)); };
+  function normalizeLayout(layout) {
+    const l = layout || {}, w = l.wall || {}, L = WALL_LIMITS;
+    const pieces = (Array.isArray(l.pieces) ? l.pieces : []).slice(0, L.maxPieces).map((p) => {
+      const q = p || {};
+      return {
+        pose: Object.prototype.hasOwnProperty.call(POSES, q.pose) ? q.pose : DEFAULTS.pose,
+        finish: FINISHES.includes(q.finish) ? q.finish : DEFAULTS.finish,
+        x: Math.round(clampNum(q.x, -1e5, 1e5, 0)), y: Math.round(clampNum(q.y, -1e5, 1e5, 0))
+      };
+    });
+    return { wall: { w: Math.round(clampNum(w.w, L.minW, L.maxW, L.defaultW)), h: Math.round(clampNum(w.h, L.minH, L.maxH, L.defaultH)) }, pieces };
+  }
+  function validateLayout(layout) {
+    const l = layout || {}, L = WALL_LIMITS, errors = [];
+    const w = l.wall || {}, ww = num(w.w), wh = num(w.h);
+    if (ww == null || ww < L.minW || ww > L.maxW || wh == null || wh < L.minH || wh > L.maxH) errors.push('Rozměr stěny musí být ' + L.minW + '–' + L.maxW + ' × ' + L.minH + '–' + L.maxH + ' mm.');
+    const pieces = Array.isArray(l.pieces) ? l.pieces : [];
+    if (!pieces.length) errors.push('Přidejte na stěnu alespoň jednoho ptáka.');
+    if (pieces.length > L.maxPieces) errors.push('Na jednu stěnu lze přidat nejvýše ' + L.maxPieces + ' kusů.');
+    if (pieces.some((p) => !p || !Object.prototype.hasOwnProperty.call(POSES, p.pose) || !FINISHES.includes(p.finish) || num(p.x) == null || num(p.y) == null)) errors.push('Některý z ptáků má neplatnou pózu, povrch nebo polohu.');
+    return { ok: errors.length === 0, errors };
+  }
+  // Seskupí kusy podle (póza, povrch) – to je i podklad pro cenu a výrobu.
+  function groupPieces(layout) {
+    const map = new Map();
+    normalizeLayout(layout).pieces.forEach((p) => { const k = p.pose + '|' + p.finish; if (!map.has(k)) map.set(k, { pose: p.pose, finish: p.finish, qty: 0 }); map.get(k).qty++; });
+    return [...map.values()];
+  }
+  function describeLayout(layout) {
+    const n = normalizeLayout(layout), groups = groupPieces(n);
+    return 'Ptačí věšáky · rozložení na stěně ' + n.wall.w + ' × ' + n.wall.h + ' mm · ' + n.pieces.length + ' ks (' + groups.map((g) => g.qty + '× ' + POSES[g.pose].label.split(' – ')[0] + ', ' + FINISH_LABELS[g.finish]).join('; ') + ')';
+  }
+  function priceLayout(layout, rates) {
+    const R = Object.assign({}, DEFAULT_RATES, rates || {}), groups = groupPieces(layout), qty = groups.reduce((s, g) => s + g.qty, 0);
+    const t = { estimate: true, qty, price: 0, vat: 0, total: 0, kg: 0, cuts: 0, bends: 0, cutMm: 0, surfaceM2: 0, groups: [] };
+    groups.forEach((g) => {
+      const u = unit(g, R, qty), pose = POSES[g.pose];
+      t.groups.push({ pose: g.pose, finish: g.finish, qty: g.qty, price: u.price, vat: u.vat });
+      t.price += u.price * g.qty; t.vat += u.vat * g.qty; t.total += u.vat * g.qty;
+      t.kg += pose.kg * g.qty; t.cuts += BASIS.pierces * g.qty; t.bends += BASIS.bends * g.qty; t.cutMm += pose.cutMm * g.qty; t.surfaceM2 += u.surfaceM2 * g.qty;
+    });
+    t.kg = Math.round(t.kg * 1000) / 1000; t.surfaceM2 = Math.round(t.surfaceM2 * 10000) / 10000;
+    return t;
+  }
+  const api = { SIZE, POSES, BASIS, FINISHES, FINISH_LABELS, DEFAULTS, DEFAULT_RATES, WALL_LIMITS, normalize, validate, describe, price, validEmail, normalizeLayout, validateLayout, groupPieces, describeLayout, priceLayout };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Ptaci = api;
 })(typeof window !== 'undefined' ? window : globalThis);

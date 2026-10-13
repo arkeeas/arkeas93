@@ -126,15 +126,22 @@ U spoje na tupo / se zámečky je přesah **samostatný kus** (se zámečky má 
 
 ## Ostatní (zástěny, ptačí věšáky)
 
-Záložka **Ostatní** (`ostatni.html`, dřív `zasteny.html` – ten jen přesměrovává) je místo pro výrobky v **pevných variantách**: zákazník nevybírá rozměr, jen variantu, povrch a počet kusů. Nahoře je přepínač výrobků, odkaz `ostatni.html#ptak` otevře rovnou ptačí věšák. Poptávky jdou do stejného seznamu `poptavky/{uid}.items` jako ostatní výrobky.
+Záložka **Ostatní** (`ostatni.html`, dřív `zasteny.html` – ten jen přesměrovává) je místo pro výrobky v **pevných variantách**: zákazník nevybírá rozměr, jen variantu, povrch a počet kusů. Nahoře je přepínač výrobků, odkaz `ostatni.html#ptak` otevře rovnou ptačí věšák, `ostatni.html#stena` rozložení ptáků na stěně. Poptávky jdou do stejného seznamu `poptavky/{uid}.items` jako ostatní výrobky.
 
 **Zástěna Motýli** – jediná varianta **800 × 2000 mm** (rám z jeklu 40 × 40, výplň plech 2 mm, dvě patky). Výrobní reference (FreeCAD, STEP, DXF, kusovník) jsou v `assets/zasteny/motyli_800x2000/`. Poptávka je `product: "zastena"`, dílna ji zpracuje v Dílna → **Ostatní – zástěny**. Jádro `zasteny-core.js` zůstává beze změny a umí i jiné rozměry, ale stránka je nenabízí.
 
 **Ptačí věšák** – silueta vlaštovky z plechu S235 4 mm, velikost pevně **160 mm**, jazýček 22 mm se ohne do háčku (2 ohyby 90°). Zákazník vybírá **pózu** (vzlet, mávnutí, plachtění, klouzání), povrch a počet kusů. Poptávka je `product: "ptak"`, dílna ji zpracuje v Dílna → **Ostatní – ptáci**.
-- `ptaci-core.js` – pózy, validace, cena. Rozvin, hmotnost a délka řezu jsou z ověřeného běhu FreeCADu (`nastroje/ptaci/README.md`).
+- `ptaci-core.js` – pózy, validace, cena. Rozvin, hmotnost a délka řezu jsou ze skutečného běhu FreeCADu (`assets/ptaci/souhrn.json`; test hlídá, že se shodují).
 - `ptaci-viewer.js` + `assets/ptaci/artwork.js` – 3D náhled (plech + ohnutý háček + zeď). `artwork.js` se generuje z `nastroje/ptaci/ptaci.json`.
-- `nastroje/ptaci/` – zdrojové skripty (`ptaci.py` tvary, `ptaci_fc.py` + `vesak_lib.py` FreeCAD → DXF rozvin a STEP, `nahled.py`). **DXF a STEP v repu zatím nejsou**: vzniknou spuštěním `ptaci_fc.py` ve FreeCADu (cesty ve skriptu jsou na `/home/arkeas/...`).
+- `assets/ptaci/` – **výrobní soubory**: `ptak_<póza>_rozvin.dxf` (rozvin pro laser, vrstvy OBRYS/OTVORY/OHYB/POPIS, mm), `ptak_<póza>.step` (hotový ohnutý model) a `souhrn.json` (kontrola FreeCADu: 1 těleso, objem, hmotnost, rozvin, délka řezu). Dílna je má ke stažení v záložce Ostatní – ptáci.
+- `nastroje/ptaci/` – zdrojové skripty (`ptaci.py` tvary, `ptaci_fc.py` + `vesak_lib.py` FreeCAD → DXF rozvin a STEP, `nahled.py`; cesty ve skriptech jsou na `/home/arkeas/...`).
 - Cena (orientačně, stejný ceník `nastaveni/cenik` jako zástěna): materiál + 5 průstřelů pálení + 2 ohyby + povrch + příprava zakázky **rozpočítaná na kusy**, marže, DPH 21 %. **Sazba za ohyb (`ohyb`, výchozí 30 Kč) v ceníku zatím není** – je to odhad v `ptaci-core.js`.
 - Nová velikost nebo póza: upravit `P.span` / `POSES` v `nastroje/ptaci/ptaci.py`, přegenerovat `ptaci.json` a `assets/ptaci/artwork.js`, a doplnit hodnoty (rozvin, kg, délka řezu) do `POSES` v `ptaci-core.js` z nového běhu FreeCADu.
+
+**Rozložení na stěně** (`ostatni.html#stena`, `ptaci-stena.js`) – zákazník zadá rozměr stěny (výchozí 1000 × 700 mm, 300–6000 × 300–4000), přidává ptáky (každý může mít jinou pózu a povrch, nejvýše 40 kusů), přetahuje je myší / prstem nebo šipkami a vidí je ve skutečném měřítku na stěně zvolené barvy. „Ukázka: 4 různí ptáci“ a „Rozmístit rovnoměrně“ je rozloží automaticky.
+- Poloha kusu je **kotvící bod** (horní střed jazýčku, kde je věšák přišroubovaný) v mm od levého a spodního okraje stěny. Kolize se počítají z konvexních obrysů dílů siluety a rovné části jazýčku: odstup < 15 mm je varování (oranžově), překryv nebo kus mimo stěnu (okraj 20 mm) poptávku zablokuje (červeně). Háček vystupuje 45 mm ze stěny, v pohledu zepředu se nekreslí.
+- Cena: všechny kusy v poptávce sdílejí jednu přípravu zakázky (600 Kč se dělí mezi všechny kusy), takže 4 různí ptáci vychází levněji na kus než 4× samostatně. Jeden kus na stěně stojí přesně jako jeden kus v konfigurátoru.
+- Poptávka je dál `product: "ptak"` (ID s předponou `A`), v `config` je `layout: { wall: { w, h }, pieces: [{ pose, finish, x, y }] }` a `qty`. Dílna v detailu vidí rozpis kusů podle pózy a seznam souřadnic pro montáž; souřadnice jsou návrh zákazníka a ověřují se na místě.
+- Zrcadlově obrácený pták zatím není (potřeboval by zrcadlený DXF/STEP).
 
 Testy: `node tests/kontrola-zasteny.js`, `node tests/kontrola-ptaci.js`. Náhledy nepotvrzují stabilitu, kotvení ani zatížení.

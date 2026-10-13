@@ -1,0 +1,66 @@
+[
+ {
+  "pose": "vzlet",
+  "valid": true,
+  "solids": 1,
+  "vol": 35421,
+  "kg": 0.278,
+  "flat": [
+   150.3,
+   229.4
+  ],
+  "cut_mm": 961,
+  "faces": 173,
+  "short_edges": 0,
+  "hook_out": 45.0,
+  "z_bottom": -60.0
+ },
+ {
+  "pose": "mavnuti",
+  "valid": true,
+  "solids": 1,
+  "vol": 29483,
+  "kg": 0.231,
+  "flat": [
+   146.9,
+   217.2
+  ],
+  "cut_mm": 901,
+  "faces": 173,
+  "short_edges": 0,
+  "hook_out": 45.0,
+  "z_bottom": -60.0
+ },
+ {
+  "pose": "plachteni",
+  "valid": true,
+  "solids": 1,
+  "vol": 26549,
+  "kg": 0.208,
+  "flat": [
+   152.0,
+   201.5
+  ],
+  "cut_mm": 866,
+  "faces": 163,
+  "short_edges": 0,
+  "hook_out": 45.0,
+  "z_bottom": -60.0
+ },
+ {
+  "pose": "klouzani",
+  "valid": true,
+  "solids": 1,
+  "vol": 33070,
+  "kg": 0.26,
+  "flat": [
+   152.1,
+   203.8
+  ],
+  "cut_mm": 923,
+  "faces": 169,
+  "short_edges": 0,
+  "hook_out": 45.0,
+  "z_bottom": -60.0
+ }
+]
