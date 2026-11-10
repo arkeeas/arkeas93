@@ -82,15 +82,23 @@
     const ok = !!Ral && Ral.valid(cfg.ralJiny);
     return Object.assign({}, f, { lab: ok ? 'RAL ' + cfg.ralJiny : 'Jiný RAL (neuvedeno)', ral: ok ? 'RAL ' + cfg.ralJiny : 'číslo neuvedeno', sw: ok ? Ral.hex('jiny', cfg.ralJiny) : f.sw });
   }
-  /* počet dosedacích bodů (konců noh na podlaze): každá strana má nejvýš 2 (průběžná spodní příčka = 2 konce), jinak počet konců noh na podlaze; aspoň 4 */
+  /* počet dosedacích bodů na jednom boku: spodní příčka ležící na podlaze = její 2 konce, noha končící na podlaze mimo příčku = 1;
+     oba boky stejné, aspoň 4. Schody (SC) tak mají 3 na bok (noha + příčka). */
   function feetCount(cfg, ratesIn) {
     if (!MODELS.some((m) => m.id === cfg.model)) return { q: 4, est: true };      // rozšíření (Umělecké): 4 nohy, počet potvrdí dílna
     try {
-      const g = frameGraph(cfg, rates0(ratesIn)), segs = g.sideSegs || [];
-      const zmin = Math.min.apply(null, g.nodes.map((n) => n[2]));
-      const bar = segs.some((d) => Math.abs(d.a[1] - zmin) < 1 && Math.abs(d.b[1] - zmin) < 1);
-      const ends = segs.reduce((acc, d) => acc + (d.ea && d.ea.t === 'floor' ? 1 : 0) + (d.eb && d.eb.t === 'floor' ? 1 : 0), 0);
-      return { q: 2 * (bar ? 2 : Math.max(2, ends)), est: false };
+      const g = frameGraph(cfg, rates0(ratesIn)), segs = g.sideSegs || [], half = cfg.size / 2;
+      const low = (p) => p[1] <= half + 1;                                        // osa ležícího jeklu je půl profilu nad podlahou, konec nohy na 0
+      const bars = segs.filter((d) => low(d.a) && low(d.b)).map((d) => [Math.min(d.a[0], d.b[0]), Math.max(d.a[0], d.b[0])]);
+      const pts = [];
+      bars.forEach((b) => { pts.push(b[0], b[1]); });
+      segs.forEach((d) => [[d.a, d.ea], [d.b, d.eb]].forEach(([p, e]) => {
+        if (!(e && e.t === 'floor') || p[1] > 1) return;
+        if (!bars.some((b) => p[0] >= b[0] - cfg.size && p[0] <= b[1] + cfg.size)) pts.push(p[0]);
+      }));
+      pts.sort((x, y) => x - y);
+      const n = pts.filter((x, i) => i === 0 || x - pts[i - 1] > cfg.size).length;
+      return { q: 2 * Math.max(2, n), est: false };
     } catch (e) { return { q: 4, est: true }; }
   }
   /* položka kusovníku „pod nohy“ (nebo null) */
@@ -117,7 +125,7 @@
   /* Pod nohy: jen položka v kusovníku (nakupovaný díl), geometrie se nemění. Rektifikace (navařená matice / vložka do jeklu) od jeklu 30×30. */
   const FEET = [
     { id: 'nic', lab: 'Nic', sub: 'jekl přímo na podlahu' },
-    { id: 'kluzak', lab: 'Plastové kluzáky', txt: 'plastové kluzáky', sub: 'chrání podlahu', hw: 'kluzák plastový do jeklu', rate: 'kluzak' },
+    { id: 'kluzak', lab: 'Plastové kluzáky', txt: 'plastové kluzáky', sub: 'chrání podlahu', hw: 'kluzák plastový (zátka do jeklu, pod ležící příčku nalepovací)', rate: 'kluzak' },
     { id: 'rektif', lab: 'Rektifikační nožky M8', txt: 'rektifikační nožky M8', sub: 'vyrovnají nerovnou podlahu, od jeklu 30×30', hw: 'rektifikační nožka M8 (navařená matice / vložka do jeklu)', rate: 'rektifikace' }
   ];
   const FEET_NOTE = 'Rektifikace mění výšku stolu o cca 10–25 mm (nastavením nožky) – s tím počítejte při volbě výšky.';

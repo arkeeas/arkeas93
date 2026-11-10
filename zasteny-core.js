@@ -7,8 +7,8 @@
   // meze ceníku: záporné / nulové / nesmyslné sazby se vrátí na výchozí (stejně jako u podnoží – core.js)
   const RATE_LIM = { kg: [0, 1000], rez: [0, 5000], svar: [0, 5000], barva: [0, 5000], priprava: [0, 100000], marze: [0, 300], ohyb: [0, 5000] };
   const rates0 = (r) => { const R = Object.assign({}, DEFAULT_RATES, r || {}); Object.keys(RATE_LIM).forEach((k) => { if (DEFAULT_RATES[k] === undefined) return; const n = Number(R[k]); if (!Number.isFinite(n) || n < RATE_LIM[k][0] || n > RATE_LIM[k][1]) R[k] = DEFAULT_RATES[k]; }); return R; };
-  const QTY_MAX = 99;
-  const SIZE_MIN = 300, SIZE_MAX = 3000;                              // rozměry zástěny [mm] – stránka nabízí jen 800 × 2000, jádro umí i jiné                                                  // nejvíc kusů v jedné poptávce
+  const QTY_MAX = 99;                                                  // nejvíc kusů v jedné poptávce
+  const SIZE_MIN = 300, SIZE_MAX = 3000;                              // rozměry zástěny [mm] – stránka nabízí jen 800 × 2000, jádro umí i jiné
   const PRICE_BASIS = { kg: 29.05, cuts: 188, welds: 6, panelSurfaceM2: 2.0435302, frameSurfaceM2: 0.8704, platesSurfaceM2: 0.01936 };
   function normalize(config) {
     const c = config || {};

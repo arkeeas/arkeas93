@@ -179,7 +179,7 @@
     if (o.sink === 'auto' || o.sink > 0) o.weldGap = 0;             // zámeček v háčku a vůle se vylučují
     if (!FIN.some((f) => f.id === o.fin)) o.fin = DEFAULT_CFG.fin;
     o.ralJiny = Ral ? Ral.norm('jiny', c.ralJiny).jiny : '';                    // rozepsané číslo zůstane; dokud není platné, build.block nepustí poptávku
-    if (o.fin !== 'ral') o.ralJiny = Ral && Ral.valid(o.ralJiny) ? o.ralJiny : ''; 
+    if (o.fin !== 'ral') o.ralJiny = Ral && Ral.valid(o.ralJiny) ? o.ralJiny : '';
     if (!TOPS.some((t) => t.id === o.top)) o.top = DEFAULT_CFG.top;
     if (!MOUNTS.some((m) => m.id === o.mount)) o.mount = DEFAULT_CFG.mount;
     o.qty = Math.min(99, Math.max(1, Math.round(Number(o.qty)) || 1));

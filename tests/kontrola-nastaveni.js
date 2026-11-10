@@ -58,9 +58,10 @@ const flat = [{ L: 3000, rise: 0 }];
     ok((c.sloupky ? D.lay.barInfo[0].n > N.lay.barInfo[0].n : D.lay.bars.length > N.lay.bars.length), "děti " + lab + ": špruší je víc než běžně");
   });
   // geometrický motiv: rozteč omezená tak, aby mezera nepřesáhla limit
-  const G = Z.normalize({ vypln: "geometricky", motifPitch: 400 }), Gd = Z.normalize({ vypln: "geometricky", motifPitch: 400, uziti: "deti" });
+  const NV = { cfgVer: Z.CFG_VER };          // konfigurace ze stránky (dnešní limity); bez cfgVer = stará poptávka
+  const G = Z.normalize({ vypln: "geometricky", motifPitch: 400, cfgVer: Z.CFG_VER }), Gd = Z.normalize({ vypln: "geometricky", motifPitch: 400, uziti: "deti", cfgVer: Z.CFG_VER });
   ok(G.motifPitch === Z.GEO_FRAME_W + 120 && Gd.motifPitch === Z.GEO_FRAME_W + 80, "rozteč geometrického motivu max 250 / 210 mm (" + G.motifPitch + "/" + Gd.motifPitch + ")");
-  const GA = Z.analyze({ vypln: "geometricky", motifPitch: 400, segs: [{ L: 3000, rise: 0 }] });
+  const GA = Z.analyze(Object.assign({ vypln: "geometricky", motifPitch: 400, segs: [{ L: 3000, rise: 0 }] }, NV));
   ok(GA.lay.gapMax <= 120 && !has(GA, "bad", /mezera/), "geometrický motiv: mezera ≤ 120 mm (" + GA.lay.gapMax + ")");
   ok(has(GA, "warn", /rezerva dílny/), "geometrický motiv 250 mm = mezera 120 > 110: varování");
   const GD = Z.analyze({ vypln: "geometricky", uziti: "deti", segs: [{ L: 3000, rise: 0 }] });
@@ -98,6 +99,11 @@ const flat = [{ L: 3000, rise: 0 }];
   ok(P1("40x40x3", 1500).post.util < 1 && P1("50x50x3", 1500).post.util < P1("40x40x3", 1500).post.util && P1("60x60x3", 1500).post.util < P1("50x50x3", 1500).post.util, "silnější profily snesou větší rozteč");
   ok(P1("40x40x2", 1000, "verejny").post.q === 1 && P1("40x40x2", 1000, "deti").post.util > 1 && P1("40x40x2", 1000, "bytdum").post.q === 0.5, "zatížení 0,5 / 1,0 kN/m podle užití");
   ok(P1("40x40x2", 1000, "verejny").post.util > a1000.post.util * 1.9, "veřejný prostor: dvojnásobné zatížení");
+  // veřejný prostor, výška 1100, 1,0 kN/m: rada jmenuje profil, který při stejné rozteči projde
+  const pub = Z.analyze({ typ: "A", sloupky: true, rail: "40x40x2", postPitch: 1000, uziti: "verejny", vyska: 1100, hloubka: "do30", segs: [{ L: 5000, rise: 0 }] });
+  ok(pub.post.lvl === "bad" && pub.post.better && has(pub, "bad", new RegExp("[Zz]volte profil " + Z.RAILS.A.find((r) => r.id === pub.post.better).lab)) && !has(pub, "bad", /zhruba do [1-5]\d\d mm/), "přetížený sloupek: rada s konkrétním profilem (" + pub.post.better + ")");
+  const pub2 = Z.analyze(Object.assign({}, pub.cfg, { rail: pub.post.better }));
+  ok(pub2.post.util <= 0.8 && !pub2.warns.some((w) => w.lvl === "bad"), "doporučený profil " + pub.post.better + " pro 1100 mm a 1,0 kN/m projde (" + Math.round(pub2.post.util * 100) + " %) a jde poptat");
   const custom = Z.analyze({ typ: "A", sloupky: true, postPitch: 1000, segs: flat }, { zatizeniDum: 1, pruhybSloupekMax: 5 });
   ok(custom.post.q === 1 && custom.post.utilDefl > custom.post.utilM, "zatížení a limit průhybu jdou z ceníku dílny");
   ok(!Z.analyze({ sloupky: false, segs: flat }).post && has(Z.analyze({ sloupky: false, segs: flat }), "info", /ověří dílna/), "bez sloupků: jen info, posudek se nedělá");
@@ -109,7 +115,7 @@ const flat = [{ L: 3000, rise: 0 }];
 
 /* ---------- zábradlí: přesah nahoru, rám delší než tyč, povrch, RAL ---------- */
 {
-  ok(Z.normalize({ madlo: false, overTop: 250 }).overTop === 100 && Z.normalize({ madlo: false, overBot: 250, anchor: "bocni" }).overBot === 250, "přesah nahoru max 100 mm, dolů 400 mm");
+  ok(Z.normalize({ madlo: false, overTop: 250, cfgVer: Z.CFG_VER }).overTop === 100 && Z.normalize({ madlo: false, overBot: 250, anchor: "bocni" }).overBot === 250, "přesah nahoru max 100 mm, dolů 400 mm");
   ok(has(Z.analyze({ madlo: false, overTop: 50, segs: flat }), "warn", /zaoblené nebo zatupené/), "přesah nahoru: zaoblené konce (warn)");
   ok(has(Z.analyze({ madlo: false, overTop: 50, uziti: "deti", segs: flat }), "bad", /zaoblené nebo zatupené.*nejde/), "přesah nahoru + děti = bad");
   ok(!has(Z.analyze({ madlo: false, segs: flat }), "warn", /zaoblené/), "bez přesahu žádné upozornění");
@@ -141,6 +147,7 @@ const flat = [{ L: 3000, rise: 0 }];
 }
 
 /* ---------- zábradlí: staré konfigurace bez nových polí + presety ---------- */
+const NV0 = { cfgVer: Z.CFG_VER };
 {
   const old = { typ: "B", segs: Z.DEFAULT_CFG.segs, vyska: 1000, side: "L", vypln: "standard", rail: null, bar: null, join: "tupo", anchor: "bocni", base: "beton", facade: 200, arm: 250, fin: "znpu", services: { zamereni: true }, qty: 1 };
   ["uziti", "hloubka", "umisteni", "ral", "ralJiny"].forEach((k) => ok(!(k in old), "stará konfigurace nemá pole " + k));
@@ -157,8 +164,17 @@ const flat = [{ L: 3000, rise: 0 }];
     const b = A.warns.filter((w) => w.lvl === "bad");
     ok(b.length === 0, "preset " + pr.id + " " + (c.sloupky ? "se sloupky" : "bez sloupků") + " jde poptat: " + b.map((w) => w.t.slice(0, 90)).join(" | "));
   }));
-  // staré poptávky s přesahem nahoru nad 100 mm se ořežou, nejdou rozbít
-  ok(Z.analyze({ typ: "A", sloupky: true, madlo: false, overTop: 300, segs: flat }).cfg.overTop === 100, "přesah nahoru 300 mm ze staré poptávky se ořízne na 100 mm");
+  // stará (už přijatá) poptávka bez cfgVer: dílna vidí rozměry, jak je zákazník objednal – nic se neořízne, jen upozornění
+  const oldTop = Z.analyze({ typ: "A", sloupky: true, madlo: false, overTop: 300, segs: flat });
+  ok(oldTop.cfg.overTop === 300 && has(oldTop, "warn", /Starší poptávka: přesah špruší nahoru 300 mm/), "stará poptávka: přesah nahoru 300 mm zůstane + varování");
+  ok(oldTop.lay.members.filter((m) => m.role === "overtop").length > 0, "stará poptávka: přesahy nahoru jsou v geometrii");
+  const oldGeo = Z.analyze({ vypln: "geometricky", motifPitch: 300, segs: [{ L: 3000, rise: 0 }] });
+  ok(oldGeo.cfg.motifPitch === 300 && has(oldGeo, "warn", /Starší poptávka: rozteč geometrického motivu 300 mm/), "stará poptávka: rozteč motivu 300 mm zůstane + varování");
+  ok(Z.analyze({ typ: "A", sloupky: true, madlo: false, overTop: 300, segs: flat, cfgVer: Z.CFG_VER }).cfg.overTop === 100, "nová konfigurace (cfgVer): přesah nahoru 300 → 100 mm");
+  ok(Z.normalize(Z.normalize({ cfgVer: Z.CFG_VER })).cfgVer === Z.CFG_VER && Z.normalize({}).cfgVer === undefined, "cfgVer se drží přes normalize, stará poptávka ho nedostane");
+  // výchozí stav stránky: žádné varování způsobené novými kontrolami (sklon výchozího presetu 35°)
+  const def = Z.analyze(Object.assign({}, Z.DEFAULT_CFG, NV0));
+  ok(!def.warns.some((w) => w.lvl !== "info"), "výchozí zábradlí bez varování: " + def.warns.filter((w) => w.lvl !== "info").map((w) => w.t.slice(0, 60)).join(" | "));
 }
 
 /* ---------- podnože: blokování, meze modelů, pod nohy, RAL ---------- */
@@ -197,6 +213,7 @@ const flat = [{ L: 3000, rise: 0 }];
   ok(/K\.blockReasons\(A\)/.test(htmlI) && /K\.blockReasons\(A\)/.test(htmlV) && /id="askWhy"/.test(htmlI) && /id="askWhy"/.test(htmlV), "obě stránky blokují přes blockReasons a píšou důvod");
   // pod nohy
   const feet = P.analyze({ model: "4N", nohy: "rektif", size: 40 });
+  ok(P.feetCount(P.normalize({ model: "SC" })).q === 6 && P.feetCount(P.normalize({ model: "U" })).q === 4 && P.feetCount(P.normalize({ model: "TS" })).q === 4, "pod nohy: Schody 6 bodů (noha + spodní příčka), U a Kozlík 4");
   ok(feet.feet && feet.feet.q === 4 && feet.rows.some((r) => r.kind === "hw" && /rektifikační nožka M8/.test(r.name) && r.q === 4), "rektifikační nožky: 4 ks v kusovníku");
   ok(P.analyze({ model: "U", nohy: "kluzak" }).rows.some((r) => /kluzák/.test(r.name) && r.q === 4), "kluzáky: 4 ks u rámu U (průběžná spodní příčka)");
   ok(P.analyze({ model: "4N", nohy: "rektif" }).price > P.analyze({ model: "4N" }).price && P.analyze({ model: "4N" }).rows.every((r) => !/nožka|kluzák/.test(r.name)), "pod nohy se promítne do ceny, výchozí 'nic' do kusovníku nic nepřidá");

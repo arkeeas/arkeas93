@@ -423,7 +423,8 @@
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
   if (Zb.VERSION !== '20261110a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
-  try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
+  // cfgVer: na stránce vždy platí dnešní limity (i pro nastavení uložené v prohlížeči ze starší verze)
+  try { cfg = Zb.normalize(Object.assign({}, JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}, { cfgVer: Zb.CFG_VER })); } catch (e) { cfg = Zb.normalize({ cfgVer: Zb.CFG_VER }); }
   const viewer = ZabViewer.create($('viz'));
   if (viewer.mode === '2d') $('hint').textContent = 'Zjednodušený náhled';
   let db = null, uid = null;
@@ -926,7 +927,8 @@
     const now = new Date(), p2 = (n) => String(n).padStart(2, '0');
     const id = 'Z' + String(now.getFullYear()).slice(2) + p2(now.getMonth() + 1) + p2(now.getDate()) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
     const item = { id, product: 'zabradli', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim(), address: $('fAddr').value.trim() }, note: $('fNote').value.trim(),
-      config: cfg, kotveniSam: cfg.anchor === 'bez' ? true : undefined, price: A.price, services: A.svc, svcPrice: A.svcPrice, total: A.total };
+      config: cfg, price: A.price, services: A.svc, svcPrice: A.svcPrice, total: A.total };
+    if (cfg.anchor === 'bez') item.kotveniSam = true;          // bez undefined v uloženém dokumentu
     if (!db || !uid) { msg('Poptávku se teď nepodařilo odeslat. Zkopírujte prosím tento kód a pošlete ho e-mailem na [E-MAIL FIRMY]:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad'); return; }
     $('send').disabled = true; msg('Odesílám…');
     try {

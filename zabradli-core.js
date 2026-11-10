@@ -279,7 +279,7 @@
     { id: 'L', lab: 'Roh L', icon: 'M6 40 H44 V8', segs: [{ L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }] },
     { id: 'U', lab: 'Balkon U', icon: 'M10 8 V40 H54 V8', segs: [{ L: 1500, rise: 0, turn: 90 }, { L: 3000, rise: 0, turn: 90 }, { L: 1500, rise: 0 }] },
     { id: 'schody', lab: 'Schodiště', icon: 'M6 42 L58 10', segs: [{ L: 3000, rise: 1800 }] },
-    { id: 'schodypod', lab: 'Schody + podesta', icon: 'M4 44 L28 20 H46 V6', segs: [{ L: 2380, rise: 2000 }, { L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }] }
+    { id: 'schodypod', lab: 'Schody + podesta', icon: 'M4 44 L28 20 H46 V6', segs: [{ L: 2860, rise: 2000 }, { L: 4500, rise: 0, turn: 90 }, { L: 3000, rise: 0 }] }      // sklon schodiště 35° (dřív 2380 = 40°, nad prahem varování 38°)
   ];
   const DEFAULT_CFG = {
     typ: 'B', segs: PRESETS[4].segs.map((s) => Object.assign({ turn: 0 }, s)), vyska: 1000, side: 'L',
@@ -329,6 +329,8 @@
     return out;
   }
   const OVER_MAX = 400, POST_MIN = 600, POST_MAX = 1500;
+  const CFG_VER = 2;               // verze limitů konfigurace (viz normalize)
+  const LEGACY_MOTIF_MAX = 400;   // rozteč geometrického motivu u starých poptávek (dřívější maximum)
   const OVER_TOP_MAX = 100;       // přesah špruší nahoru max 100 mm (ostré konce nad madlem; dolů zůstává OVER_MAX)
   const GEO_FRAME_W = 130;        // šířka vnějšího rámečku geometrického motivu (mezera = rozteč − šířka rámečku)
   const rates0 = (r) => {
@@ -346,8 +348,12 @@
   const num = (v, a, b, d) => { const n = Number(v); return isFinite(n) ? Math.min(b, Math.max(a, n)) : d; };
   const pick = (list, v, d) => (list.some((x) => (x.id != null ? x.id : x.v) === v) ? v : d);
   function normalize(c) {
+    // cfgVer: konfigurace ze stránky po změně limitů (20261110a). Starší (už přijaté) poptávky ho nemají – jejich přesah špruší nahoru
+    // a rozteč geometrického motivu se neořezávají (dílna musí vidět, co zákazník objednal), analyze na ně jen upozorní.
+    const nv = !!c && Number(c.cfgVer) >= CFG_VER;
     c = Object.assign({}, DEFAULT_CFG, c || {});
     const o = {};
+    if (nv) o.cfgVer = CFG_VER;
     o.vypln = c.vypln === 'geometricky' || c.vypln === 'laser' ? c.vypln : 'standard';
     // jeden typ zábradlí: sloupky ano/ne (interně typ A = se sloupky, B = pole bez sloupků – kvůli uloženým poptávkám)
     o.sloupky = o.vypln !== 'standard' ? true : c.sloupky != null ? !!c.sloupky : c.typ === 'A';
@@ -360,7 +366,7 @@
     const rl = Ral ? Ral.norm(c.ral, c.ralJiny) : { id: '7016', jiny: '' };
     o.ral = rl.id; o.ralJiny = rl.jiny;
     // geometrický motiv: mezera = rozteč − šířka rámečku, nesmí přesáhnout limit (120 mm, u dětí 80 mm)
-    o.motifPitch = Math.round(num(c.motifPitch, 150, GEO_FRAME_W + gapLimit(o.uziti, DEFAULT_RATES), 250));
+    o.motifPitch = Math.round(num(c.motifPitch, 150, nv ? GEO_FRAME_W + gapLimit(o.uziti, DEFAULT_RATES) : LEGACY_MOTIF_MAX, 250));
     let segs = Array.isArray(c.segs) && c.segs.length ? c.segs.slice(0, 8) : DEFAULT_CFG.segs;
     o.segs = segs.map((s, i) => {
       const L = Math.round(num(s.L, 300, 12000, 3000));
@@ -389,7 +395,7 @@
     o.podlozka = !!c.podlozka;
     // přesah špruší: nahoru jen bez dřevěného madla (to leží na horním rámu), dolů jen když spodní rám není na podlaze
     const ov = overAllowed(o);
-    o.overTop = ov.top ? Math.round(c.overTop == null ? 0 : num(c.overTop, 0, OVER_TOP_MAX, 0)) : 0;
+    o.overTop = ov.top ? Math.round(c.overTop == null ? 0 : num(c.overTop, 0, nv ? OVER_TOP_MAX : OVER_MAX, 0)) : 0;
     o.overBot = ov.bot ? Math.round(c.overBot == null ? (o.typ === 'B' ? 150 : 0) : num(c.overBot, 0, OVER_MAX, 0)) : 0;
     o.rada = o.vypln === 'laser' && c.rada === 'priroda' ? 'priroda' : 'abstrakt';
     const inRada = (id) => MOTIFS.some((m) => m.id === id && m.rada === o.rada);
@@ -1748,11 +1754,17 @@
     const pct = Math.round(util * 100);
     const lvl = util > 1 + 1e-9 ? 'bad' : util >= 0.8 ? 'warn' : 'info';
     const prof = 'jekl ' + rail.lab;
+    // nejlehčí nabízený profil, který při stejné rozteči a výšce vyjde do 80 % (jinak aspoň do 100 %) – rada zákazníkovi
+    const utilOf = (r) => { const w = (Math.pow(r.w, 3) - Math.pow(r.w - 2 * r.t, 3)) / 4, i = (Math.pow(r.w, 4) - Math.pow(r.w - 2 * r.t, 4)) / 12;
+      return Math.max(STEEL.gamaQ * F * H / (w * STEEL.fyd), F * Math.pow(H, 3) / (3 * STEEL.E * i) / R.pruhybSloupekMax); };
+    const byW = RAILS.A.filter((r) => r.id !== rail.id && utilOf(r) < util).sort((x, y) => (x.w * x.t) - (y.w * y.t));
+    const better = byW.find((r) => utilOf(r) <= 0.8) || byW.find((r) => utilOf(r) <= 1) || null;      // přednostně s rezervou do 80 %
+    const betterTxt = better ? ' nebo zvolte profil ' + better.lab + ' (při této rozteči zhruba ' + Math.round(utilOf(better) * 100) + ' %)' : ' (ani nejsilnější nabízený profil při této rozteči nevyjde – zmenšete rozteč)';
     let text = 'Orientační posouzení sloupku (' + prof + ', rozteč ' + nf(Math.round(s)) + ' mm, zatížení madla ' + nf(q, 1) + ' kN/m): využití ' + pct + ' %';
-    if (lvl === 'bad') text += ' – sloupek je přetížený' + (uD > uM ? ' (průhyb ' + nf(defl, 1) + ' mm nad limit ' + nf(R.pruhybSloupekMax) + ' mm)' : '') + '. Zmenšete rozteč sloupků' + (sOk >= 300 ? ' (zhruba do ' + nf(sOk) + ' mm)' : '') + ' nebo zvolte silnější profil (40×40×3, 50×50×3, 60×60×3).';
-    else if (lvl === 'warn') text += ' – těsně pod limitem, zvažte menší rozteč nebo silnější profil.';
+    if (lvl === 'bad') text += ' – sloupek je přetížený' + (uD > uM ? ' (průhyb ' + nf(defl, 1) + ' mm nad limit ' + nf(R.pruhybSloupekMax) + ' mm)' : '') + (sOk >= POST_MIN ? '. Zmenšete rozteč sloupků (zhruba do ' + nf(sOk) + ' mm)' + betterTxt : '. ' + (better ? 'Zvolte profil ' + better.lab + ' (při této rozteči zhruba ' + Math.round(utilOf(better) * 100) + ' %), případně i menší rozteč sloupků' : 'Ani nejsilnější nabízený profil tu nevyjde – ozvěte se nám, řešení navrhne dílna se statikem')) + '.';
+    else if (lvl === 'warn') text += ' – těsně pod limitem, zvažte menší rozteč' + (better ? ' nebo profil ' + better.lab : '') + '.';
     else text += '. Statik před výrobou potvrdí, kotvení ověří dílna.';
-    return { lvl, text, util, utilM: uM, utilDefl: uD, s, q, H, Wpl, I, MEd, MRd, defl, sOk, prof, fyd: STEEL.fyd, E: STEEL.E, gamaQ: STEEL.gamaQ };
+    return { lvl, text, util, utilM: uM, utilDefl: uD, s, q, H, Wpl, I, MEd, MRd, defl, sOk, prof, better: better && better.id, fyd: STEEL.fyd, E: STEEL.E, gamaQ: STEEL.gamaQ };
   }
 
   const hwName = (base) => (base === 'ocel' ? 'šroub M12 + matice, podložka' : 'závitová tyč M12 + ' + (base === 'zdivo' ? 'chemická kotva se sítkem' : 'chemická kotva') + ', matice, podložka');
@@ -1883,6 +1895,9 @@
     if (lay.floorGap > 0) gapWarn(lay.floorGap, 'Světlá mezera pod spodním rámem u podlahy');
     if (cfg.segs.some((s) => s.rise) && cfg.vypln !== 'geometricky') warns.push({ lvl: 'info', t: 'Na schodišti zůstává pod spodním rámem nad každým stupněm trojúhelník (výška × hloubka schodu) – jeho průchodnost podle normy posoudí dílna.' });
     if (B.locks.mode === 'zamek') warns.push({ lvl: 'info', t: 'Špruše se zámečky nejdou nařezat jen na pile – v ceně je příplatek za vyřezání ' + tabs + ' zámečků.' });
+    // stará poptávka (bez cfgVer) s hodnotami nad dnešní limity: rozměry se nemění, jen upozornění pro dílnu
+    if (cfg.overTop > OVER_TOP_MAX) warns.push({ lvl: 'warn', t: 'Starší poptávka: přesah špruší nahoru ' + cfg.overTop + ' mm je nad dnešním limitem ' + OVER_TOP_MAX + ' mm – rozměr zůstal, jak ho zákazník poptal; před výrobou dohodněte.' });
+    if (cfg.vypln === 'geometricky' && cfg.motifPitch > GEO_FRAME_W + lim) warns.push({ lvl: 'warn', t: 'Starší poptávka: rozteč geometrického motivu ' + cfg.motifPitch + ' mm je nad dnešním limitem ' + (GEO_FRAME_W + lim) + ' mm – rozměr zůstal, jak ho zákazník poptal; před výrobou dohodněte.' });
     if (cfg.overTop > 0) {
       warns.push({ lvl: 'info', t: 'Špruše přečnívají ' + cfg.overTop + ' mm nad horní rám. Výška zábradlí se měří k hornímu rámu, přesah ji nezvyšuje.' });
       warns.push({ lvl: deti ? 'bad' : 'warn', t: 'Konce špruší nad horním rámem musí být zaoblené nebo zatupené (nebezpečí úrazu).' + (deti ? ' V prostoru s dětmi přesah nahoru nejde – nastavte 0 mm.' : cfg.uziti === 'verejny' ? ' Ve veřejném prostoru se přesah nahoru nedoporučuje.' : ' V prostoru s dětmi a ve veřejném prostoru se přesah nahoru nedoporučuje.') });
@@ -1992,6 +2007,6 @@
       (ms ? ', rozměry změřil zákazník' + (ms.remeasure.filter((m) => m.lvl !== 'info').length ? ' (' + ms.remeasure.filter((m) => m.lvl !== 'info').length + '× k přeměření)' : '') : '');
   }
 
-  root.Zabradli = { cutPlan, VERSION: '20261110a', MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, clipPlanes, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, OVER_TOP_MAX, GEO_FRAME_W, POST_MIN, POST_MAX, UMISTENI, UZITI, HLOUBKA, RATE_LIM, checkRates, gapLimit, minHeight, postCheck, Ral, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
+  root.Zabradli = { cutPlan, VERSION: '20261110a', CFG_VER, MOTIFS, PANEL, motifOf, cropOffsets, plechRange, prirodaIds, fieldsOf, clipRect, clipPlanes, panelHoles, panelDxf, bulgePoints, WALL_BASE, PAD_T, CELO_CORNER, wallAllowed, padAllowed, stepsMissing, TURN_MAX, normTurn, WALL_GAP, MARK, normStavba, stavbaSegs, stavbaCheck, stairDims, TYPES, RAILS, BARS, JOINS, OVER_MAX, OVER_TOP_MAX, GEO_FRAME_W, POST_MIN, POST_MAX, UMISTENI, UZITI, HLOUBKA, RATE_LIM, checkRates, gapLimit, minHeight, postCheck, Ral, PROF_A, BAR_A, overAllowed, jointInfo, anchorCheck, FIN, ANCHOR, BASE, SERVICES, TURNS, PRESETS, DEFAULT_CFG, DEFAULT_RATES, rates0, normalize, routePoints, patkaAllowed, lockInfo,
     layoutA, layoutB, layoutGeometric, build, analyze, describe, memberSolid, toLocal, volume, nf, V: { add, sub, mul, dot, cross, len, unit } };
 })(typeof window !== 'undefined' ? window : globalThis);
