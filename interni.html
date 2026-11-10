@@ -148,6 +148,8 @@
           <label class="f">Stěna [mm]<select id="t"></select></label>
           <label class="f">Deska tl. [mm]<input id="td" type="number"></label>
           <label class="f">Povrch<select id="fin"></select></label>
+          <label class="f">Jiný RAL (4 číslice)<input id="ralJiny" inputmode="numeric" maxlength="4" placeholder="jen u „Jiný RAL“"></label>
+          <label class="f">Pod nohy<select id="nohy"></select></label>
           <label class="f">Počet sad<input id="qty" type="number" min="1"></label>
           <label class="f">Deska<select id="dmode"><option value="table">podle stolu</option><option value="own">vlastní rozměr</option></select></label>
           <label class="f">Deska délka / Ø<input id="dL" type="number"></label>
@@ -336,10 +338,11 @@
 <script src="lokal.js?v=20261006a"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261008g"></script>
-<script src="vyvoj.js?v=20261008j"></script>
-<script src="viewer.js?v=20261012a"></script>
-<script src="gen.js?v=20261011a"></script>
+<script src="ral.js?v=20261110a"></script>
+<script src="core.js?v=20261110a"></script>
+<script src="vyvoj.js?v=20261110a"></script>
+<script src="viewer.js?v=20261110a"></script>
+<script src="gen.js?v=20261110a"></script>
 <script src="assets/zabradli/motiv-strom.js?v=20261011a"></script>
 <script src="assets/zabradli/motiv-bunky.js?v=20261011a"></script>
 <script src="assets/zabradli/motiv-jelen.js?v=20261014b"></script>
@@ -349,10 +352,10 @@
 <script src="assets/zabradli/motiv-motyl.js?v=20261014l"></script>
 <script src="assets/zabradli/motiv-motyl-a.js?v=20261014l"></script>
 <script src="assets/zabradli/motiv-motyl-b.js?v=20261014l"></script>
-<script src="assets/zabradli/motiv-kachny.js?v=20261014n"></script>
-<script src="zabradli-core.js?v=20261014n"></script>
-<script src="zabradli-viewer.js?v=20261007o"></script>
-<script src="zabradli-dilna.js?v=20261011b"></script>
+<script src="assets/zabradli/motiv-kachny.js?v=20261110a"></script>
+<script src="zabradli-core.js?v=20261110a"></script>
+<script src="zabradli-viewer.js?v=20261110a"></script>
+<script src="zabradli-dilna.js?v=20261110a"></script>
 <script>
 /* motivy Příroda pro šikminy se stahují, až je poptávka se schodištěm potřebuje; pak se otevřená poptávka přepočítá */
 (function () {
@@ -368,12 +371,12 @@
   };
 })();
 </script>
-<script src="stolecky-core.js?v=20261011c"></script>
-<script src="stolecky-viewer.js?v=20261012a"></script>
+<script src="stolecky-core.js?v=20261110a"></script>
+<script src="stolecky-viewer.js?v=20261110a"></script>
 <script src="stolecky-dilna.js?v=20261011c"></script>
-<script src="zasteny-core.js?v=20261011a"></script>
+<script src="zasteny-core.js?v=20261110a"></script>
 <script src="zasteny-dilna.js?v=20261011a"></script>
-<script src="ptaci-core.js?v=20261013a"></script><script src="jelen-core.js?v=20261013a"></script><script src="jelen-velky-core.js?v=20261013b"></script>
+<script src="ptaci-core.js?v=20261110a"></script><script src="jelen-core.js?v=20261110a"></script><script src="jelen-velky-core.js?v=20261110a"></script>
 <script src="ptaci-dilna.js?v=20261013b"></script>
 <script>
 (function () {
@@ -403,7 +406,8 @@
   opt('shape', K.SHAPES.map((s) => [s.id, s.lab]));
   opt('size', K.SIZES.map((z) => [z, z + '×' + z]));
   opt('fin', K.FIN.map((f) => [f.id, f.lab + ' (' + f.ral + ')']));
-  const keys = ['model', 'shape', 'join', 'L', 'W', 'H', 'size', 't', 'td', 'fin', 'qty', 'dmode', 'dL', 'dW'];
+  opt('nohy', K.FEET.map((f) => [f.id, f.lab]));
+  const keys = ['model', 'shape', 'join', 'L', 'W', 'H', 'size', 't', 'td', 'fin', 'ralJiny', 'nohy', 'qty', 'dmode', 'dL', 'dW'];
   function fillForm() {
     opt('t', K.THK[cfg.size].map((t) => [t, t + ' mm']));
     keys.forEach((k) => { if (document.activeElement !== $(k)) $(k).value = cfg[k]; });
@@ -535,7 +539,7 @@
   function alertRow(t) { $('popRows').insertAdjacentHTML('afterbegin', '<tr><td colspan="7" class="msg" style="background:var(--bad-bg);color:var(--bad-ink)">' + esc(t) + '</td></tr>'); }
 
   /* ---------- ceník ---------- */
-  const RF = [['kg', 'Materiál – jekl', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['sroub', 'Šroubový spoj', 'Kč'], ['barva', 'Prášková barva', 'Kč/m²'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže', '%'], ['boltMax4N', 'Šroubované 4 nohy max. délka', 'mm']];
+  const RF = [['kg', 'Materiál – jekl', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['sroub', 'Šroubový spoj', 'Kč'], ['barva', 'Prášková barva', 'Kč/m²'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže (0–300)', '%'], ['boltMax4N', 'Šroubované 4 nohy max. délka', 'mm'], ['kluzak', 'Pod nohy – plastový kluzák', 'Kč/ks'], ['rektifikace', 'Pod nohy – rektifikační nožka M8', 'Kč/ks']];
   const PF = [['w', 'Úchytka šířka', 'mm'], ['l', 'Úchytka délka', 'mm'], ['t', 'Úchytka tloušťka', 'mm']];
   const XF = [['plateSpacing', 'Max. rozteč úchytek', 'mm'], ['tabClear', 'Vůle drážky pro zámek (na stranu)', 'mm']];
   function fillRates() {
@@ -546,15 +550,16 @@
   }
   function readRates() {
     const r = { plate: {} };
-    RF.forEach((f) => { r[f[0]] = Number($('r-' + f[0]).value) || 0; });
-    PF.forEach((f) => { r.plate[f[0]] = Math.max(1, Number($('p-' + f[0]).value) || 1); });
-    r.plateSpacing = Math.max(200, Number($('x-plateSpacing').value) || 450);
-    r.tabClear = Math.min(1, Math.max(0, Number($('x-tabClear').value) || 0));
+    RF.forEach((f) => { const v = $('r-' + f[0]).value.trim(); r[f[0]] = v === '' ? NaN : Number(v); });
+    PF.forEach((f) => { const v = $('p-' + f[0]).value.trim(); r.plate[f[0]] = v === '' ? NaN : Number(v); });
+    const ps = $('x-plateSpacing').value.trim(), tc = $('x-tabClear').value.trim();
+    r.plateSpacing = ps === '' ? NaN : Number(ps); r.tabClear = tc === '' ? NaN : Number(tc);
     r.boltModels = K.MODELS.filter((m) => m.bolt && $('b-' + m.id).checked).map((m) => m.id);
     return r;
   }
   $('saveRates').addEventListener('click', async () => {
-    const r = readRates();
+    const r = readRates(), errs = K.checkRates(r);
+    if (errs.length) { $('rateMsg').textContent = 'Neukládám – hodnoty mimo meze: ' + errs.join('; ') + '.'; return; }
     if (!db || !canEdit) { $('rateMsg').textContent = 'Uložit může jen editor artefaktu.'; return; }
     try { await db.doc('nastaveni/cenik').set(r); $('rateMsg').textContent = 'Uloženo – platí na obou stránkách.'; } catch (e) { $('rateMsg').textContent = 'Uložení se nepovedlo (' + (e && e.code) + ').'; }
   });

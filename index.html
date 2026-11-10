@@ -63,7 +63,7 @@
   .step h2 { margin: 0 0 14px; font-weight: 500; font-size: 20px; line-height: 1.25; }
   .step h2 small { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-bottom: 2px; }
   .grid { display: grid; gap: 10px; }
-  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 520px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .opt { border: 1.5px solid var(--line); background: var(--surface); border-radius: 4px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
   .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
@@ -194,6 +194,7 @@
           <div class="field" id="wField"><div class="row"><label for="W">Hloubka</label><span class="num"><input id="Wn" type="number" inputmode="numeric" aria-label="Hloubka v mm"> mm</span></div><input id="W" type="range" min="300" max="1100" step="10"></div>
           <div class="field"><div class="row"><label for="H">Výška</label><span class="num"><input id="Hn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="H" type="range" min="350" max="1100" step="10"></div>
           <div class="note" id="frameNote"></div>
+          <div class="msg" id="adaptNote" hidden style="background:var(--warn-bg);color:var(--warn-ink)"></div>
         </div>
       </div>
 
@@ -213,6 +214,10 @@
       <div class="step">
         <h2><small>Krok 5</small>Povrchová úprava</h2>
         <div class="grid g4" id="fins"></div>
+        <label class="own" id="ralOwn" hidden for="ralJiny" style="margin-top:10px">Číslo RAL (4 číslice, např. 5010)<input id="ralJiny" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="např. 5010" autocomplete="off"></label>
+        <p class="sub-h">Pod nohy</p>
+        <div class="grid g3" id="feet"></div>
+        <p class="note" id="feetNote" style="margin:8px 0 0"></p>
       </div>
 
       <div class="step">
@@ -244,6 +249,7 @@
       <div class="actions">
         <div class="qty"><button type="button" id="dec" aria-label="Méně kusů">−</button><span id="qty"></span><button type="button" id="inc" aria-label="Více kusů">+</button></div>
         <button class="btn primary" id="ask" type="button">Nezávazně poptat</button>
+        <div class="note" id="askWhy" hidden style="flex-basis:100%;color:var(--bad-ink)"></div>
         <button class="btn ghost" type="button" disabled title="Platba online – připravujeme">Koupit</button>
       </div>
     </div>
@@ -273,10 +279,11 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261008g"></script>
-<script src="vyvoj.js?v=20261008j"></script>
+<script src="ral.js?v=20261110a"></script>
+<script src="core.js?v=20261110a"></script>
+<script src="vyvoj.js?v=20261110a"></script>
 <script src="figure.js?v=20261005d"></script>
-<script src="viewer.js?v=20261012b"></script>
+<script src="viewer.js?v=20261110a"></script>
 <script>
 (function () {
   const K = Podnoze, $ = (id) => document.getElementById(id);
@@ -290,7 +297,27 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const tip = (id, text, label) => '<span class="tip"><button type="button" class="i" aria-label="' + esc(label) + '" aria-describedby="' + id + '">i</button><span class="tipbox" role="tooltip" id="' + id + '">' + esc(text) + '</span></span>';
 
-  function set(p) { cfg = K.normalize(Object.assign({}, cfg, p)); render(); try { localStorage.setItem('podnoz-cfg', JSON.stringify(cfg)); } catch (e) {} }
+  /* po změně modelu / jeklu / tvaru zasuneme rozměry do mezí modelu (nejmenší, při kterém se díly neprotínají; C-rám jen malý stolek) a řekneme to */
+  const LAB = { L: 'délku', W: 'hloubku', H: 'výšku' };
+  function adaptDims(c) {
+    const lim = K.dimLimits(c.model, c.size, c.shape), ch = [];
+    ['L', 'W', 'H'].forEach((k) => {
+      if (k === 'W' && c.shape === 'circle') return;
+      const lo = lim['min' + k], hi = lim['max' + k];
+      if (c[k] < lo) { ch.push(LAB[k] + ' ' + c[k] + ' → ' + lo + ' mm (nejmenší možná)'); c[k] = lo; }
+      else if (c[k] > hi) { ch.push(LAB[k] + ' ' + c[k] + ' → ' + hi + ' mm (největší možná)'); c[k] = hi; }
+    });
+    if (c.shape === 'circle') c.W = c.L;
+    return ch;
+  }
+  function set(p) {
+    cfg = K.normalize(Object.assign({}, cfg, p));
+    if ('model' in p || 'size' in p || 'shape' in p || 'L' in p || 'W' in p || 'H' in p) {
+      const ch = adaptDims(cfg), M2 = K.MODELS.find((m) => m.id === cfg.model);
+      const big = 'model' in p || 'size' in p || 'shape' in p;
+      ui.adapt = ch.length ? (big ? 'Rozměry jsme přizpůsobili: ' : 'Mimo meze pro ' + (M2 ? M2.lab : 'tento model') + ': ') + ch.join(', ') + '.' : '';
+    }
+    render(); try { localStorage.setItem('podnoz-cfg', JSON.stringify(cfg)); } catch (e) {} }
 
   function group(el, items, html, onPick) {
     el.innerHTML = items.map(html).join('');
@@ -308,7 +335,7 @@
       for (const [z, t] of opts) {
         if (z < cfg.size || (z === cfg.size && t <= cfg.t)) continue;
         const a = K.audit(Object.assign({}, cfg, { size: z, t }), rates);
-        if (a.checks.every((c) => c.lvl !== 'bad')) { best = [z, t]; break; }
+        if (a.checks.every((c) => c.lvl !== 'bad') && !a.singular && !a.fab.some((f) => f.lvl === 'bad')) { best = [z, t]; break; }
       }
       const el = document.getElementById('sugg'); if (!el) return;
       if (best) { el.innerHTML = 'Podnož by nevydržela. Pomůže jekl <strong>' + best[0] + '×' + best[0] + '×' + best[1] + '</strong>. <button type="button" class="btn" style="height:36px;margin-left:6px" id="useSugg">Použít</button>'; document.getElementById('useSugg').addEventListener('click', () => set({ size: best[0], t: best[1] })); }
@@ -318,7 +345,7 @@
 
   function render() {
     A = K.analyze(cfg, rates);
-    const M = K.MODELS.find((m) => m.id === cfg.model), F = K.FIN.find((f) => f.id === cfg.fin), d = A.build.dims, circle = cfg.shape === 'circle';
+    const M = K.MODELS.find((m) => m.id === cfg.model), F = K.finOf(cfg), d = A.build.dims, circle = cfg.shape === 'circle';
     $('mName').textContent = M.lab;
     $('mSub').textContent = (cfg.dmode === 'own' ? 'deska ' + (circle ? 'Ø ' + K.nf(A.DL) : K.nf(A.DL) + ' × ' + K.nf(A.DW)) + ' · výška ' + K.nf(cfg.H) + ' mm' : (circle ? 'Ø ' + K.nf(cfg.L) : K.nf(cfg.L) + ' × ' + K.nf(cfg.W)) + ' × ' + K.nf(cfg.H) + ' mm') + ' · jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ' · ' + F.lab;
     $('ohChip').textContent = 'Přesah desky: čela ' + K.nf(A.ohEnd) + ' mm · boky ' + K.nf(A.ohSide) + ' mm';
@@ -328,10 +355,12 @@
     $('modelNote').textContent = M.desc + (M.note ? ' · ' + M.note : '');
     $('lenLab').textContent = circle ? 'Průměr' : 'Délka';
     $('wField').hidden = circle;
-    ['L', 'W', 'H'].forEach((k) => { syncInput(k, cfg[k]); syncInput(k + 'n', cfg[k]); });
+    const lim = K.dimLimits(cfg.model, cfg.size, cfg.shape);
+    ['L', 'W', 'H'].forEach((k) => { $(k).min = $(k + 'n').min = lim['min' + k]; $(k).max = $(k + 'n').max = lim['max' + k]; syncInput(k, cfg[k]); syncInput(k + 'n', cfg[k]); });
+    $('adaptNote').hidden = !ui.adapt; $('adaptNote').textContent = ui.adapt || '';
     $('frameNote').textContent = 'Rozměr podnože ' + K.nf(d.Lf) + ' × ' + K.nf(d.Wf) + ' × ' + K.nf(d.Hf) + ' mm – délky všech jeklů se dopočítají automaticky.';
 
-    group($('sizes'), K.SIZES, (z) => '<button type="button" class="opt" data-id="' + z + '" aria-pressed="' + (z === cfg.size) + '"><span class="l" style="font-weight:600;font-size:15px">' + z + '×' + z + '</span><span class="s">' + (z === 20 ? 'malé stolky' : 'od ' + K.THK[z][0] + ' mm') + '</span></button>', (id) => set({ size: Number(id) }));
+    group($('sizes'), K.SIZES, (z) => '<button type="button" class="opt" data-id="' + z + '" aria-pressed="' + (z === cfg.size) + '"' + (z === 20 && z !== cfg.size && (cfg.L > 1000 || cfg.H > 800) ? ' disabled style="opacity:.5" title="Jekl 20×20 je jen pro malé stolky do 1000 mm délky a 800 mm výšky – na tento rozměr zvolte 30×30 a víc."' : '') + '><span class="l" style="font-weight:600;font-size:15px">' + z + '×' + z + '</span><span class="s">' + (z === 20 ? 'malé stolky' : 'od ' + K.THK[z][0] + ' mm') + '</span></button>', (id) => set({ size: Number(id) }));
     $('thkLab').textContent = 'Tloušťka stěny jeklu ' + cfg.size + '×' + cfg.size;
     group($('thks'), K.THK[cfg.size], (t) => '<button type="button" class="pill" data-id="' + t + '" aria-pressed="' + (t === cfg.t) + '">' + t + ' mm</button>', (id) => set({ t: Number(id) }));
     const tj = !!M.tr;   // Trojúhelníky: vlastní jekl a rozměry místo profilu z kroku 3
@@ -353,8 +382,10 @@
       '<div class="bar"><i style="width:' + Math.min(100, A.load / 4) + '%"></i></div>' + A.warns.map((w) => '<p>' + esc(w) + '</p>').join('') +
       (custLvl === 'bad' ? '<p id="sugg">Hledám jekl, se kterým to půjde…</p>' : '') +
       '<p class="fine">Spočítáno pro celou podnož: rovnoměrná zátěž, síla 1000 N na okraj, boční síla 400 N a převržení podle normy EN 12521, ocel S235. Deska se do pevnosti nepočítá.</p>';
-    $('ask').disabled = custLvl === 'bad';
-    $('ask').title = custLvl === 'bad' ? 'Tahle kombinace by nevydržela – upravte jekl nebo rozměr' : '';
+    const why = K.blockReasons(A);       // nosnost, díly se protínají / jsou delší než tyč, pohyblivá konstrukce, podnož vyčnívá zpod desky
+    $('ask').disabled = why.length > 0;
+    $('ask').title = why.length ? 'Nejde poptat: ' + why.join('; ') : '';
+    $('askWhy').hidden = !why.length; $('askWhy').textContent = why.length ? 'Poptávku zatím nejde odeslat: ' + why.join('; ').replace(/\.$/, '') + '.' : '';
     if (custLvl === 'bad') suggest();
 
     if (A.boltOK) {
@@ -372,7 +403,11 @@
       $('join').innerHTML = '<div class="box">Tento tvar vyrábíme jen svařovaný – kvůli tuhosti šikmých a křížených dílů.</div>';
     }
 
-    group($('fins'), K.FIN, (f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>', (id) => set({ fin: id }));
+    group($('fins'), K.FIN, (f) => { const fo = f.id === cfg.fin ? K.finOf(cfg) : f; return '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + fo.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + fo.ral + '</span></button>'; }, (id) => set({ fin: id }));
+    $('ralOwn').hidden = cfg.fin !== 'ral';
+    group($('feet'), K.FEET, (f) => { const no = f.id === 'rektif' && cfg.size < 30; return '<button type="button" class="opt" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.nohy) + '"' + (no ? ' disabled style="opacity:.5" title="Rektifikační nožka M8 se do jeklu 20×20 nevejde – od 30×30."' : '') + '><span class="l" style="font-weight:600">' + f.lab + '</span><span class="s">' + f.sub + '</span></button>'; }, (id) => set({ nohy: id }));
+    $('feetNote').textContent = A.feet ? A.feet.q + ' ks' + (A.feet.est ? ' (počet ověří dílna)' : '') + ' – nakupované díly, cena je v ceně podnože (orientačně). ' + A.feet.note : '';
+    if (document.activeElement !== $('ralJiny')) $('ralJiny').value = cfg.ralJiny;
     group($('shapes'), K.SHAPES, (s) => '<button type="button" class="opt" data-id="' + s.id + '" aria-pressed="' + (s.id === cfg.shape) + '">' + svg(s.icon) + '<span class="l">' + s.lab + '</span></button>', (id) => set({ shape: id }));
     group($('dmodes'), [{ id: 'table', l: 'Podle rozměru stolu' }, { id: 'own', l: 'Zadám rozměry své desky' }], (o) => '<button type="button" class="opt" style="min-height:48px;justify-content:center" data-id="' + o.id + '" aria-pressed="' + (o.id === cfg.dmode) + '"><span class="l" style="font-size:14px">' + o.l + '</span></button>',
       (id) => set(id === 'own' && cfg.dmode !== 'own' ? { dmode: 'own', dL: cfg.L, dW: cfg.W } : { dmode: id }));
@@ -417,6 +452,9 @@
     $(k).addEventListener('input', (e) => set({ [k]: e.target.value }));
     $(k + 'n').addEventListener('change', (e) => set({ [k]: e.target.value }));
   });
+  $('ralJiny').addEventListener('input', (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = v; set({ fin: 'ral', ralJiny: v }); });
+  $('ralJiny').setAttribute('list', 'ralList');
+  document.body.insertAdjacentHTML('beforeend', '<datalist id="ralList">' + Ral.LIST.map((r) => '<option value="' + r.id + '">' + r.lab + ' – ' + r.sub + '</option>').join('') + '</datalist>');
   $('td').addEventListener('input', (e) => set({ td: e.target.value }));
   $('dL').addEventListener('change', (e) => set({ dL: e.target.value }));
   $('dW').addEventListener('change', (e) => set({ dW: e.target.value }));

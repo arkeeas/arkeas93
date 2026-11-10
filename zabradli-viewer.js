@@ -3,6 +3,8 @@
   'use strict';
   const Zb = root.Zabradli, V = Zb.V;
   const STEEL = { zn: ['#AEB3B6', 0.55, 0.42], znpu: ['#A2A9AE', 0.45, 0.32], prasek: ['#3B4148', 0.3, 0.55], duplex: ['#3E444B', 0.3, 0.52] };
+  // barva oceli podle povrchu; u prášku a duplexu podle zvoleného odstínu RAL (orientačně, ral.js)
+  const steelOf = (c) => { const st = (STEEL[c.fin] || STEEL.zn).slice(); if ((c.fin === 'prasek' || c.fin === 'duplex') && root.Ral) st[0] = root.Ral.hex(c.ral, c.ralJiny); return st; };
   const DIRS = { iso: [-0.55, -1, 0.6], front: [0, -1, 0.08], side: [1, 0, 0.08], top: [0, -0.0001, 1] };
 
   function orient(P, f) {
@@ -99,7 +101,7 @@
       const A = state.A;
       if (group) { scene.remove(group); group.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
       group = new THREE.Group();
-      const st = STEEL[A.cfg.fin] || STEEL.zn;
+      const st = steelOf(A.cfg);
       const mats = {
         steel: new THREE.MeshStandardMaterial({ color: st[0], metalness: st[1], roughness: st[2] }),
         anchor: new THREE.MeshStandardMaterial({ color: new THREE.Color(st[0]).multiplyScalar(0.62), metalness: st[1], roughness: 0.52,
@@ -149,7 +151,7 @@
   }
 
   function bodies2d(A, ctx) {
-    const col = (STEEL[A.cfg.fin] || STEEL.zn)[0];
+    const col = steelOf(A.cfg)[0];
     const out = A.lay.members.map((m) => ({ verts: m.solid.verts, faces: m.solid.faces, color: m.kind === 'wood' ? '#B98252' : m.kind === 'rod' ? '#8E9196' : m.kind === 'pad' ? '#7A6A55' : col }));
     if (ctx) A.build.context.forEach((c) => out.push({ verts: c.solid.verts, faces: c.solid.faces, color: c.color, alpha: c.alpha < 1 ? c.alpha : 0 }));
     return out;

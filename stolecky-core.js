@@ -19,6 +19,7 @@
  */
 (function (root) {
   'use strict';
+  const Ral = root.Ral || (typeof require === 'function' ? require('./ral.js') : null);   // sdílený výběr RAL (ral.js)
 
   const PROFILES = [
     { id: '40x20x2', hp: 40, hd: 20, wall: 2 }, { id: '40x20x3', hp: 40, hd: 20, wall: 3 },
@@ -56,9 +57,20 @@
     { id: 'black', lab: 'Černá mat', ral: 'RAL 9005', sw: '#1E1F21', k: 1 },
     { id: 'anth', lab: 'Antracit', ral: 'RAL 7016', sw: '#383E45', k: 1 },
     { id: 'white', lab: 'Bílá', ral: 'RAL 9016', sw: '#F2F2EE', k: 1 },
-    { id: 'raw', lab: 'Ocel + lak', ral: 'bezbarvý lak', sw: '#77726A', k: 0.7 }
+    { id: 'raw', lab: 'Ocel + lak', ral: 'bezbarvý lak', sw: '#77726A', k: 0.7 },
+    { id: 'ral', lab: 'Jiný RAL', ral: 'podle výběru', sw: '#808080', k: 1, other: true }
   ];
+  /* povrch s dosazeným jiným RAL (lab / ral / sw podle čísla od zákazníka) – stejně jako Podnoze.finOf */
+  function finOf(c) {
+    const f = FIN.find((x) => x.id === c.fin) || FIN[0];
+    if (!f.other) return f;
+    const ok = !!Ral && Ral.valid(c.ralJiny);
+    return Object.assign({}, f, { lab: ok ? 'RAL ' + c.ralJiny : 'Jiný RAL (neuvedeno)', ral: ok ? 'RAL ' + c.ralJiny : 'číslo neuvedeno', sw: ok ? Ral.hex('jiny', c.ralJiny) : f.sw });
+  }
   const DEFAULT_RATES = { kg: 42, rez: 35, svar: 90, barva: 280, priprava: 600, marze: 35 };
+  // záporné / nesmyslné sazby z ceníku se vrátí na výchozí (stejné meze jako core.js – jeden ceník nastaveni/cenik)
+  const RATE_MAX = { kg: 1000, rez: 5000, svar: 5000, barva: 5000, priprava: 100000, marze: 300 };
+  const rates0 = (r) => { const R = Object.assign({}, DEFAULT_RATES, r || {}); Object.keys(RATE_MAX).forEach((k) => { const n = Number(R[k]); if (!Number.isFinite(n) || n < 0 || n > RATE_MAX[k]) R[k] = DEFAULT_RATES[k]; }); return R; };
   const STEEL = 7.85e-6;                                            // kg/mm³
   const kgm = (p) => (2 * (p.hp + p.hd) * p.wall - 4 * p.wall * p.wall) * STEEL * 1000;
   const rad = (d) => d * Math.PI / 180, deg = (r) => r * 180 / Math.PI;
@@ -166,6 +178,8 @@
     if (!PROFILES.some((p) => p.id === o.prof)) o.prof = DEFAULT_CFG.prof;
     if (o.sink === 'auto' || o.sink > 0) o.weldGap = 0;             // zámeček v háčku a vůle se vylučují
     if (!FIN.some((f) => f.id === o.fin)) o.fin = DEFAULT_CFG.fin;
+    o.ralJiny = Ral ? Ral.norm('jiny', c.ralJiny).jiny : '';                    // rozepsané číslo zůstane; dokud není platné, build.block nepustí poptávku
+    if (o.fin !== 'ral') o.ralJiny = Ral && Ral.valid(o.ralJiny) ? o.ralJiny : '';
     if (!TOPS.some((t) => t.id === o.top)) o.top = DEFAULT_CFG.top;
     if (!MOUNTS.some((m) => m.id === o.mount)) o.mount = DEFAULT_CFG.mount;
     o.qty = Math.min(99, Math.max(1, Math.round(Number(o.qty)) || 1));
@@ -441,7 +455,8 @@
 
   /* ---------- vše pro zákazníka i dílnu ---------- */
   function build(c) {
-    const cfg = normalize(c), warn = [];
+    const cfg = normalize(c), warn = [], block = [];
+    const fail = (t) => { warn.push(t); block.push(t); };       // nejde vyrobit = upozornění + blokuje poptávku (build.block)
     if (cfg.model === 'motylek') {
       const M = MODELS.find((m) => m.id === 'motylek');
       const sd = motylekRadialScale(cfg.topD), dd = cfg.topD / 600;
@@ -462,7 +477,7 @@
         { label: 'STEP – původní sestava Ø600 × 500 (referenční)', path: 'assets/stolecky/motyli_stolek/motyli_stolek_600x500.step', referenceOnly: true }
       ];
       return {
-        cfg, model: 'motylek', warn: ownTop && cfg.motylekTopT < 18 ? ['Vlastní deska je tenčí než 18 mm; délku vrutů a únosnost ověří dílna.'] : [],
+        cfg, model: 'motylek', warn: ownTop && cfg.motylekTopT < 18 ? ['Vlastní deska je tenčí než 18 mm; délku vrutů a únosnost ověří dílna.'] : [], block: cfg.fin === 'ral' && !(Ral && Ral.valid(cfg.ralJiny)) ? ['Zadejte číslo odstínu RAL (4 číslice).'] : [],
         kg, kgBars: 0, kgPlates: kg, massKg: kg, surfaceM2: surface,
         cuts: ownTop ? 6 : 3, welds: ownTop ? 8 : 4,
         meshScale: { radial: sd, height: sh, jointWidth: 2 * MOTYLEK_JOINT_HALF, tabletopZOffset: cfg.H - 500,
@@ -472,9 +487,10 @@
       };
     }
     const G0 = geom(cfg, 0), tipsOk = G0.Hs - 2 * G0.h - G0.hp / Math.sin(G0.g) >= 10;
-    if (!tipsOk) warn.push('Nohy jsou na tuhle výšku moc dlouhé – hroty dolního a horního článku by se potkaly. Zmenši rozteč noh nebo zvětši úhel.');
+    if (cfg.fin === 'ral' && !(Ral && Ral.valid(cfg.ralJiny))) fail('Zadejte číslo odstínu RAL (4 číslice).');
+    if (!tipsOk) fail('Nohy jsou na tuhle výšku moc dlouhé – hroty dolního a horního článku by se potkaly. Zmenši rozteč noh nebo zvětši úhel.');
     let ov0 = seat(cfg);
-    if (ov0 === null) { if (tipsOk) warn.push('Články se do sebe nevejdou – zvol užší jekl nebo širší úhel.'); ov0 = 120; }
+    if (ov0 === null) { if (tipsOk) fail('Články se do sebe nevejdou – zvol užší jekl nebo širší úhel.'); ov0 = 120; }
     const sink = sinkOf(cfg), G = geom(cfg, ov0 + cfg.weldGap - sink), cl = clash(G);
     const gp = sink > 0 ? -sink : Math.min(cl.lm, cl.vm);
     const frames = { lam: G.lam, vee: G.vee, mid: G.mid }, hc0 = hookCuts(G, cfg, sink);
@@ -487,9 +503,9 @@
     });
     if (sink > 0) {
       const sinkMin = sinkMinOf(cfg);
-      if (Object.values(flats).some((fs) => fs.some((f) => !f.biteOk))) warn.push('Zámeček v háčku nejde vyříznout – zmenši ponoření.');
+      if (Object.values(flats).some((fs) => fs.some((f) => !f.biteOk))) fail('Zámeček v háčku nejde vyříznout – zmenši ponoření.');
       else if (Object.values(flats).some((fs) => fs.some((f) => f.biteMerged))) warn.push('Zámeček v háčku se spojí se zámečkem v rohu – úzký proužek stěny odpadne. Zmenši ponoření nebo okraj čepu, případně zvol nižší jekl.');
-      if (sink < sinkMin) warn.push('Zámeček v háčku je mělčí než stěna jeklu (' + G.P.wall + ' mm) – laser ho přes stěnu nepropálí. Ponoř články aspoň o ' + sinkMin + ' mm.');
+      if (sink < sinkMin) fail('Zámeček v háčku je mělčí než stěna jeklu (' + G.P.wall + ' mm) – laser ho přes stěnu nepropálí. Ponoř články aspoň o ' + sinkMin + ' mm.');
     }
 
     /* díly: stejný obrys stěny = stejný díl */
@@ -560,18 +576,18 @@
     const barLen = parts.reduce((s, p) => s + (p.lo + p.li) / 2 * p.qty, 0);
     const kgBars = kgm(G.P) * barLen / 1000, kgPlates = plateKg(plates.base) + plateKg(plates.top);
 
-    if (Object.values(lk).some((m) => Object.values(m).some((x) => !x.ok))) warn.push('V některém rohu je čep kratší než 4 mm – zámeček nedrží. Zvol širší jekl nebo menší okraj čepu.');
+    if (Object.values(lk).some((m) => Object.values(m).some((x) => !x.ok))) fail('V některém rohu je čep kratší než 4 mm – zámeček nedrží. Zvol širší jekl nebo menší okraj čepu.');
     /* nohy míří do rohů plotny: otvor musí být aspoň 15 mm od obou šikmých hran */
     const baseReach = Math.max(...baseHoles.flat().map((p) => Math.abs(p[0]) + Math.abs(p[1])));
-    if (baseReach > cfg.baseW / Math.SQRT2 - 15 * Math.SQRT2) warn.push('Plotna ' + cfg.baseW + ' mm je pro tuhle rozteč noh malá – potřebuje aspoň ' + Math.ceil((baseReach * Math.SQRT2 + 30) / 10) * 10 + ' mm.');
-    if (Math.max(...outline.map((q) => Math.hypot(q[0], q[1]))) > cfg.topD / 2 - 15) warn.push(plates.top.name + ' (' + topW + ' mm) vyčuhuje z desky Ø ' + cfg.topD + ' – zmenši rozteč noh, zvol kulatý plech nebo zvětši desku.');
-    if (M.minTd && cfg.topT < M.minTd) warn.push(M.lab + ' potřebují desku aspoň ' + M.minTd + ' mm.');
-    if (M.csk && cfg.plT < 5) warn.push('Zapuštěné vruty potřebují plech aspoň 5 mm kvůli zahloubení.');
-    if (G.mid.polys.some((q) => q.some((p) => Math.abs(p[0]) > cfg.topD / 2 - 20))) warn.push('Prostřední článek je širší než deska.');
+    if (baseReach > cfg.baseW / Math.SQRT2 - 15 * Math.SQRT2) fail('Plotna ' + cfg.baseW + ' mm je pro tuhle rozteč noh malá – potřebuje aspoň ' + Math.ceil((baseReach * Math.SQRT2 + 30) / 10) * 10 + ' mm.');
+    if (Math.max(...outline.map((q) => Math.hypot(q[0], q[1]))) > cfg.topD / 2 - 15) fail(plates.top.name + ' (' + topW + ' mm) vyčuhuje z desky Ø ' + cfg.topD + ' – zmenši rozteč noh, zvol kulatý plech nebo zvětši desku.');
+    if (M.minTd && cfg.topT < M.minTd) fail(M.lab + ' potřebují desku aspoň ' + M.minTd + ' mm.');
+    if (M.csk && cfg.plT < 5) fail('Zapuštěné vruty potřebují plech aspoň 5 mm kvůli zahloubení.');
+    if (G.mid.polys.some((q) => q.some((p) => Math.abs(p[0]) > cfg.topD / 2 - 20))) fail('Prostřední článek je širší než deska.');
 
     return {
       mount: mountKit(cfg, M, TP, screws.length || studs.length),
-      cfg, G, sink, ov: G.ov, ovSeat: ov0, gap: gp, clash: cl, clashSeat: clash(geom(cfg, ov0)), frames, cut, lk, flats, parts, plates, warn,
+      cfg, G, sink, ov: G.ov, ovSeat: ov0, gap: gp, clash: cl, clashSeat: clash(geom(cfg, ov0)), frames, cut, lk, flats, parts, plates, warn, block,
       kgBars, kgPlates, kg: kgBars + kgPlates, footCut,
       size: { midH: 2 * G.b + G.hp / Math.sin(G.g), midW: 2 * G.a + G.hp / Math.cos(G.g), legH: G.h, spread: cfg.spread }
     };
@@ -620,7 +636,7 @@
   /* orientační cena podnože stolku (bez desky) – stejný vzorec jako analyzeCore v core.js:
    * materiál + pálení dílů + svary + prášková barva + příprava, marže, DPH 21 % */
   function price(B, ratesIn) {
-    const R = Object.assign({}, DEFAULT_RATES, ratesIn || {}), c = B.cfg, F = FIN.find((f) => f.id === c.fin);
+    const R = rates0(ratesIn), c = B.cfg, F = finOf(c);
     if (B.model === 'motylek') {
       const cuts = B.cuts, welds = B.welds, surf = B.surfaceM2;
       const cost = B.kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava;
@@ -638,7 +654,7 @@
   }
   function describe(c) {
     c = normalize(c);
-    const F = FIN.find((f) => f.id === c.fin);
+    const F = finOf(c);
     if (c.model === 'motylek') return 'Stolek Motýlek · Ø ' + c.topD + ' × výška ' + c.H + ' mm · ' +
       (c.motylekTop === 'vlastni' ? 'vlastní dřevěná deska ' + c.motylekTopT + ' mm' : 'ocelová deska 4 mm') + ' · ' + F.lab;
     return 'Stolek Řetěz ' + c.gamma + '° · výška ' + c.H + ' · deska Ø ' + c.topD + ' · jekl ' + c.prof.replace(/x/g, '×') + ' · ' + F.lab +
@@ -646,7 +662,7 @@
   }
 
   const API = {
-    FIN, TOPS, MOUNTS, MODELS, DEFAULT_RATES, price, describe, sinkMinOf, sinkOf, subConvex, clipConvex, inPoly, hookCuts,
+    FIN, finOf, TOPS, MOUNTS, MODELS, DEFAULT_RATES, price, describe, sinkMinOf, sinkOf, subConvex, clipConvex, inPoly, hookCuts,
     mapMotylekRadial, motylekRadialScale, transformMotylekMesh, transformMotylekDxf, motylekMountTabDxf, motylekMountTabLayout,
     PROFILES, DEFAULT_CFG, kgm, dxf, area, normalize, frame, locks, barFlat, geom, clash, seat, build, freecadMacro, orient, rad, deg, r1
   };

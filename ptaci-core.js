@@ -17,6 +17,10 @@
   const DEFAULTS = { pose: 'vzlet', finish: 'black', qty: 1 };
   // `ohyb` zatím není v dílenském ceníku – výchozí hodnota je odhad, ať se dá cena spočítat.
   const DEFAULT_RATES = { kg: 42, rez: 35, svar: 90, barva: 280, priprava: 600, marze: 35, ohyb: 30 };
+  // meze ceníku: záporné / nulové / nesmyslné sazby se vrátí na výchozí (stejně jako u podnoží – core.js)
+  const RATE_LIM = { kg: [0, 1000], rez: [0, 5000], svar: [0, 5000], barva: [0, 5000], priprava: [0, 100000], marze: [0, 300], ohyb: [0, 5000] };
+  const rates0 = (r) => { const R = Object.assign({}, DEFAULT_RATES, r || {}); Object.keys(RATE_LIM).forEach((k) => { if (DEFAULT_RATES[k] === undefined) return; const n = Number(R[k]); if (!Number.isFinite(n) || n < RATE_LIM[k][0] || n > RATE_LIM[k][1]) R[k] = DEFAULT_RATES[k]; }); return R; };
+  const QTY_MAX = 99;                                                  // nejvíc kusů v jedné poptávce
 
   const whole = (value, fallback) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
   function normalize(config) {
@@ -33,6 +37,7 @@
     if (c.finish != null && !FINISHES.includes(c.finish)) errors.push('Vyberte platný povrch.');
     const qty = Number(c.qty);
     if (c.qty == null || c.qty === '' || !Number.isSafeInteger(qty) || qty < 1) errors.push('Počet kusů musí být celé číslo alespoň 1.');
+    else if (qty > QTY_MAX) errors.push('Počet kusů je nejvýše ' + QTY_MAX + '.');
     return { ok: errors.length === 0, errors };
   }
   function describe(config) {
@@ -52,7 +57,7 @@
     return { price, vat: Math.round(price * 1.21 / 10) * 10, surfaceM2, finishFactor };
   }
   function price(config, rates) {
-    const c = normalize(config), pose = POSES[c.pose], R = Object.assign({}, DEFAULT_RATES, rates || {});
+    const c = normalize(config), pose = POSES[c.pose], R = rates0(rates);
     const u = unit(c, R, c.qty);
     return { estimate: true, price: u.price, vat: u.vat, total: u.vat * c.qty, kg: pose.kg, cuts: BASIS.pierces, bends: BASIS.bends, cutMm: pose.cutMm, surfaceM2: Math.round(u.surfaceM2 * 10000) / 10000, finishFactor: u.finishFactor };
   }
@@ -94,7 +99,7 @@
     return 'Ptačí věšáky · rozložení na stěně ' + n.wall.w + ' × ' + n.wall.h + ' mm · ' + n.pieces.length + ' ks (' + groups.map((g) => g.qty + '× ' + POSES[g.pose].label.split(' – ')[0] + ', ' + FINISH_LABELS[g.finish]).join('; ') + ')';
   }
   function priceLayout(layout, rates) {
-    const R = Object.assign({}, DEFAULT_RATES, rates || {}), groups = groupPieces(layout), qty = groups.reduce((s, g) => s + g.qty, 0);
+    const R = rates0(rates), groups = groupPieces(layout), qty = groups.reduce((s, g) => s + g.qty, 0);
     const t = { estimate: true, qty, price: 0, vat: 0, total: 0, kg: 0, cuts: 0, bends: 0, cutMm: 0, surfaceM2: 0, groups: [] };
     groups.forEach((g) => {
       const u = unit(g, R, qty), pose = POSES[g.pose];

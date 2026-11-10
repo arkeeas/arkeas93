@@ -183,7 +183,7 @@
 
   function kusovnikPage(order, A) {
     const [c, x] = page(), cfg = A.cfg, d = A.build.dims, M = 90;
-    const F = K.FIN.find((f) => f.id === cfg.fin), S = K.SHAPES.find((s) => s.id === cfg.shape), Mo = K.modelInfo(cfg.model);
+    const F = K.finOf(cfg), S = K.SHAPES.find((s) => s.id === cfg.shape), Mo = K.modelInfo(cfg.model);
     txt(x, 'Kusovník – ' + order.number, M, 130, 44, true);
     const desk = cfg.shape === 'circle' ? 'Ø ' + cfg.L : cfg.L + ' × ' + cfg.W;
     const info = [['Zákazník', order.customer.name], ['Objednávka', order.number], ['Model', Mo.lab], ['Datum', order.date || ''],
