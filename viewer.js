@@ -186,7 +186,7 @@
       const A = state.A;
       if (group) { scene.remove(group); group.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
       group = new THREE.Group();
-      const m = METAL[A.cfg.fin] || METAL.black;
+      const m = (METAL[A.cfg.fin] || METAL.black).slice(); if (A.cfg.fin === 'ral' && window.Ral && window.Ral.valid(A.cfg.ralJiny)) m[0] = window.Ral.hex('jiny', A.cfg.ralJiny);
       const steel = new THREE.MeshStandardMaterial({ color: m[0], metalness: m[1], roughness: m[2] });
       A.build.parts.forEach((mb) => { const mesh = new THREE.Mesh(triangles(mb.solid), steel); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); });
       const plateMat = new THREE.MeshStandardMaterial({ color: m[0], metalness: m[1], roughness: m[2] });

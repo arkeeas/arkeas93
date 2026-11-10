@@ -1185,7 +1185,7 @@
 
   /* ====================== kusovník, cena, nosnost ====================== */
   function analyze(cfgIn, ratesIn) {
-    const R = P.rates0(ratesIn), B = build(cfgIn), cfg = B.cfg, s = cfg.size, t = cfg.t, F = P.FIN.find((f) => f.id === cfg.fin);
+    const R = P.rates0(ratesIn), B = build(cfgIn), cfg = B.cfg, s = cfg.size, t = cfg.t, F = P.finOf(cfg);
     const rows = [], problems = [];
     let n = 0, tubeM = 0, kg = 0;
     [...new Set(B.parts.map((p) => p.poz))].forEach((g) => {
@@ -1212,9 +1212,11 @@
     });
     const cuts = rows.reduce((a, r) => a + r.q, 0);
     B.hw.forEach((x) => { n++; rows.push({ poz: 'P' + String(n).padStart(2, '0'), name: x.name, kind: 'hw', prof: 'nakupovaný díl', len: '', cut: '', feat: '', q: x.q, stroj: '', file: '' }); });
+    const feet = P.feetItem(cfg, R);
+    if (feet) { n++; rows.push({ poz: 'P' + String(n).padStart(2, '0'), name: feet.name, kind: 'hw', prof: 'nakupovaný díl', len: '', cut: '', feat: 'počet ověří dílna', q: feet.q, stroj: '', file: '' }); }
     const welds = B.weldJoints, surf = tubeM * 4 * s / 1000 + B.plates.reduce((a, p) => a + 2 * p.w * p.l / 1e6, 0);
     const markup = 1 + R.marze / 100;
-    const cost = kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava + B.kit.cost + (B.extraCost || 0);
+    const cost = kg * R.kg + cuts * R.rez + welds * R.svar + surf * R.barva * F.k + R.priprava + B.kit.cost + (B.extraCost || 0) + (feet ? feet.cost : 0);
     const price = Math.round(cost * markup / 10) * 10, vat = Math.round(price * 1.21 / 10) * 10;
     let au = null; try { au = audit(cfg, R); } catch (e) { au = null; }
     const load = au ? Math.min(500, Math.floor(au.capKg / 10) * 10) : 0;
@@ -1238,12 +1240,13 @@
     else if (ohEnd < 0 || ohSide < 0) ohWarn = { lvl: 'bad', t: 'Podnož by vyčnívala zpod desky. Zvětšete stůl nebo použijte Přizpůsobit podnož desce.' };
     else if (ohEnd > 450 || ohSide > 300) ohWarn = { lvl: 'warn', t: 'Velký přesah desky – při opření o kraj se deska může prohýbat nebo stůl převážit.' };
     return { R, B, build: B, cfg, rows, tubeM, kg, welds, bolts: 0, price, vat, load, problems, audit: au, lvl, warns, DL, DW, ohEnd, ohSide, ohWarn,
-      boltOK: false, boltWhy: 'model', bolted: false, boltDiff: 0, mount: B.kit, total: vat * cfg.qty };
+      boltOK: false, boltWhy: 'model', bolted: false, boltDiff: 0, mount: B.kit, feet, total: vat * cfg.qty };
   }
 
-  function describe(cfg) {
+  function describe(cfg) { return describe0(cfg) + (cfg.nohy && cfg.nohy !== 'nic' ? ', pod nohy ' + P.FEET.find((x) => x.id === cfg.nohy).txt : ''); }
+  function describe0(cfg) {
     const M = cfg.model === 'TJ' ? { lab: 'Trojúhelníky', tr: true } : MODELS.find((m) => m.id === cfg.model) || MODELS[0];
-    const F = P.FIN.find((f) => f.id === cfg.fin), S = P.SHAPES.find((x) => x.id === cfg.shape);
+    const F = P.finOf(cfg), S = P.SHAPES.find((x) => x.id === cfg.shape);
     const desk = cfg.shape === 'circle' ? 'Ø ' + P.nf(cfg.L) : P.nf(cfg.L) + ' × ' + P.nf(cfg.W);
     if (M.tr) return M.lab + ' (jekl ' + cfg.trJ.replace('x', '×') + ', základna ' + 2 * cfg.trA + ' mm, vrchol ' + cfg.trH + ' mm), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, svařované tvary, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm';
     if (M.ks) return M.lab + ' (umělecká, ' + (cfg.ksMat === 'jekl' ? 'jekl ' + cfg.ksJ.replace('x', '×') : 'pás ' + cfg.ksD + '×' + cfg.ksT) + ', tyče ' + cfg.ksM + ', mezera ' + cfg.ksG + ' mm), ' + desk + ' × ' + P.nf(cfg.H) + ' mm, svařované tvary, ' + F.lab + ', deska ' + S.lab.toLowerCase() + ' ' + cfg.td + ' mm, uchycení: ' + mountOf(cfg.mount).lab.toLowerCase();

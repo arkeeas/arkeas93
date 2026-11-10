@@ -10,12 +10,16 @@
      boku a otvorem ve vnitřní stěně do matice. Montážní otvor zakryje plastová záslepka. */
 (function (root) {
   'use strict';
+  const Ral = root.Ral || (typeof require === 'function' ? require('./ral.js') : null);   // sdílený výběr RAL (ral.js)
 
   const THK = { 20: [2], 30: [2, 3], 40: [2, 3, 4], 50: [2, 3, 4] };
   const SIZES = [20, 30, 40, 50];
   /* 20 modelů. Ikona = pohled na bok (64×48, podlaha y=42, horní rám y=6).
      bolt: jde vyrobit i jako šroubovaná (jen U a 4N – boky se svaří, spojky se přišroubují).
-     note: omezení použití, ukáže se zákazníkovi. */
+     note: omezení použití, ukáže se zákazníkovi.
+     min: nejmenší rozměr [mm], při kterém se díly ještě neprotínají (zjištěno průchodem auditu, jekl první tloušťky) – podle profilu a tvaru desky:
+          { W: { velikost jeklu: [obdélník / zaoblené rohy, ovál / elipsa / kruh] } }, H stejně. Pod ním je audit.fab „díly se protínají“ = poptávka se blokuje.
+     max: největší rozměr [mm] (C-rám je odkládací stolek). Do uložených poptávek se to nepřepisuje, jen stránka při změně modelu rozměry přizpůsobí. */
   const MODELS = [
     { id: 'U', lab: 'Rám U', desc: 'Uzavřené boky', icon: 'M6 6 H58 M12 6 V42 H52 V6', bolt: true },
     { id: '4N', lab: '4 nohy', desc: 'Klasická stavba stolu', icon: 'M6 6 H58 M12 6 V42 M52 6 V42', bolt: true },
@@ -30,32 +34,72 @@
     { id: 'UP', lab: 'Rám U s příčkou', desc: 'Uzavřený bok s mezipříčkou', icon: 'M6 6 H58 M12 6 V42 H52 V6 M12 26 H52' },
     { id: 'SL', lab: 'Slot', desc: 'Rám se svislou příčkou', icon: 'M6 6 H58 M12 6 V42 H52 V6 M32 6 V42' },
     { id: 'KL', lab: 'Klec', desc: 'Rám se dvěma svislými příčkami', icon: 'M6 6 H58 M12 6 V42 H52 V6 M25 6 V42 M39 6 V42' },
-    { id: 'UU', lab: 'Rám v rámu', desc: 'Dvojitý bok', icon: 'M6 6 H58 M12 6 V42 H52 V6 M20 6 V32 H44 V6' },
+    { id: 'UU', lab: 'Rám v rámu', desc: 'Dvojitý bok', icon: 'M6 6 H58 M12 6 V42 H52 V6 M20 6 V32 H44 V6', min: { W: { 30: [300, 310], 40: [320, 350], 50: [340, 440] } } },
     { id: 'XR', lab: 'Kříž v rámu', desc: 'Uzavřený bok s křížem', icon: 'M6 6 H58 M12 6 V42 H52 V6 M16 42 L48 6 M48 42 L16 6' },
     { id: 'N', lab: 'N-rám', desc: 'Nohy se šikmou výztuhou', icon: 'M6 6 H58 M12 6 V42 M52 6 V42 M12 36 L52 12' },
     { id: 'KR', lab: 'Kosý rám', desc: 'Rovnoběžník – nohy nakloněné', icon: 'M6 6 H58 M12 6 L20 42 H52 L44 6' },
     { id: 'Z', lab: 'Z-rám', desc: 'Šikmá noha na spodní příčce', icon: 'M6 6 H58 M52 6 L12 42 H52', note: 'Z-rám doporučujeme pro stoly do délky 1,6 m.' },
-    { id: 'C', lab: 'C-rám', desc: 'Otevřený bok – odkládací stolek', icon: 'M6 6 H58 M52 6 V42 H12', note: 'C-rám je určený pro odkládací a noční stolky, které se zasouvají k sedačce nebo posteli.' },
+    { id: 'C', lab: 'C-rám', desc: 'Otevřený bok – odkládací stolek', icon: 'M6 6 H58 M52 6 V42 H12', note: 'C-rám je určený pro odkládací a noční stolky, které se zasouvají k sedačce nebo posteli (největší rozměr 1000 × 600 × 750 mm).', max: { L: 1000, W: 600, H: 750 } },
     { id: 'TS', lab: 'Kozlík', desc: 'Středový sloupek na patce', icon: 'M6 6 H58 M32 6 V42 M16 42 H48' },
     { id: 'K', lab: 'Kostka', desc: 'Rám U se spodními spojkami', icon: 'M6 6 H58 M12 6 V42 H52 V6 M12 36 H52' },
     /* umělecké */
     { id: 'HX', lab: 'Šestiúhelník', desc: 'Bok jako šestiúhelník', icon: 'M6 6 H58 M24 6 L12 24 L22 42 H42 L52 24 L40 6', art: true },
-    { id: 'BL', lab: 'Blesk', desc: 'Klikatá výztuha mezi nohou a patkou', icon: 'M6 6 H58 M12 6 V42 H54 M52 6 L12 18 L52 30 L24 42', art: true },
+    { id: 'BL', lab: 'Blesk', desc: 'Klikatá výztuha mezi nohou a patkou', icon: 'M6 6 H58 M12 6 V42 H54 M52 6 L12 18 L52 30 L24 42', art: true, min: { H: { 50: [360, 360] } } },
     { id: 'DM', lab: 'Diamant v rámu', desc: 'Kosočtverec v uzavřeném boku', icon: 'M6 6 H58 M12 6 V42 H52 V6 M32 6 L12 24 L32 42 L52 24 Z', art: true },
     { id: 'SM', lab: 'Strom', desc: 'Sloupek s větvemi na patce', icon: 'M6 6 H58 M32 6 V42 M16 42 H48 M32 24 L12 6 M32 24 L52 6', art: true },
     { id: 'VJ', lab: 'Vějíř', desc: 'Paprsky z patky', icon: 'M6 6 H58 M14 42 H50 M26 42 L12 6 M30 42 L24 6 M34 42 L40 6 M38 42 L52 6', art: true },
     { id: 'MD', lab: 'Mondrian', desc: 'Nepravidelné dělení boku', icon: 'M6 6 H58 M12 6 V42 H52 V6 M26 6 V42 M12 20 H26 M26 32 H52', art: true },
-    { id: 'MS', lab: 'Most', desc: 'Příhradový bok (W)', icon: 'M6 6 H58 M12 6 V42 H52 V6 M16 42 L22 6 M30 42 L24 6 M34 42 L40 6 M48 42 L42 6', art: true },
+    { id: 'MS', lab: 'Most', desc: 'Příhradový bok (W)', icon: 'M6 6 H58 M12 6 V42 H52 V6 M16 42 L22 6 M30 42 L24 6 M34 42 L40 6 M48 42 L42 6', art: true, min: { W: { 30: [330, 420], 40: [430, 570], 50: [520, 700] } } },
     { id: 'SC', lab: 'Schody', desc: 'Stupňovitý bok', icon: 'M6 6 H58 M12 6 V42 M52 6 V24 H32 V42 H52', art: true },
     { id: 'ST', lab: 'Štít', desc: 'Rám se sbíhajícími diagonálami', icon: 'M6 6 H58 M12 6 V42 H52 V6 M16 42 L30 6 M48 42 L34 6', art: true },
-    { id: 'OK', lab: 'Okno', desc: 'Rám s vnitřním oknem', icon: 'M6 6 H58 M12 6 V42 H52 V6 M24 16 H40 V32 H24 Z M12 24 H24 M40 24 H52 M32 6 V16 M32 32 V42', art: true }
+    { id: 'OK', lab: 'Okno', desc: 'Rám s vnitřním oknem', icon: 'M6 6 H58 M12 6 V42 H52 V6 M24 16 H40 V32 H24 Z M12 24 H24 M40 24 H52 M32 6 V16 M32 32 V42', art: true, min: { W: { 30: [300, 310], 40: [320, 410], 50: [390, 510] } } }
   ];
   const FIN = [
     { id: 'black', lab: 'Černá mat', ral: 'RAL 9005', sw: '#1E1F21', k: 1 },
     { id: 'anth', lab: 'Antracit', ral: 'RAL 7016', sw: '#383E45', k: 1 },
     { id: 'white', lab: 'Bílá', ral: 'RAL 9016', sw: '#F2F2EE', k: 1 },
-    { id: 'raw', lab: 'Ocel + lak', ral: 'bezbarvý lak', sw: '#77726A', k: 0.7 }
+    { id: 'raw', lab: 'Ocel + lak', ral: 'bezbarvý lak', sw: '#77726A', k: 0.7 },
+    { id: 'ral', lab: 'Jiný RAL', ral: 'podle výběru', sw: '#808080', k: 1, other: true }
   ];
+  /* nejmenší a největší rozměr (L, W, H) pro model, jekl a tvar desky; mezní hodnoty modelu viz MODELS.min / max */
+  function dimLimits(modelId, size, shape) {
+    const m = MODELS.find((x) => x.id === modelId) || {}, oval = shape === 'ellipse' || shape === 'stadium' || shape === 'circle';
+    const pick2 = (tab) => { const v = tab && tab[size]; return v ? v[oval ? 1 : 0] : 0; };
+    const lim = { minL: 350, maxL: 2400, minW: 300, maxW: 1100, minH: 350, maxH: 1100 };
+    const mn = m.min || {}, mx = m.max || {};
+    lim.minW = Math.max(lim.minW, pick2(mn.W)); lim.minH = Math.max(lim.minH, pick2(mn.H)); lim.minL = Math.max(lim.minL, pick2(mn.L));
+    if (shape === 'circle') lim.minL = Math.max(lim.minL, lim.minW);             // u kruhu je W = L
+    if (mx.L) lim.maxL = Math.min(lim.maxL, mx.L);
+    if (mx.W) lim.maxW = Math.min(lim.maxW, mx.W);
+    if (mx.H) lim.maxH = Math.min(lim.maxH, mx.H);
+    if (shape === 'circle' && mx.W) lim.maxL = Math.min(lim.maxL, mx.W);
+    return lim;
+  }
+  /* povrch s dosazeným jiným RAL (lab / ral / sw podle čísla od zákazníka) */
+  function finOf(cfg) {
+    const f = FIN.find((x) => x.id === cfg.fin) || FIN[0];
+    if (!f.other) return f;
+    const ok = !!Ral && Ral.valid(cfg.ralJiny);
+    return Object.assign({}, f, { lab: ok ? 'RAL ' + cfg.ralJiny : 'Jiný RAL (neuvedeno)', ral: ok ? 'RAL ' + cfg.ralJiny : 'číslo neuvedeno', sw: ok ? Ral.hex('jiny', cfg.ralJiny) : f.sw });
+  }
+  /* počet dosedacích bodů (konců noh na podlaze): každá strana má nejvýš 2 (průběžná spodní příčka = 2 konce), jinak počet konců noh na podlaze; aspoň 4 */
+  function feetCount(cfg, ratesIn) {
+    if (!MODELS.some((m) => m.id === cfg.model)) return { q: 4, est: true };      // rozšíření (Umělecké): 4 nohy, počet potvrdí dílna
+    try {
+      const g = frameGraph(cfg, rates0(ratesIn)), segs = g.sideSegs || [];
+      const zmin = Math.min.apply(null, g.nodes.map((n) => n[2]));
+      const bar = segs.some((d) => Math.abs(d.a[1] - zmin) < 1 && Math.abs(d.b[1] - zmin) < 1);
+      const ends = segs.reduce((acc, d) => acc + (d.ea && d.ea.t === 'floor' ? 1 : 0) + (d.eb && d.eb.t === 'floor' ? 1 : 0), 0);
+      return { q: 2 * (bar ? 2 : Math.max(2, ends)), est: false };
+    } catch (e) { return { q: 4, est: true }; }
+  }
+  /* položka kusovníku „pod nohy“ (nebo null) */
+  function feetItem(cfg, ratesIn) {
+    const f = FEET.find((x) => x.id === cfg.nohy);
+    if (!f || !f.hw) return null;
+    const R = rates0(ratesIn), c = feetCount(cfg, R);
+    return { id: f.id, name: f.hw, q: c.q, est: c.est, cost: c.q * (R[f.rate] || 0), note: f.id === 'rektif' ? FEET_NOTE : '' };
+  }
   const SHAPES = [
     { id: 'rect', lab: 'Obdélník', icon: 'M6 12 H58 V36 H6 Z' },
     { id: 'round', lab: 'Zaoblené rohy', icon: 'M14 12 H50 Q58 12 58 20 V28 Q58 36 50 36 H14 Q6 36 6 28 V20 Q6 12 14 12 Z' },
@@ -67,8 +111,16 @@
     kg: 42, rez: 35, svar: 90, sroub: 110, barva: 280, priprava: 600, marze: 35,
     plate: { w: 40, l: 60, t: 4 }, plateSpacing: 450,
     boltModels: ['U', '4N'], boltMax4N: 1400,
-    tabClear: 0.15
+    tabClear: 0.15,
+    kluzak: 25, rektifikace: 120      // pod nohy: plastový kluzák / rektifikační nožka M8 – Kč za kus, orientačně
   };
+  /* Pod nohy: jen položka v kusovníku (nakupovaný díl), geometrie se nemění. Rektifikace (navařená matice / vložka do jeklu) od jeklu 30×30. */
+  const FEET = [
+    { id: 'nic', lab: 'Nic', sub: 'jekl přímo na podlahu' },
+    { id: 'kluzak', lab: 'Plastové kluzáky', txt: 'plastové kluzáky', sub: 'chrání podlahu', hw: 'kluzák plastový do jeklu', rate: 'kluzak' },
+    { id: 'rektif', lab: 'Rektifikační nožky M8', txt: 'rektifikační nožky M8', sub: 'vyrovnají nerovnou podlahu, od jeklu 30×30', hw: 'rektifikační nožka M8 (navařená matice / vložka do jeklu)', rate: 'rektifikace' }
+  ];
+  const FEET_NOTE = 'Rektifikace mění výšku stolu o cca 10–25 mm (nastavením nožky) – s tím počítejte při volbě výšky.';
   const DEFAULT_CFG = { model: 'U', L: 1600, W: 800, H: 750, td: 40, size: 40, t: 2, join: 'weld', shape: 'rect', fin: 'black', qty: 1, dmode: 'table', dL: 1600, dW: 800 };
 
   /* Rozšíření (rozpracované modely ve vyvoj.js): vlastní normalize/analyze/audit/describe pro svoje id modelů */
@@ -79,7 +131,23 @@
   const allModels = () => EXT.reduce((a, e) => a.concat(e.MODELS), MODELS.slice());
 
   const clamp = (v, a, b) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.min(b, Math.max(a, n)) : a; };
-  const rates0 = (r) => { const R = Object.assign({}, DEFAULT_RATES, r || {}); R.plate = Object.assign({}, DEFAULT_RATES.plate, (r && r.plate) || {}); return R; };
+  /* meze ceníku [min pro uložení v dílně, max, volitelně nejnižší hodnota, kterou výpočet ještě přijme]: záporné / nesmyslné sazby se ve výpočtu vrátí na výchozí,
+     dílna je navíc odmítne uložit (checkRates). Platí i pro stolečky a ostatní (stejný ceník nastaveni/cenik). */
+  const RATE_LIM = { kg: [1, 1000, 0], rez: [0, 5000], svar: [1, 5000, 0], sroub: [0, 5000], barva: [0, 5000], priprava: [0, 100000], marze: [0, 300],
+    boltMax4N: [300, 3000], plateSpacing: [200, 1500], tabClear: [0, 1], kluzak: [0, 5000], rektifikace: [0, 5000] };
+  const PLATE_LIM = { w: [1, 500], l: [1, 500], t: [1, 30] };
+  const rates0 = (r) => {
+    const R = Object.assign({}, DEFAULT_RATES, r || {}); R.plate = Object.assign({}, DEFAULT_RATES.plate, (r && r.plate) || {});
+    Object.keys(RATE_LIM).forEach((k) => { const n = Number(R[k]), l = RATE_LIM[k]; if (!isFinite(n) || n < (l[2] != null ? l[2] : l[0]) || n > l[1]) R[k] = DEFAULT_RATES[k]; });
+    Object.keys(PLATE_LIM).forEach((k) => { const n = Number(R.plate[k]), l = PLATE_LIM[k]; if (!isFinite(n) || n < l[0] || n > l[1]) R.plate[k] = DEFAULT_RATES.plate[k]; });
+    return R;
+  };
+  function checkRates(r) {
+    const out = [];
+    Object.keys(RATE_LIM).forEach((k) => { if (r && r[k] != null) { const n = Number(r[k]), l = RATE_LIM[k]; if (!isFinite(n) || n < l[0] || n > l[1]) out.push(k + ' = ' + r[k] + ' (povoleno ' + l[0] + '–' + l[1] + ')'); } });
+    Object.keys(PLATE_LIM).forEach((k) => { const n = Number(r && r.plate && r.plate[k]), l = PLATE_LIM[k]; if (r && r.plate && (!isFinite(n) || n < l[0] || n > l[1])) out.push('úchytka ' + k + ' = ' + r.plate[k] + ' (povoleno ' + l[0] + '–' + l[1] + ')'); });
+    return out;
+  }
 
   function normalize(c) {
     const ex = c && extFor(c.model); if (ex) return ex.normalize(c);
@@ -96,6 +164,11 @@
     o.t = tl.indexOf(t) >= 0 ? t : (t > tl[tl.length - 1] ? tl[tl.length - 1] : tl[0]);
     o.join = c.join === 'bolt' ? 'bolt' : 'weld';
     o.fin = FIN.some((f) => f.id === c.fin) ? c.fin : 'black';
+    o.nohy = FEET.some((f) => f.id === c.nohy) ? c.nohy : 'nic';
+    if (o.nohy === 'rektif' && o.size < 30) o.nohy = 'kluzak';          // do jeklu 20×20 se matice nevejde
+    // jiný RAL: rozepsané číslo zůstane (ať jde psát), analyze ho označí jako chybu, dokud není platné; bez něj se přepne zpět na výchozí barvu
+    o.ralJiny = Ral ? Ral.norm('jiny', c.ralJiny).jiny : '';
+    if (o.fin !== 'ral') o.ralJiny = Ral && Ral.valid(o.ralJiny) ? o.ralJiny : '';
     o.qty = Math.round(clamp(c.qty, 1, 50));
     o.dmode = c.dmode === 'own' ? 'own' : 'table';
     o.dL = Math.round(clamp(c.dL, 300, 3000));
@@ -797,7 +870,7 @@
   function analyzeCore(cfgIn, ratesIn) {
     const R = rates0(ratesIn);
     const B = build(cfgIn, R);
-    const cfg = B.cfg, s = cfg.size, t = cfg.t, F = FIN.find((f) => f.id === cfg.fin);
+    const cfg = B.cfg, s = cfg.size, t = cfg.t, F = finOf(cfg);
     const groups = {};
     B.parts.forEach((p) => { (groups[p.poz] = groups[p.poz] || []).push(p); });
     const rows = [], problems = [];
@@ -830,18 +903,20 @@
       rows.push({ poz: p.poz, name: p.name, kind: 'plate', prof: 'plech ' + p.t + ' mm', len: nf(p.w, 1) + ' × ' + nf(p.l, 1), cut: 'pálení', feat: '', q: p.q, stroj: 'C2', file: p.poz + '_plech' + p.t + '_' + p.w + 'x' + p.l + '_' + p.q + 'ks.dxf', plate: p });
     });
     B.hw.forEach((x) => { n++; rows.push({ poz: 'P' + String(n).padStart(2, '0'), name: x.name, kind: 'hw', prof: 'nakupovaný díl', len: '', cut: '', feat: '', q: x.q, stroj: '', file: '' }); });
+    const feet = feetItem(cfg, R);
+    if (feet) { n++; rows.push({ poz: 'P' + String(n).padStart(2, '0'), name: feet.name, kind: 'hw', prof: 'nakupovaný díl', len: '', cut: '', feat: feet.est ? 'počet ověří dílna' : '', q: feet.q, stroj: '', file: '' }); }
     let welds = B.weldJoints, bolts = 0;
     if (B.bolted) { welds = (cfg.model === 'U' ? 8 : 4) + 4; bolts = 4; }
     const surf = tubeM * 4 * s / 1000;
     const cuts = rows.filter((r) => r.kind !== 'hw').reduce((acc, r) => acc + r.q, 0);
     const markup = 1 + R.marze / 100;
-    const cost = kg * R.kg + cuts * R.rez + welds * R.svar + bolts * R.sroub + surf * R.barva * F.k + R.priprava;
+    const cost = kg * R.kg + cuts * R.rez + welds * R.svar + bolts * R.sroub + surf * R.barva * F.k + R.priprava + (feet ? feet.cost : 0);
     const price = Math.round(cost * markup / 10) * 10;
     const vat = Math.round(price * 1.21 / 10) * 10;
     const I = (s * Math.pow(s, 3) - (s - 2 * t) * Math.pow(s - 2 * t, 3)) / 12, Wel = I / (s / 2), Ls = B.Ls;
     const Qs = 16 * 160 * Wel / Ls, Qd = 2 * 384 * 210000 * I / (1500 * Ls * Ls);
     const load = Math.floor(Math.min(Qs, Qd) / 9.81 / 1.5 * (B.bolted ? 0.85 : 1) / 10) * 10;
-    return { R, B, cfg, rows, tubeM, kg, welds, bolts, price, vat, load, problems };
+    return { R, B, cfg, rows, tubeM, kg, welds, bolts, price, vat, load, problems, feet };
   }
 
   /* Kusovník, hmotnost, cena, nosnost, upozornění */
@@ -882,14 +957,31 @@
       if (cfg.L > 2000 && ck('defl').lvl !== 'ok') warns.push('U této délky se rám znatelně prohýbá – doporučujeme silnější profil.');
       lvl = L2;
     }
-    return Object.assign(X, { audit: au, build: B, lvl, warns, DL, DW, ohEnd, ohSide, ohWarn, boltOK, boltWhy: boltWhyNot(cfg, R), bolted: B.bolted, boltDiff, total: X.vat * cfg.qty });
+    const lim = dimLimits(cfg.model, cfg.size, cfg.shape), mod = MODELS.find((m) => m.id === cfg.model) || {};
+    if (mod.max && (cfg.L > lim.maxL || cfg.W > lim.maxW || cfg.H > lim.maxH)) warns.push(mod.lab + ' je určený pro malé stolky – největší rozměr ' + (mod.max.L || '') + ' × ' + (mod.max.W || '') + ' × ' + (mod.max.H || '') + ' mm. Větší rozměr vyrábíme jen po ověření dílnou.');
+    const ralBad = cfg.fin === 'ral' && !(Ral && Ral.valid(cfg.ralJiny));
+    return Object.assign(X, { ralBad, audit: au, build: B, lvl, warns, DL, DW, ohEnd, ohSide, ohWarn, boltOK, boltWhy: boltWhyNot(cfg, R), bolted: B.bolted, boltDiff, total: X.vat * cfg.qty });
+  }
+
+  /* proč nejde poptat (prázdný seznam = jde): nosnost / audit v červeném, díly se protínají nebo jsou delší než tyč, pohyblivá konstrukce,
+     podnož vyčnívá zpod desky, nedokončený jiný RAL. Výjimka: u Pohozence (PZ) se stabilita záměrně neblokuje (viz README). */
+  function blockReasons(A) {
+    const out = [], au = A && A.audit, cfg = (A && A.cfg) || {};
+    if (au) {
+      au.checks.filter((c) => c.lvl === 'bad' && !(c.id === 'stab' && cfg.model === 'PZ')).forEach((c) => out.push(c.lab.toLowerCase() + ' nevyhovuje'));
+      (au.fab || []).filter((f) => f.lvl === 'bad').forEach((f) => out.push(f.t));
+      if (au.singular) out.push('konstrukce je v tomto tvaru pohyblivá (nestabilní)');
+    } else if (A && A.lvl === 'bad') out.push('nosnost nevyhovuje');
+    if (A && A.ohWarn && A.ohWarn.lvl === 'bad') out.push(A.ohWarn.t);
+    if (A && A.ralBad) out.push('zadejte číslo odstínu RAL (4 číslice)');
+    return out;
   }
 
   function describe(cfg) {
     const ex = cfg && extFor(cfg.model); if (ex) return ex.describe(cfg);
-    const M = MODELS.find((m) => m.id === cfg.model), F = FIN.find((f) => f.id === cfg.fin), S = SHAPES.find((x) => x.id === cfg.shape);
+    const M = MODELS.find((m) => m.id === cfg.model), F = finOf(cfg), S = SHAPES.find((x) => x.id === cfg.shape);
     const desk = cfg.shape === 'circle' ? 'Ø ' + nf(cfg.L) : nf(cfg.L) + ' × ' + nf(cfg.W);
-    return M.lab + ', ' + desk + ' × ' + nf(cfg.H) + ' mm, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', ' + (cfg.join === 'bolt' ? 'šroubovaná' : 'svařovaná') + ', ' + F.lab + ', deska ' + S.lab.toLowerCase();
+    return M.lab + ', ' + desk + ' × ' + nf(cfg.H) + ' mm, jekl ' + cfg.size + '×' + cfg.size + '×' + cfg.t + ', ' + (cfg.join === 'bolt' ? 'šroubovaná' : 'svařovaná') + ', ' + F.lab + ', deska ' + S.lab.toLowerCase() + (cfg.nohy && cfg.nohy !== 'nic' ? ', pod nohy ' + FEET.find((x) => x.id === cfg.nohy).txt : '');
   }
 
   /* ---------- 2D náhled (malíř) – pro PDF a jako záloha bez WebGL ---------- */
@@ -928,7 +1020,7 @@
   }
 
   function previewBodies(A) {
-    const fin = FIN.find((f) => f.id === A.cfg.fin);
+    const fin = finOf(A.cfg);
     const col = A.cfg.fin === 'white' ? '#D8D8D4' : fin.sw === '#1E1F21' ? '#3A3C40' : fin.sw;
     return A.build.parts.map((p) => ({ verts: p.solid.verts, faces: p.solid.faces, color: col }))
       .concat(A.build.plateBoxes.map((b) => ({ verts: b.verts, faces: b.faces, color: b.paint === 'fin' ? col : '#B8440F' })))
@@ -1218,5 +1310,5 @@
     return Math.min(dd(a, c, d), dd(b, c, d), dd(c, a, b), dd(d, a, b));
   }
 
-  root.Podnoze = { tube, frame, register, modelInfo, allModels, solveFrame, sectionOf, convexHull, audit, frameGraph, THK, SIZES, MODELS, FIN, SHAPES, DEFAULT_RATES, DEFAULT_CFG, normalize, frameDims, build, analyze, toLocal, partLength, volume, orientFace, deskOutline, describe, paint, previewBodies, boltAllowed, rates0, nf, V };
+  root.Podnoze = { tube, frame, register, modelInfo, allModels, solveFrame, sectionOf, convexHull, audit, frameGraph, THK, SIZES, MODELS, FIN, SHAPES, DEFAULT_RATES, DEFAULT_CFG, dimLimits, finOf, blockReasons, checkRates, RATE_LIM, FEET, FEET_NOTE, feetCount, feetItem, normalize, frameDims, build, analyze, toLocal, partLength, volume, orientFace, deskOutline, describe, paint, previewBodies, boltAllowed, rates0, nf, V };
 })(typeof window !== 'undefined' ? window : globalThis);

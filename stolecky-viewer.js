@@ -108,7 +108,7 @@
     function update(B, o) {
       st.B = B; st.o = o || {};
       while (grp.children.length) { const x = grp.children.pop(); x.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
-      const c = B.cfg, G = B.G, see = !!st.o.see, M = METAL[c.fin] || METAL.black;
+      const c = B.cfg, G = B.G, see = !!st.o.see, M = (METAL[c.fin] || METAL.black).slice(); if (c.fin === 'ral' && root.Ral && root.Ral.valid(c.ralJiny)) M[0] = parseInt(root.Ral.hex('jiny', c.ralJiny).slice(1), 16);
       const steel = new THREE.MeshStandardMaterial({ color: M[0], metalness: M[1], roughness: M[2] });
       const board = ['oak', 'epoxy'].includes(st.o.boardMaterial) ? st.o.boardMaterial : 'ash';
       const wood = new THREE.MeshStandardMaterial({ map: deskTextures[board], color: '#FFFFFF', roughness: board === 'epoxy' ? 0.24 : 0.66, metalness: board === 'epoxy' ? 0.08 : 0, transparent: see, opacity: see ? 0.32 : 1, depthWrite: !see });

@@ -21,7 +21,8 @@
     const info = [['Zákazník', order.customer.name], ['Objednávka', order.number], ['Konstrukce', (c0.sloupky ? 'sloupky po max. ' + c0.postPitch + ' mm' : 'bez sloupků') + ', ' + (c0.madlo ? 'dřevěné madlo' : 'rám = madlo')], ['Datum', order.date || ''],
       ['Délka', nf(A.lenM, 2) + ' m, ' + c0.segs.length + ' úsek(y)'], ['Výška', c0.vyska + ' mm'], ['Kotvení', Zb.ANCHOR.find((a) => a.id === c0.anchor).lab + (c0.anchor === 'bez' ? '' : ' – ' + Zb.BASE.find((b) => b.id === c0.base).lab.toLowerCase()) + (c0.anchor === 'bocni' ? ', fasáda ' + c0.facade + ', rameno ' + c0.arm : '') +
         (c0.anchor !== 'bez' && (c0.zed.start || c0.zed.end) ? ', ' + (c0.zed.start && c0.zed.end ? 'oba konce' : c0.zed.start ? 'začátek' : 'konec') + ' ke zdi (' + Zb.WALL_BASE.find((b) => b.id === c0.zedBase).lab.replace('Zeď – ', '') + ')' : '') + (c0.podlozka && Zb.padAllowed(c0) ? ', tepelné podložky' : '')],
-      ['Povrch', Zb.FIN.find((f) => f.id === c0.fin).lab], ['Výplň', c0.vypln === 'laser' ? 'laserový plech ' + c0.plech + ' mm, motiv ' + (c0.rada === 'priroda' ? 'Příroda po polích (' + Array.from(new Set(Zb.fieldsOf(c0).slice(0, (A.lay.panels || []).length).map((f) => Zb.motifOf(f.m).lab + ' výřez ' + Math.round(f.p * 100) + ' %'))).join(', ') + ')' : Zb.motifOf(c0.motiv).lab) + ', mezera k rámu ' + Zb.PANEL.gap + ' mm' : c0.vypln === 'geometricky' ? 'geometrický motiv' : { drazka: 'špruše v drážkách rámu', tupo: 'špruše na tupo', zamek: 'špruše se zámečky' }[A.locks.mode] + (c0.overTop || c0.overBot ? ', přesah ' + c0.overTop + ' / ' + c0.overBot + ' mm' : '')], ['Služby', A.svc.length ? A.svc.map((s) => s.id).join(', ') : '–'],
+      ['Povrch', Zb.FIN.find((f) => f.id === c0.fin).lab + (Zb.FIN.find((f) => f.id === c0.fin).ral ? ' ' + Zb.Ral.label(c0.ral, c0.ralJiny) : '') + ', ' + (c0.umisteni === 'uvnitr' ? 'uvnitř' : 'venku')],
+      ['Užití / pád', Zb.UZITI.find((u) => u.id === c0.uziti).lab + ', hloubka ' + Zb.HLOUBKA.find((h) => h.id === c0.hloubka).lab], ['Výplň', c0.vypln === 'laser' ? 'laserový plech ' + c0.plech + ' mm, motiv ' + (c0.rada === 'priroda' ? 'Příroda po polích (' + Array.from(new Set(Zb.fieldsOf(c0).slice(0, (A.lay.panels || []).length).map((f) => Zb.motifOf(f.m).lab + ' výřez ' + Math.round(f.p * 100) + ' %'))).join(', ') + ')' : Zb.motifOf(c0.motiv).lab) + ', mezera k rámu ' + Zb.PANEL.gap + ' mm' : c0.vypln === 'geometricky' ? 'geometrický motiv' : { drazka: 'špruše v drážkách rámu', tupo: 'špruše na tupo', zamek: 'špruše se zámečky' }[A.locks.mode] + (c0.overTop || c0.overBot ? ', přesah ' + c0.overTop + ' / ' + c0.overBot + ' mm' : '')], ['Služby', A.svc.length ? A.svc.map((s) => s.id).join(', ') : '–'],
       ['Rozměry', c0.stavba && c0.stavba.on ? 'změřil zákazník' + (A.meas.remeasure.filter((m) => m.lvl !== 'info').length ? ' – ' + A.meas.remeasure.filter((m) => m.lvl !== 'info').length + '× nesedí, ZAMĚŘIT' : ' – před výrobou potvrdit') : 'zadané délky – ZAMĚŘIT'], ['Rám / výplň', 'jekl ' + c0.rail.replace(/x/g, '×') + ' / ' + (c0.vypln === 'laser' ? 'plech ' + Zb.PANEL.t + ' mm (laser C2)' : 'PL ' + c0.bar.replace(/x/g, '×'))], ['Kotvy', c0.anchor === 'bez' ? '–' : A.lay.anch.used.length + ' ks' + (c0.kotvyPos ? ', rozmístěné ručně' : c0.kotvyRoztec ? ', rozteč ' + c0.kotvyRoztec + ' mm' : ', podle vzoru') + (A.kotvy.gaps.length ? ', max. mezera ' + Math.round(Math.max.apply(null, A.kotvy.gaps)) + ' mm' : '')]];
     info.forEach((r, i) => { const px = M + (i % 2) * 545, py = 175 + Math.floor(i / 2) * 34; txt(x, r[0], px, py, 20, true); txt(x, fit(x, r[1], 370, 20), px + 150, py, 20); });
     txt(x, 'Trasa (osa zábradlí): ' + c0.segs.map((s, i) => (i + 1) + ') ' + s.L + (s.rise ? ' ↑' + s.rise : '') + (s.turn ? ' ' + (s.turn > 0 ? 'vlevo ' : 'vpravo ') + Math.abs(s.turn) + '°' : '')).join('   '), M, 355, 18, false, '#444');
@@ -163,7 +164,10 @@
       (A.svc.length ? '<br>Služby: ' + A.svc.map((s) => esc(s.lab)).join(', ') : '');
     const facts = [['Délka', nf(A.lenM, 2) + ' m'], ['Ocel', nf(A.kg, 1) + ' kg'], ['Jekl', nf(A.tubeM, 1) + ' m'], ['Pásovina', nf(A.barM, 1) + ' m'], ['Kotvy', A.anchorsN], ['Zámky', A.locks.ok ? A.slots + ' drážek' + (A.tabs ? ', ' + A.tabs + ' zámečků' : '') : 'ne'], ['Tyče', Zb.cutPlan(A).map((g) => g.bars.length + '× ' + g.prof.replace('jekl ', '')).join(', ')], ['Svary (odhad)', A.welds], ['Dílů / pozic', A.parts.length + ' / ' + A.rows.length]];
     $('zFacts').innerHTML = facts.map((f) => '<div class="fact"><b>' + esc(f[1]) + '</b><span>' + f[0] + '</span></div>').join('');
-    $('zWarns').innerHTML = A.warns.filter((w) => w.lvl !== 'info').map((w) => '<div>' + esc(w.t) + '</div>').join('') + '<div style="background:var(--line-soft);color:var(--ink)">' + esc(A.locks.why) + '</div>';
+    const pc = A.post;
+    const postDet = pc ? '<div style="background:var(--line-soft);color:var(--ink)"><strong>Posudek sloupku (orientační, potvrdí statik):</strong> ' + esc(pc.prof) + ', rozteč ' + nf(Math.round(pc.s)) + ' mm, výška ' + pc.H + ' mm, q = ' + nf(pc.q, 1) + ' kN/m · Wpl = ' + nf(pc.Wpl, 0) + ' mm³, I = ' + nf(pc.I, 0) + ' mm⁴ · MEd = ' + nf(pc.MEd / 1e6, 2) + ' kNm (×' + pc.gamaQ + '), MRd = ' + nf(pc.MRd / 1e6, 2) + ' kNm (S235, fyd ' + pc.fyd + ' MPa) → využití v ohybu ' + Math.round(pc.utilM * 100) + ' % · průhyb ' + nf(pc.defl, 1) + ' mm z ' + nf(A.R.pruhybSloupekMax) + ' mm → ' + Math.round(pc.utilDefl * 100) + ' % · rozteč s využitím do 80 %: zhruba ' + nf(pc.sOk) + ' mm</div>' : '';
+    const bezAck = current && current.kotveniSam ? '<div style="background:var(--line-soft);color:var(--ink)">Zákazník v poptávce potvrdil: kotvení a jeho únosnost zajišťuje sám.</div>' : '';
+    $('zWarns').innerHTML = bezAck + postDet + A.warns.filter((w) => w.lvl !== 'info').map((w) => '<div>' + esc(w.t) + '</div>').join('') + '<div style="background:var(--line-soft);color:var(--ink)">' + esc(A.locks.why) + '</div>';
     $('zBom').innerHTML = A.rows.map((r) => '<tr><td class="mono">' + r.poz + '</td><td>' + esc(r.name) + (r.feat ? ' <span style="color:var(--muted);font-size:12px">(' + esc(r.feat) + ')</span>' : '') + '</td><td>' + esc(r.prof) + '</td><td class="num mono">' + r.len + '</td><td class="num mono">' + r.cut + '</td><td class="num">' + r.q + '</td><td>' + r.stroj + '</td><td class="mono">' + esc(r.file) + '</td></tr>').join('');
     $('zPrice').textContent = nf(A.price + A.svcPrice) + ' Kč bez DPH · ' + nf(A.total) + ' Kč s DPH';
     renderFiles();
@@ -181,7 +185,10 @@
   function msg(t, kind) { const m = $('zMsg'); m.hidden = false; m.innerHTML = t; m.style.background = kind === 'ok' ? 'var(--ok-bg)' : kind === 'bad' ? 'var(--bad-bg)' : 'var(--line-soft)'; m.style.color = kind === 'ok' ? 'var(--ok-ink)' : kind === 'bad' ? 'var(--bad-ink)' : 'var(--ink)'; }
 
   /* ---------- ceník zábradlí ---------- */
-  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['laserM', 'Laserový plech s motivem – řez', 'Kč/m'], ['podlozka', 'Tepelně oddělující podložka pod plotnu', 'Kč/ks'], ['kotvaMax', 'Kotvy – max. mezera (nad = nejde poptat)', 'mm'], ['kotvaDop', 'Kotvy – doporučená mezera (nad = varování)', 'mm'], ['kotvaKonecMax', 'Kotvy – max. přesah konce za kotvu', 'mm'], ['kotvaKonecDop', 'Kotvy – doporučený přesah konce', 'mm'], ['tycDelka', 'Řezný plán – délka tyče', 'mm'], ['prorezPila', 'Řezný plán – prořez pily', 'mm'], ['prorezK2', 'Řezný plán – řez K2', 'mm'], ['zbytekK2', 'Řezný plán – konec tyče v upínači K2', 'mm'], ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
+  const RF = [['kg', 'Materiál – ocel', 'Kč/kg'], ['rez', 'Řez / pálení dílu', 'Kč/ks'], ['svar', 'Svar (spoj)', 'Kč'], ['drazka', 'Drážka pro zámek', 'Kč/ks'], ['zamekSpruse', 'Zámeček na špruši (vyřezání)', 'Kč/ks'], ['laserM', 'Laserový plech s motivem – řez', 'Kč/m'], ['podlozka', 'Tepelně oddělující podložka pod plotnu', 'Kč/ks'], ['kotvaMax', 'Kotvy – max. mezera (nad = nejde poptat)', 'mm'], ['kotvaDop', 'Kotvy – doporučená mezera (nad = varování)', 'mm'], ['kotvaKonecMax', 'Kotvy – max. přesah konce za kotvu', 'mm'], ['kotvaKonecDop', 'Kotvy – doporučený přesah konce', 'mm'], ['tycDelka', 'Řezný plán – délka tyče', 'mm'], ['prorezPila', 'Řezný plán – prořez pily', 'mm'], ['prorezK2', 'Řezný plán – řez K2', 'mm'], ['zbytekK2', 'Řezný plán – konec tyče v upínači K2', 'mm'], ['vyskaDo3', 'Min. výška zábradlí – pád do 3 m (ČSN 74 3305)', 'mm'], ['vyskaDo12', 'Min. výška zábradlí – pád do 12 m', 'mm'], ['vyskaDo30', 'Min. výška zábradlí – pád do 30 m', 'mm'], ['vyskaNad30', 'Min. výška zábradlí – pád nad 30 m', 'mm'],
+    ['mezeraMax', 'Největší světlá mezera výplně (nad = nejde poptat)', 'mm'], ['mezeraDeti', 'Největší mezera – prostor s dětmi', 'mm'], ['mezeraVarovani', 'Mezera – rezerva dílny (nad = varování)', 'mm'], ['mezeraRezerva', 'Rezerva rozteče špruší pro děti', 'mm'],
+    ['zatizeniDum', 'Zatížení madla – dům, byt, bytový dům (ČSN EN 1991-1-1 NA)', 'kN/m'], ['zatizeniVerejny', 'Zatížení madla – veřejný prostor, děti', 'kN/m'], ['pruhybSloupekMax', 'Limit průhybu sloupku v úrovni madla', 'mm'],
+    ['zinek', 'Žárový zinek', 'Kč/kg'], ['lak', 'PU lak', 'Kč/m²'], ['prasek', 'Prášková barva', 'Kč/m²'],
     ['madlo', 'Dřevěné madlo', 'Kč/m'], ['priprava', 'Příprava zakázky', 'Kč'], ['marze', 'Marže', '%'], ['zamereni', 'Zaměření', 'Kč'], ['kotveni', 'Pomoc s kotvením', 'Kč'], ['montazM', 'Montáž', 'Kč/m'], ['montazKotva', 'Montáž – kotva', 'Kč/ks']];
   const KF = [['beton', 'Kotva do betonu'], ['zdivo', 'Kotva do zdiva (sítko)'], ['ocel', 'Šroub do oceli']];
   function fillRates() {
@@ -191,8 +198,8 @@
   }
   function readRates() {
     const r = { kotva: {} };
-    RF.forEach((f) => { r[f[0]] = Number($('zr-' + f[0]).value) || 0; });
-    KF.forEach((f) => { r.kotva[f[0]] = Number($('zk-' + f[0]).value) || 0; });
+    RF.forEach((f) => { const v = $('zr-' + f[0]).value.trim(); r[f[0]] = v === '' ? NaN : Number(v); });
+    KF.forEach((f) => { const v = $('zk-' + f[0]).value.trim(); r.kotva[f[0]] = v === '' ? NaN : Number(v); });
     return r;
   }
 
@@ -220,7 +227,8 @@
       catch (e) { $('zCodeMsg').textContent = 'Kód nejde přečíst – zkontroluj, že je zkopírovaný celý.'; }
     });
     $('zSaveRates').addEventListener('click', async () => {
-      const r = readRates();
+      const r = readRates(), errs = Zb.checkRates(r);
+      if (errs.length) { $('zRateMsg').textContent = 'Neukládám – hodnoty mimo meze: ' + errs.join('; ') + '.'; return; }
       if (!db || !canEdit) { $('zRateMsg').textContent = 'Uložit může jen editor.'; return; }
       try { await db.doc('nastaveni/cenik-zabradli').set(r); $('zRateMsg').textContent = 'Uloženo – platí i na stránce Zábradlí.'; } catch (e) { $('zRateMsg').textContent = 'Uložení se nepovedlo (' + (e && e.code) + ').'; }
     });

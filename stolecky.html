@@ -241,6 +241,7 @@
       <div class="step">
         <h2><small>Krok 4</small>Povrchová úprava</h2>
         <div class="grid g4" id="fins"></div>
+        <label class="own" id="ralOwn" hidden for="ralJiny" style="margin-top:10px">Číslo RAL (4 číslice, např. 5010)<input id="ralJiny" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="např. 5010" autocomplete="off" list="ralList"></label><datalist id="ralList"></datalist>
       </div>
 
       <div class="step" id="stepTop">
@@ -296,7 +297,8 @@
 <script src="lokal.js?v=20261005d"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261008g"></script>
+<script src="ral.js?v=20261110a"></script>
+<script src="core.js?v=20261110a"></script>
 <script src="figure.js?v=20261005d"></script>
 <script src="stolecky-core.js?v=20261011c"></script>
 <script src="stolecky-viewer.js?v=20261012b"></script>
@@ -364,7 +366,9 @@
     const card = (o, on, extra) => '<button type="button" class="opt join" data-id="' + o.id + '" aria-pressed="' + on + '">' + (o.icon ? svg(o.icon) : '') + '<span class="t">' + o.lab + '</span><span class="p">+ ' + esc(o.p) + '</span><span class="c">− ' + esc(o.c) + '</span>' + (extra || '') + '</button>';
     group($('tops'), S.TOPS.map((o) => card(o, o.id === cfg.top)).join(''), (id) => set({ top: id }));
     group($('mounts'), S.MOUNTS.map((m) => card(m, m.id === cfg.mount, m.minTd && cfg.topT < m.minTd ? '<span class="c"><strong>Deska ' + cfg.topT + ' mm je na to tenká.</strong></span>' : '')).join(''), (id) => set({ mount: id }));
-    group($('fins'), S.FIN.map((f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.ral + '</span></button>').join(''), (id) => set({ fin: id }));
+    group($('fins'), S.FIN.map((f) => (() => { const fo = f.id === cfg.fin ? S.finOf(cfg) : f; return '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + fo.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + fo.ral + '</span></button>'; })()).join(''), (id) => set({ fin: id }));
+    $('ralOwn').hidden = cfg.fin !== 'ral';
+    if (document.activeElement !== $('ralJiny')) $('ralJiny').value = cfg.ralJiny;
     $('see').checked = ui.see; $('showDesk').checked = ui.showDesk; $('boardMaterial').value = ui.boardMaterial;
     // Vzhled dřeva dává smysl jen pro dřevěnou desku; ocelová deska Motýlka se kreslí jako ocel.
     $('boardMaterial').closest('label').style.display = (cfg.model === 'motylek' && cfg.motylekTop !== 'vlastni') ? 'none' : '';
@@ -375,7 +379,7 @@
   }
 
   function facts(B) {
-    const F = S.FIN.find((f) => f.id === cfg.fin), X = S.price(B, rates);
+    const F = S.finOf(cfg), X = S.price(B, rates);
     if (B.model === 'motylek') {
       $('mName').textContent = 'Motýlek';
       $('mSub').textContent = 'Ø ' + cfg.topD + ' mm · výška ' + cfg.H + ' mm · ' +
@@ -395,7 +399,7 @@
         (cfg.motylekTop === 'vlastni' ? 'Dřevěná deska má v náhledu zadanou tloušťku; její hmotnost a cena nejsou zahrnuty. Čtyři ocelové úchyty mají radiální drážky pro vruty.' : '3D náhled i výrobní DXF zahrnují zvolenou ocelovou desku.') +
         ' Podnož A/B zachovává středový zámek široký 4,3 mm.</p>' + B.warn.map((w) => '<p>' + esc(w) + '</p>').join('') +
         '<p class="fine">' + B.cuts + ' laserovaných dílů z ocelového plechu 4 mm; nosnost není staticky přepočítána.</p>';
-      $('ask').disabled = false; $('ask').title = '';
+      $('ask').disabled = B.block.length > 0; $('ask').title = B.block.length ? 'Nejde poptat: ' + B.block.join('; ') : '';
       return;
     }
     $('priceNote').textContent = 'Ceny jsou orientační, bez desky. Finální potvrdíme v odpovědi na poptávku.';
@@ -411,16 +415,18 @@
       '<ol style="margin:0;padding-left:20px">' + kit.steps.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
       (kit.hw.length ? '<div><strong>Přibalíme:</strong> ' + kit.hw.map((h) => h.q + '× ' + esc(h.name)).join(', ') + (kit.studs ? ', ' + kit.studs + '× svorník M8×20 navařený na plechu' : '') + '</div>' : '');
     /* kontrola ve stejném rámečku jako nosnost u podnoží */
-    const bad = B.warn.some((w) => /nevejdou|potkaly|vyčuhuje|širší než deska/.test(w)), lvl = bad ? 'bad' : B.warn.length ? 'warn' : 'ok';
+    const bad = B.block.length > 0, lvl = bad ? 'bad' : B.warn.length ? 'warn' : 'ok';       // blokuje všechno, co jde proti výrobě (B.block), ne jen vybrané texty
     $('load').className = 'load lvl-' + lvl;
     $('load').innerHTML = '<div class="head"><span>Hmotnost podnože ≈ ' + fmt(B.kg) + ' kg</span><span style="font-weight:400;font-size:13px">' + { ok: 'Vhodné pro konferenční stolek', warn: 'Zkontrolujte upozornění', bad: 'Tuto kombinaci nevyrábíme' }[lvl] + '</span></div>' +
       (B.warn.length ? B.warn.map((w) => '<p>' + esc(w) + '</p>').join('') : '<p>Články do sebe zapadají v zámečcích a nikde se neprotínají, výška sedí, nohy míří do rohů plotny.</p>') +
       '<p class="fine">Jekly ' + cfg.prof.replace(/x/g, '×') + ' (8 ks) se v háčcích svaří, plotna ' + cfg.baseW + ' × ' + cfg.baseW + ' × ' + cfg.baseT + ' mm, ' + B.plates.top.name.toLowerCase() + ' ' + B.plates.top.w + ' mm, tloušťka ' + cfg.plT + ' mm. Ocel S235.</p>';
     $('ask').disabled = bad;
-    $('ask').title = bad ? 'Tahle kombinace nejde vyrobit – upravte rozměry nebo profil' : '';
+    $('ask').title = bad ? 'Nejde poptat: ' + B.block.join('; ') : '';
   }
 
   /* ---------- 3D (stolecky-viewer.js) ---------- */
+  $('ralList').innerHTML = Ral.LIST.map((r) => '<option value="' + r.id + '">' + r.lab + ' – ' + r.sub + '</option>').join('');
+  $('ralJiny').addEventListener('input', (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = v; set({ fin: 'ral', ralJiny: v }); });
   const viewer = StoViewer.create($('viz'));
   if (!viewer) $('hint').hidden = true;
   const view = (v) => { ui.view = v; document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v))); if (viewer) viewer.view(v); };

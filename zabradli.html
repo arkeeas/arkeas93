@@ -276,8 +276,13 @@
             <button type="button" data-side="L">Stavba vlevo</button><button type="button" data-side="R">Stavba vpravo</button>
           </div>
         </div>
-        <div class="field" style="margin-top:16px"><div class="row"><label for="vy">Výška zábradlí nad podlahou</label><span class="num"><input id="vyn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="vy" type="range" min="900" max="1200" step="10"></div>
+        <div class="field" style="margin-top:16px"><div class="row"><label for="vy">Výška zábradlí nad podlahou</label><span class="num"><input id="vyn" type="number" inputmode="numeric" aria-label="Výška v mm"> mm</span></div><input id="vy" type="range" min="900" max="1300" step="10"></div>
         <p class="note" id="dimNote" style="margin:8px 0 0"></p>
+        <p class="sub-h">Kde zábradlí bude</p>
+        <div class="grid g2" id="uziti"></div>
+        <p class="sub-h">Hloubka volného prostoru pod zábradlím (pád)</p>
+        <div class="grid g4" id="hloubka"></div>
+        <p class="note" id="vyNote" style="margin:8px 0 0"></p>
         <div id="prirodaBox" hidden style="margin-top:18px">
           <p class="sub-h">Stejný motiv do všech polí</p>
           <div class="grid g4" id="prAll"></div>
@@ -293,7 +298,7 @@
 
       <div class="step">
         <h2><small>Krok 3</small>Profil a výplň</h2>
-        <div class="field" id="motifSettings" hidden style="margin:0 0 12px"><div class="row"><label for="mp">Rozteč geometrických motivů</label><span class="num"><input id="mpn" type="number" inputmode="numeric" aria-label="Rozteč motivů v mm"> mm</span></div><input id="mp" type="range" min="150" max="400" step="10"><p class="note" style="margin:5px 0 0">Rámy z jeklu 20×20×2 mm, všechny rohy na pokos 45°. Výchozí rozteč 250 mm; horní tyč se zasune do otvoru v jeklu a přivaří.</p></div>
+        <div class="field" id="motifSettings" hidden style="margin:0 0 12px"><div class="row"><label for="mp">Rozteč geometrických motivů</label><span class="num"><input id="mpn" type="number" inputmode="numeric" aria-label="Rozteč motivů v mm"> mm</span></div><input id="mp" type="range" min="150" max="250" step="10"><p class="note" style="margin:5px 0 0">Rámy z jeklu 20×20×2 mm, všechny rohy na pokos 45°. Výchozí rozteč 250 mm; horní tyč se zasune do otvoru v jeklu a přivaří.</p></div>
         <div id="profBox"></div>
         <div class="box lock" id="lockBox"></div>
         <div id="overBox"><p class="sub-h">Délka špruší – přesah přes rám (0 = zarovnané s rámem)</p>
@@ -339,7 +344,17 @@
 
       <div class="step">
         <h2><small>Krok 5</small>Povrchová úprava</h2>
+        <p class="sub-h" style="margin-top:0">Umístění zábradlí</p>
+        <div class="grid g2" id="umisteni"></div>
+        <p class="sub-h">Povrch</p>
         <div class="grid g4" id="fins"></div>
+        <div id="ralBox" hidden>
+          <p class="sub-h">Odstín barvy (RAL)</p>
+          <div class="grid g4" id="rals"></div>
+          <label class="own" id="ralOwn" hidden for="ralJiny" style="margin-top:10px">Číslo RAL (4 číslice, např. 5010)<input id="ralJiny" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="např. 5010" autocomplete="off"></label>
+          <p class="note" id="ralNote" style="margin:8px 0 0"></p>
+        </div>
+        <p class="note" id="finNote" style="margin:10px 0 0"></p>
       </div>
 
       <div class="step">
@@ -376,6 +391,7 @@
       <label for="fAddr">Adresa stavby<input id="fAddr" autocomplete="street-address"></label>
     </div>
     <label for="fNote">Poznámka<textarea id="fNote" rows="3"></textarea></label>
+    <label id="fBezWrap" hidden style="flex-direction:row;align-items:flex-start;gap:8px;color:var(--ink)"><input id="fBez" type="checkbox" style="margin-top:3px"> <span>Beru na vědomí, že kotvení a jeho únosnost zajišťuji sám.</span></label>
     <div class="msg" id="formMsg" hidden></div>
     <div class="actions" style="justify-content:flex-end">
       <button class="btn" type="button" id="cancel">Zpět</button>
@@ -387,7 +403,8 @@
 <script src="lokal.js?v=20261006a"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="core.js?v=20261007l"></script>
+<script src="ral.js?v=20261110a"></script>
+<script src="core.js?v=20261110a"></script>
 <script src="assets/zabradli/motiv-strom.js?v=20261011a"></script>
 <script src="assets/zabradli/motiv-bunky.js?v=20261011a"></script>
 <script src="assets/zabradli/motiv-jelen.js?v=20261014b"></script>
@@ -397,14 +414,14 @@
 <script src="assets/zabradli/motiv-motyl.js?v=20261014l"></script>
 <script src="assets/zabradli/motiv-motyl-a.js?v=20261014l"></script>
 <script src="assets/zabradli/motiv-motyl-b.js?v=20261014l"></script>
-<script src="assets/zabradli/motiv-kachny.js?v=20261014n"></script>
-<script src="zabradli-core.js?v=20261014n"></script>
-<script src="zabradli-viewer.js?v=20261007o"></script>
+<script src="assets/zabradli/motiv-kachny.js?v=20261110a"></script>
+<script src="zabradli-core.js?v=20261110a"></script>
+<script src="zabradli-viewer.js?v=20261110a"></script>
 <script>
 (function () {
-  const Zb = Zabradli, $ = (id) => document.getElementById(id), nf = Zb.nf;
+  const Zb = Zabradli, Ral = window.Ral, $ = (id) => document.getElementById(id), nf = Zb.nf;
   // stránka a jádro musí být ze stejné verze – jinak (stará mezipaměť prohlížeče) volby tiše nefungují
-  if (Zb.VERSION !== '20261014n') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
+  if (Zb.VERSION !== '20261110a') document.body.insertAdjacentHTML('afterbegin', '<div style="position:sticky;top:0;z-index:50;padding:12px 16px;background:var(--bad-bg);color:var(--bad-ink);font-weight:600">Stránka se načetla jen napůl ze staré verze. Obnovte ji prosím (Ctrl + F5, na mobilu stáhnout dolů).</div>');
   let rates = Zb.DEFAULT_RATES, cfg, A, ui = { view: 'iso', ctx: true, ksel: null };
   try { cfg = Zb.normalize(JSON.parse(localStorage.getItem('zabradli-cfg') || 'null') || {}); } catch (e) { cfg = Zb.normalize({}); }
   const viewer = ZabViewer.create($('viz'));
@@ -596,8 +613,16 @@
     const sl = cfg.segs.filter((s) => s.rise).map((s) => Math.round(Math.atan2(Math.abs(s.rise), s.L) * 180 / Math.PI) + '°');
     $('dimNote').textContent = 'Celková délka podél zábradlí ' + nf(A.lenM, 2) + ' m' + (sl.length ? ', sklon schodiště ' + sl.join(', ') : '') + '. ' + (cfg.typ === 'B' ? 'Výška se měří k horní hraně madla' : 'Výška se měří k horní hraně horního madla') + ', na schodišti svisle od hrany stupňů.';
 
+    group($('uziti'), Zb.UZITI, (o) => optBtn(o.id, o.id === cfg.uziti, o.lab, o.sub), (id) => { ui.vyMsg = ''; set({ uziti: id }); });
+    group($('hloubka'), Zb.HLOUBKA, (o) => optBtn(o.id, o.id === cfg.hloubka, o.lab, 'min. ' + nf(Zb.minHeight(o.id, rates)) + ' mm'), (id) => {
+      const mn = Zb.minHeight(id, rates), up = cfg.vyska < mn;
+      ui.vyMsg = up ? 'Výšku jsme zvýšili na ' + nf(mn) + ' mm, protože pro tuto hloubku je to nejnižší přípustná výška.' : '';
+      set(up ? { hloubka: id, vyska: mn } : { hloubka: id });
+    });
+    $('vyNote').textContent = 'Nejnižší výška pro volnou hloubku ' + Zb.HLOUBKA.find((h) => h.id === cfg.hloubka).lab + ' je ' + nf(Zb.minHeight(cfg.hloubka, rates)) + ' mm (orientační posouzení podle ČSN 74 3305; na schodišti a při pádu přes hranu se počítá hloubka od podlahy dolů). ' + (ui.vyMsg || '');
     const jt = A.locks;
     $('motifSettings').hidden = cfg.vypln !== 'geometricky';
+    $('mp').max = Zb.GEO_FRAME_W + Zb.gapLimit(cfg.uziti, rates); $('mpn').max = $('mp').max;       // mezera mezi motivy nesmí přesáhnout limit
     if (document.activeElement !== $('mp')) $('mp').value = cfg.motifPitch;
     if (document.activeElement !== $('mpn')) $('mpn').value = cfg.motifPitch;
     $('profBox').innerHTML = '<p class="sub-h" style="margin-top:0">' + (cfg.vypln === 'geometricky' ? 'Profil horního madla' : cfg.typ === 'A' ? 'Rám (madla a sloupky)' : 'Rám (horní a spodní, koncové sloupky)') + '</p><div class="grid g2" id="profs"></div>' + (cfg.vypln === 'laser' ?
@@ -612,7 +637,7 @@
       if (jt.choice) group($('joins'), Zb.JOINS, (j) => optBtn(j.id, j.id === cfg.join, j.lab, j.sub), (id) => set({ join: id }));
     }
     const ov = Zb.overAllowed(cfg);
-    $('ovT').disabled = !ov.top; $('ovB').disabled = !ov.bot;
+    $('ovT').disabled = !ov.top; $('ovB').disabled = !ov.bot; $('ovT').max = Zb.OVER_TOP_MAX; $('ovB').max = Zb.OVER_MAX;
     if (document.activeElement !== $('ovT')) $('ovT').value = cfg.overTop;
     if (document.activeElement !== $('ovB')) $('ovB').value = cfg.overBot;
     const pieces = A.rows.filter((r) => r.kind === 'bar' && r.cut === '0° / 0°');
@@ -651,7 +676,15 @@
       (anyZed && !bez ? ' Konec u zdi: na koncovém sloupku 2 plotny 120×100×10, mezera ke zdi 20 mm vyrovnáte podložkami' + (cfg.podlozka ? ' (je v ní tepelně oddělující podložka)' : '') + '.' : '');
     renderKotvy();
 
-    group($('fins'), Zb.FIN, (f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + f.sw + '"></span><span class="l">' + f.lab + '</span><span class="s">' + f.sub + '</span></button>', (id) => set({ fin: id }));
+    group($('umisteni'), Zb.UMISTENI, (o) => optBtn(o.id, o.id === cfg.umisteni, o.lab, o.sub), (id) => set({ umisteni: id }));
+    const finCur = Zb.FIN.find((f) => f.id === cfg.fin);
+    group($('fins'), Zb.FIN, (f) => '<button type="button" class="swatch" data-id="' + f.id + '" aria-pressed="' + (f.id === cfg.fin) + '"><span class="sq" style="background:' + (f.ral ? Ral.hex(cfg.ral, cfg.ralJiny) : f.sw) + '"></span><span class="l">' + f.lab + '</span><span class="s">' + (f.ral ? f.sub.replace('odstín RAL', Ral.label(cfg.ral, cfg.ralJiny)) : f.sub) + '</span></button>', (id) => set({ fin: id }));
+    $('ralBox').hidden = !finCur.ral;
+    group($('rals'), Ral.LIST.concat([Ral.OTHER]), (r) => '<button type="button" class="swatch" data-id="' + r.id + '" aria-pressed="' + (r.id === cfg.ral) + '"><span class="sq" style="background:' + (r.id === 'jiny' && cfg.ralJiny ? Ral.hex('jiny', cfg.ralJiny) : r.hex) + '"></span><span class="l">' + r.lab + '</span><span class="s">' + r.sub + '</span></button>', (id) => set({ ral: id }));
+    $('ralOwn').hidden = !finCur.ral || cfg.ral !== 'jiny';
+    if (document.activeElement !== $('ralJiny')) $('ralJiny').value = cfg.ralJiny;
+    $('ralNote').textContent = cfg.ral === 'jiny' ? (cfg.ralJiny ? 'Zvolený odstín ' + Ral.label('jiny', cfg.ralJiny) + ' – barva na obrazovce je jen orientační, odstín potvrdíme podle vzorníku.' : 'Zadejte čtyřmístné číslo RAL (první číslice 1–9), jinak se použije RAL 7016.') : 'Barva na obrazovce je jen orientační, odstín potvrdíme podle vzorníku.';
+    $('finNote').textContent = cfg.fin === 'prasek' && cfg.umisteni === 'venku' ? 'Venku doporučujeme žárový zinek + barva (duplex) – samotná prášková barva časem koroduje.' : '';
 
     const R = A.R, svcPrice = { zamereni: R.zamereni, kotveni: R.kotveni, montaz: Math.round((A.lenM * R.montazM + A.anchorsN * R.montazKotva) / 10) * 10 };
     $('svcs').innerHTML = Zb.SERVICES.map((s) => '<button type="button" class="svc" data-svc="' + s.id + '" aria-pressed="' + !!cfg.services[s.id] + '"><span class="cb">' + (cfg.services[s.id] ? '✓' : '') + '</span><span><span class="t">' + s.lab + '</span><br><span class="s">' + s.sub + '</span></span><span class="p">+ ' + nf(A.vatOf(svcPrice[s.id])) + ' Kč</span></button>').join('');
@@ -862,8 +895,9 @@
 
   $('segAdd').addEventListener('click', () => { const segs = cfg.segs.map((s) => Object.assign({}, s)); if (segs.length >= 8) return; segs[segs.length - 1].turn = 90; segs.push({ L: 2000, rise: 0, turn: 0 }); set({ segs }); });
   document.querySelectorAll('#sideT button').forEach((b) => b.addEventListener('click', () => set({ side: b.dataset.side })));
-  $('vy').addEventListener('input', (e) => set({ vyska: e.target.value }));
-  $('vyn').addEventListener('change', (e) => set({ vyska: e.target.value }));
+  $('vy').addEventListener('input', (e) => { ui.vyMsg = ''; set({ vyska: e.target.value }); });
+  $('vyn').addEventListener('change', (e) => { ui.vyMsg = ''; set({ vyska: e.target.value }); });
+  $('ralJiny').addEventListener('input', (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = v; set({ ral: 'jiny', ralJiny: v }); });
   $('fac').addEventListener('change', (e) => { const f = Number(e.target.value) || 0; set({ facade: f, arm: Math.max(cfg.arm, f + 50) }); });
   $('arm').addEventListener('change', (e) => set({ arm: e.target.value }));
   $('ovT').addEventListener('change', (e) => set({ overTop: Number(e.target.value) || 0 }));
@@ -877,6 +911,7 @@
   $('ask').addEventListener('click', () => {
     $('formTitle').textContent = 'Poptávka zábradlí';
     $('formSummary').innerHTML = '<strong>' + esc(Zb.describe(cfg)) + '</strong>' + (A.svc.length ? '<br>' + A.svc.map((s) => esc(s.lab)).join(' · ') : '') + '<br>' + nf(A.total) + ' Kč s DPH (orientačně)';
+    $('fBezWrap').hidden = cfg.anchor !== 'bez'; $('fBez').checked = false;
     $('formMsg').hidden = true; $('form').querySelectorAll('input,textarea,#send').forEach((x) => { x.disabled = false; });
     $('modal').hidden = false; $('fName').focus();
   });
@@ -887,10 +922,11 @@
     e.preventDefault();
     const name = $('fName').value.trim(), email = $('fEmail').value.trim();
     if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg('Vyplňte jméno a platný e-mail, ať vám můžeme poslat nabídku.', 'bad'); return; }
+    if (cfg.anchor === 'bez' && !$('fBez').checked) { msg('Bez kotev potvrďte, prosím, že kotvení a jeho únosnost zajišťujete sami.', 'bad'); return; }
     const now = new Date(), p2 = (n) => String(n).padStart(2, '0');
     const id = 'Z' + String(now.getFullYear()).slice(2) + p2(now.getMonth() + 1) + p2(now.getDate()) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
     const item = { id, product: 'zabradli', created: now.toISOString(), status: 'nova', customer: { name, email, phone: $('fPhone').value.trim(), address: $('fAddr').value.trim() }, note: $('fNote').value.trim(),
-      config: cfg, price: A.price, services: A.svc, svcPrice: A.svcPrice, total: A.total };
+      config: cfg, kotveniSam: cfg.anchor === 'bez' ? true : undefined, price: A.price, services: A.svc, svcPrice: A.svcPrice, total: A.total };
     if (!db || !uid) { msg('Poptávku se teď nepodařilo odeslat. Zkopírujte prosím tento kód a pošlete ho e-mailem na [E-MAIL FIRMY]:<div class="code" style="margin-top:8px">' + code() + '</div>', 'bad'); return; }
     $('send').disabled = true; msg('Odesílám…');
     try {
