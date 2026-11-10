@@ -456,7 +456,7 @@
     const why = K.blockReasons(A);       // stejně jako na stránce Podnože; u Pohozence se stabilita (patky v kosočtverci) záměrně neblokuje
     $('ask').disabled = why.length > 0;
     $('ask').title = why.length ? 'Nejde poptat: ' + why.join('; ') : (custLvl === 'bad' ? 'Rozpracovaný model – poptávka je jen testovací' : '');
-    $('askWhy').hidden = !why.length; $('askWhy').textContent = why.length ? 'Poptávku zatím nejde odeslat: ' + why.join('; ') + '.' : '';
+    $('askWhy').hidden = !why.length; $('askWhy').textContent = why.length ? 'Poptávku zatím nejde odeslat: ' + why.join('; ').replace(/\.$/, '') + '.' : '';
     if (badChecks.some((c) => c.id !== 'stab')) suggest();
 
     if (A.boltOK) {

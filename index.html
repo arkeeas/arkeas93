@@ -385,7 +385,7 @@
     const why = K.blockReasons(A);       // nosnost, díly se protínají / jsou delší než tyč, pohyblivá konstrukce, podnož vyčnívá zpod desky
     $('ask').disabled = why.length > 0;
     $('ask').title = why.length ? 'Nejde poptat: ' + why.join('; ') : '';
-    $('askWhy').hidden = !why.length; $('askWhy').textContent = why.length ? 'Poptávku zatím nejde odeslat: ' + why.join('; ') + '.' : '';
+    $('askWhy').hidden = !why.length; $('askWhy').textContent = why.length ? 'Poptávku zatím nejde odeslat: ' + why.join('; ').replace(/\.$/, '') + '.' : '';
     if (custLvl === 'bad') suggest();
 
     if (A.boltOK) {

@@ -47,9 +47,10 @@ Na GitHubu **Code → Download ZIP**, rozbalit a otevřít `index.html`. 3D náh
 | `zabradli-dilna.js` | dílna – záložka *Zábradlí – podklady*: kusovník, 3D, ZIP (sestava STEP, `dily/K2` jekly, `dily/pasovina`, `dily/C2` plotny a patky, kusovník PDF, **řezný plán PDF**, doklad), ceník zábradlí |
 | `skica.html`, `skica-core.js` | Skicář: plátno a jádro bez 3D (profily, osy, kusovník, export / import JSON, převod hotových modelů – běží i v Node) |
 | `freecad/skica_import.py` | import skici (`*.skica.json`) do FreeCADu, mimo FreeCAD jen kontrola a kusovník |
+| `ral.js` | sdílený výběr odstínu RAL (8 běžných + „Jiný RAL“ se čtyřmístným číslem), ověření a orientační barva náhledu – zábradlí, podnože, stolečky (běží i v Node) |
 | `lokal.js` | náhrada databáze a stahování mimo Claude (localStorage) |
 | `modebar.css` | horní přepínač Zákazník / Dílna |
-| `tests/` | kontrola STEP bez CAD, zámků a drážek, stránky Testing |
+| `tests/` | kontrola STEP bez CAD, zámků a drážek, stránky Testing, `kontrola-nastaveni.js` (meze, normy, blokování) |
 
 ### Kontrola STEP (Node.js 18+)
 ```bash
@@ -123,6 +124,23 @@ U spoje na tupo / se zámečky je přesah **samostatný kus** (se zámečky má 
 - **Sloupky přes čelo** – spodní rám na čáře podlahy, pod každým sloupkem nožka a na jejím boku plotna 120×100×10 do čela desky (horní hrana 25 mm pod podlahou, na schodišti pod nejnižším stupněm v délce plotny). Jen bez zateplení. Rohy a zlomy se z boku kotvit nedají, proto je u každého kotevní sloupek 450 mm od rohu (`CELO_CORNER`).
 - **Konec ke zdi** – na koncovém sloupku 2 plotny 120×100×10 (u horního a spodního rámu), mezera ke zdi 20 mm = plotna + 10 mm podložka / vyrovnání. Kotvy do zdi mají vlastní podklad (zdivo / beton) a cenu; konec u zdi se v kontrole kotev počítá jako ukotvený. Ve stavbě jde jen u konce „u zdi“.
 - **Tepelně oddělující podložka** 10 mm pod plotny na čele a na zdi (ramena z boku, přes čelo, ke zdi). Rameno se o ni zkrátí. Cena `podlozka` v Dílna → Ceník (orientačně).
+
+### Nastavení, normy a blokování poptávky (audit)
+
+Kontrolu pokrývá `node tests/kontrola-nastaveni.js` (krajní hodnoty, staré konfigurace bez nových polí, `DEFAULT_CFG` a presety). Všechny normové a statické hodnoty jsou **orientační posouzení** – zdroj je v komentáři v kódu a má je **potvrdit statik**; texty pro zákazníka říkají „orientační posouzení“, ne „splňuje normu“. Meze, které rozhoduje dílna, jsou v Dílna → Ceník (a `rates0` je hlídá; formulář ceníku odmítne záporné a nesmyslné hodnoty a nulovou sazbu materiálu / svaru).
+
+**Zábradlí** (`zabradli-core.js`, verze jádra `20261110a`):
+- **Kde zábradlí bude** (rodinný dům / byt – výchozí, bytový dům, veřejný prostor, prostor s dětmi) a **hloubka volného prostoru pod zábradlím** (do 3 m / do 12 m – výchozí / do 30 m / nad 30 m) v kroku s výškou. Nejnižší výška podle ČSN 74 3305: 900 / 1000 / 1100 / 1200 mm (`vyskaDo3` … `vyskaNad30` v ceníku); pod ní je to chyba (`bad`). Posuvník výšky 900–1300 mm; změna hloubky výšku sama zvedne a řekne to. Stará poptávka bez hloubky a s výškou 900–990 mm dostane „do 3 m“ (zpětně se nezablokuje).
+- **Světlá mezera výplně**: 120 mm (`mezeraMax`), v prostoru s dětmi 80 mm (`mezeraDeti`); nad limit = chyba pro všechny výplně (špruše typ A i B, geometrický motiv, laserový motiv abstraktní i Příroda), 110 mm (`mezeraVarovani`) zůstává jen varování. V prostoru s dětmi se rozteč špruší dopočítá z limitu s rezervou 5 mm (`mezeraRezerva`), laserový a geometrický motiv dostanou upozornění na šplhání (otvory nad 80 mm = chyba), přesah špruší nahoru je chyba. Rozteč geometrického motivu je omezená na 130 + limit mezery (250 / 210 mm).
+- **Mezera u podlahy** (patky 8 mm, na schodišti 40 mm nad čarou hran stupňů, geometrický motiv 90 mm) hlídá stejný limit; trojúhelník nad stupněm na schodišti je jen informace pro dílnu.
+- **Orientační posudek sloupku** (jen se sloupky): konzola výšky zábradlí, zatížení madla `zatizeniDum` 0,5 / `zatizeniVerejny` 1,0 kN/m (ČSN EN 1991-1-1 NA), součinitel 1,5, S235 (fyd 235 MPa), skutečná největší rozteč z layoutu, Wpl čtvercového jeklu, průhyb v úrovni madla proti `pruhybSloupekMax` (30 mm). Využití nad 100 % = chyba s radou, 80–100 % = varování, zákazník vidí jednu řádku s procenty, dílna rozepsaný výpočet. K dispozici jsou jekly 40×40×3, 50×50×3 a 60×60×3 (zámky a drážky prošly `kontrola-zabradli.js`). Bez sloupků a u geometrického motivu jen informace, že únosnost ověří dílna.
+- **Přesah špruší nahoru** nejvýš 100 mm (dolů 400), upozornění na zaoblené konce, u dětí chyba. **Sklon** nad 38° varuje (běžná schodiště 25–38°). **Rám delší než tyč** (`tycDelka` − `zbytekK2`) je chyba s radou rozdělit zábradlí.
+- **Povrch**: umístění venku / uvnitř (prášek bez zinku venku varuje) a odstín RAL (7016, 9005, 9016, 9006, 7035, 8017, 6005, 3000 nebo „jiný“ se čtyřmístným číslem) – promítá se do popisu poptávky, kusovníku v dílně a barvy 3D náhledu.
+- **Bez kotev** – poptávkový formulář vyžaduje zaškrtnutí „Beru na vědomí, že kotvení a jeho únosnost zajišťuji sám“ (v poptávce je `kotveniSam`).
+
+**Podnože a Umělecké** (`core.js`): poptávku blokuje `Podnoze.blockReasons(A)` – některá kontrola nosnosti v červeném, díly se protínají nebo jsou delší než tyč (`audit.fab`), pohyblivá konstrukce (`audit.singular`), podnož vyčnívá zpod desky (`ohWarn`) a nedokončený jiný RAL; stejně na `index.html` i `vyvoj.html`, důvod se píše pod tlačítko. Výjimka: u Pohozence (PZ) se stabilita neblokuje. Modely mají nejmenší rozměr (`MODELS[].min`: Rám v rámu, Most, Okno, Blesk – posuvníky se podle modelu, jeklu a tvaru desky omezí) a C-rám největší 1000 × 600 × 750 mm (při přepnutí se rozměry přizpůsobí a stránka to napíše). Jekl 20×20 se zneaktivní nad 1000 mm délky nebo 800 mm výšky. **Pod nohy**: nic / plastové kluzáky / rektifikační nožky M8 (od jeklu 30×30; mění výšku o cca 10–25 mm) – jen položka v kusovníku (počet dosedacích bodů z modelu, aspoň 4) a cena z ceníku (`kluzak`, `rektifikace`), geometrie se nemění. Povrch „Jiný RAL“.
+
+**Stolečky a Ostatní**: u stolečků blokuje poptávku vše, co jde proti výrobě (`build().block`: hroty se potkají, články se nevejdou, zámeček nejde vyříznout, plotna je malá, plech vyčuhuje, vruty / vložky nesedí na desku či plech), a nedokončený jiný RAL; ceník se hlídá stejnými mezemi jako u podnoží. Zástěny, ptáci a jeleni: nejvýš 99 ks na poptávku, rozměr zástěny 300–3000 mm, záporné a nesmyslné sazby ceníku se ignorují.
 
 ## Ostatní (zástěny, ptačí věšáky)
 
